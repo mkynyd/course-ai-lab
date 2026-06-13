@@ -36,8 +36,10 @@ export function CostDisplay({
   const pricing = PRICING[model];
 
   const inputCacheHitCost = (cacheHitTokens / 1_000_000) * pricing.inputCacheHit;
+  const effectiveCacheMissTokens =
+    cacheMissTokens || Math.max(0, inputTokens - cacheHitTokens);
   const inputCacheMissCost =
-    (cacheMissTokens / 1_000_000) * pricing.inputCacheMiss;
+    (effectiveCacheMissTokens / 1_000_000) * pricing.inputCacheMiss;
   const outputCost = (outputTokens / 1_000_000) * pricing.output;
   const totalCost = inputCacheHitCost + inputCacheMissCost + outputCost;
 

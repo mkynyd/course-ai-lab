@@ -27,6 +27,9 @@ interface ProjectSidebarProps {
   onFileToggle: (id: string) => void;
   onFileDelete: (id: string) => void;
   onFileUploaded: () => void;
+  onFileParse: (file: ProjectFile) => void;
+  onFileEnhance: (file: ProjectFile) => void;
+  onFileView: (file: ProjectFile) => void;
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
   activeConversationId?: string;
@@ -46,6 +49,9 @@ export function ProjectSidebar({
   onFileToggle,
   onFileDelete,
   onFileUploaded,
+  onFileParse,
+  onFileEnhance,
+  onFileView,
   onNewConversation,
   onConversationSelect,
   activeConversationId,
@@ -91,6 +97,9 @@ export function ProjectSidebar({
             selectedIds={selectedFileIds}
             onToggle={onFileToggle}
             onDelete={onFileDelete}
+            onParse={onFileParse}
+            onEnhance={onFileEnhance}
+            onView={onFileView}
             className="mt-2"
           />
         </div>

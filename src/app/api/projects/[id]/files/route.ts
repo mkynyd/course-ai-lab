@@ -6,19 +6,6 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 
-// Allowed file types for text parsing
-const TEXT_MIME_TYPES: Record<string, string> = {
-  "text/plain": "txt",
-  "text/markdown": "md",
-  "text/csv": "csv",
-  "application/json": "json",
-  "text/javascript": "js",
-  "text/typescript": "ts",
-  "application/typescript": "ts",
-  "text/jsx": "jsx",
-  "text/tsx": "tsx",
-};
-
 const CODE_EXTENSIONS: Record<string, string> = {
   "txt": "text/plain",
   "md": "text/markdown",
@@ -146,7 +133,7 @@ export async function POST(
     } else {
       // PDF, images — not parsed in MVP
       textContent = null;
-      status = "uploaded";
+      status = ["gif", "bmp"].includes(ext) ? "unsupported" : "uploaded";
     }
 
     const fileAsset = await prisma.fileAsset.create({
@@ -185,6 +172,7 @@ export async function POST(
           mimeType: fileAsset.mimeType,
           size: fileAsset.size,
           status: fileAsset.status,
+          enhancementStatus: fileAsset.enhancementStatus,
           createdAt: fileAsset.createdAt,
         },
         note:

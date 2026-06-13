@@ -42,7 +42,8 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    fetchKeyInfo();
+    const timeoutId = window.setTimeout(() => void fetchKeyInfo(), 0);
+    return () => window.clearTimeout(timeoutId);
   }, [fetchKeyInfo]);
 
   async function saveKey(
@@ -79,7 +80,7 @@ export default function SettingsPage() {
     } catch {
       setMessage({ type: "error", text: "网络异常，请检查连接后重试" });
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   }
 

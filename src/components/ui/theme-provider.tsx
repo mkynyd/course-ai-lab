@@ -81,8 +81,11 @@ export function ThemeProvider({
       }
     } catch {}
 
-    setThemeState(stored);
-    applyTheme(stored);
+    const timeoutId = window.setTimeout(() => {
+      setThemeState(stored);
+      applyTheme(stored);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [applyTheme]);
 
   // Listen for system theme changes when in "system" mode

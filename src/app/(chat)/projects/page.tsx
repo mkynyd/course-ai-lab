@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Plus, FolderOpen, Trash2, MessageSquare, FileText } from "lucide-react";
@@ -24,7 +23,6 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function ProjectsPage() {
-  const router = useRouter();
   const [projects, setProjects] = useState<ProjectWithCount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,7 +41,8 @@ export default function ProjectsPage() {
   }, []);
 
   useEffect(() => {
-    fetchProjects();
+    const timeoutId = window.setTimeout(() => void fetchProjects(), 0);
+    return () => window.clearTimeout(timeoutId);
   }, [fetchProjects]);
 
   async function deleteProject(id: string, name: string) {

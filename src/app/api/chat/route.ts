@@ -6,9 +6,7 @@ import { sendMessageSchema, type SendMessageInput } from "@/lib/validators";
 import { streamChat, DeepSeekError, DeepSeekMessage } from "@/lib/deepseek";
 import { checkRateLimit, RateLimits } from "@/lib/rate-limit";
 import { GLOBAL_SYSTEM_PROMPT, getModePrompt } from "@/lib/ai/prompts";
-
-/** Maximum context chars from files to inject */
-const MAX_CONTEXT_CHARS = 20000;
+import { retrieveProjectContext } from "@/lib/rag/vector-store";
 
 export async function POST(request: NextRequest) {
   // 1. 身份验证
@@ -90,8 +88,6 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           originalName: true,
-          mimeType: true,
-          textContent: true,
           status: true,
         },
       })
@@ -106,7 +102,9 @@ export async function POST(request: NextRequest) {
 
   // 5. 获取并解密 API Key
   const apiKeyRecord = await prisma.apiKey.findUnique({
-    where: { userId },
+    where: {
+      userId_provider: { userId, provider: "deepseek" },
+    },
   });
   if (!apiKeyRecord) {
     return NextResponse.json(
@@ -162,61 +160,25 @@ export async function POST(request: NextRequest) {
     select: { role: true, content: true },
   });
 
-  // 8. 构建系统提示词（合并全局 + 项目上下文）
+  // 8. 构建固定系统提示词，动态资料放在最后一条 user message 中以提高缓存命中率
   let systemPrompt = GLOBAL_SYSTEM_PROMPT;
+  let retrievedContext = "";
+  let contextNotice: string | null = null;
 
   if (project) {
     const projectMode = mode || project.type || "general";
     const modePrompt = getModePrompt(projectMode);
+    systemPrompt = `${systemPrompt}\n\n【模式指令】\n${modePrompt}`;
 
-    const parts: string[] = [
-      "【项目上下文】",
-      `项目名称：${project.name}`,
-      `项目类型：${projectMode}`,
-    ];
-    if (project.description) {
-      parts.push(`项目描述：${project.description}`);
-    }
-
-    if (selectedFiles.length > 0) {
-      parts.push("\n用户选择的资料文件：");
-      let totalChars = 0;
-      let truncated = false;
-
-      for (const file of selectedFiles) {
-        const header = `\n文件：${file.originalName}\n类型：${file.mimeType}`;
-        const content = file.textContent?.trim();
-
-        if (!content) {
-          parts.push(`${header}\n状态：文件已保存，但当前版本未解析出文本内容。`);
-          continue;
-        }
-
-        const remaining = MAX_CONTEXT_CHARS - totalChars;
-        if (remaining <= 0) {
-          truncated = true;
-          break;
-        }
-
-        const excerptLength = Math.min(3000, remaining);
-        const excerpt = content.slice(0, excerptLength);
-        parts.push(`${header}\n内容：\n${excerpt}`);
-        totalChars += excerpt.length;
-
-        if (excerpt.length < content.length) {
-          truncated = true;
-        }
-      }
-
-      if (truncated) {
-        parts.push(
-          `\n[注意：以下资料为截断内容，已达到 ${MAX_CONTEXT_CHARS} 字符上下文上限。]`
-        );
-      }
-    }
-
-    const contextStr = parts.join("\n");
-    systemPrompt = `${systemPrompt}\n\n${contextStr}\n\n【模式指令】\n${modePrompt}`;
+    const retrieval = await retrieveProjectContext({
+      userId,
+      projectId: project.id,
+      selectedFileIds: uniqueFileIds,
+      query: message,
+      maxChars: 20000,
+    });
+    retrievedContext = retrieval.context;
+    contextNotice = retrieval.notice;
   }
 
   // 9. 保存用户消息
@@ -229,10 +191,16 @@ export async function POST(request: NextRequest) {
   });
 
   // 10. 构建 DeepSeek 消息数组（system prompt 在最前）
+  const contextualUserMessage = retrievedContext
+    ? `# 项目资料\n\n${retrievedContext}\n\n# 用户问题\n\n${message}`
+    : contextNotice
+      ? `${message}\n\n[系统提示：${contextNotice}]`
+      : message;
+
   const messages: DeepSeekMessage[] = [
     { role: "system", content: systemPrompt },
     ...history.map((m) => ({ role: m.role, content: m.content })),
-    { role: "user", content: message },
+    { role: "user", content: contextualUserMessage },
   ];
 
   // 11. 调用 DeepSeek
@@ -259,6 +227,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const assistantMessage = await prisma.message.create({
+    data: {
+      conversationId: conversation.id,
+      role: "assistant",
+      content: "",
+    },
+    select: { id: true },
+  });
+
   // 12. Tee 分流
   const [clientStream, serverStream] = streamResult.stream.tee();
 
@@ -266,6 +243,7 @@ export async function POST(request: NextRequest) {
   accumulateAndSave(
     serverStream,
     conversation.id,
+    assistantMessage.id,
     streamResult.getUsage
   ).catch((err) => {
     console.error("保存助手消息失败:", err);
@@ -288,6 +266,7 @@ export async function POST(request: NextRequest) {
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
       "X-Conversation-Id": conversation.id,
+      "X-Message-Id": assistantMessage.id,
     },
   });
 }
@@ -295,6 +274,7 @@ export async function POST(request: NextRequest) {
 async function accumulateAndSave(
   stream: ReadableStream<Uint8Array>,
   conversationId: string,
+  messageId: string,
   getUsage: () => {
     prompt_tokens: number;
     completion_tokens: number;
@@ -341,10 +321,9 @@ async function accumulateAndSave(
 
   if (fullContent) {
     const usage = getUsage();
-    await prisma.message.create({
+    await prisma.message.update({
+      where: { id: messageId },
       data: {
-        conversationId,
-        role: "assistant",
         content: fullContent,
         reasoningContent: fullReasoning || null,
         tokenCount: usage?.total_tokens ?? null,
@@ -352,6 +331,8 @@ async function accumulateAndSave(
         cacheMissTokens: usage?.prompt_cache_miss_tokens ?? null,
       },
     });
+  } else {
+    await prisma.message.delete({ where: { id: messageId } }).catch(() => {});
   }
 
   await prisma.conversation

@@ -101,7 +101,8 @@ export function useChat(options: UseChatOptions = {}) {
         if (!reader) throw new Error("No response body");
 
         // Track streaming assistant message
-        const streamingId = `assistant-${Date.now()}`;
+        const streamingId =
+          response.headers.get("X-Message-Id") || `assistant-${Date.now()}`;
         setMessages((prev) => [
           ...prev,
           {

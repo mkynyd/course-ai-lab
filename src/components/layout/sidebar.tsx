@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -25,11 +25,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchConversations();
-  }, []);
-
-  async function fetchConversations() {
+  const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch("/api/conversations");
       if (res.ok) {
@@ -41,7 +37,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => void fetchConversations(), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchConversations]);
 
   async function deleteConversation(id: string, e: React.MouseEvent) {
     e.stopPropagation();

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import { Navbar } from "@/components/layout/navbar";
 import { Sidebar } from "@/components/layout/sidebar";
-import { cn } from "@/lib/utils";
 
 export default function ChatLayout({
   children,

@@ -1,73 +1,77 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { ChevronDown, ChevronRight, User, Bot, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, User, Bot } from "lucide-react";
 
 interface MessageBubbleProps {
+  id?: string;
   role: "user" | "assistant" | "system";
   content: string;
   reasoningContent?: string | null;
   tokenCount?: number | null;
   isStreaming?: boolean;
+  onSaveArtifact?: (input: {
+    messageId: string;
+    title: string;
+    type: string;
+    content: string;
+  }) => Promise<void>;
 }
 
-function renderMarkdown(text: string): string {
-  // 简易 Markdown → HTML（代码块、粗体、斜体、行内代码）
-  let html = text
-    // 代码块 ```
-    .replace(
-      /```(\w*)\n([\s\S]*?)```/g,
-      (_: string, lang: string, code: string) => {
-        const escaped = code
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
-        return `<pre class="bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-3 my-2 overflow-x-auto"><code class="text-xs font-mono">${escaped}</code></pre>`;
-      }
-    )
-    // 行内代码 `...`
-    .replace(
-      /`([^`]+)`/g,
-      '<code class="px-1 py-0.5 text-xs font-mono bg-[var(--color-surface-hover)] rounded-[2px]">$1</code>'
-    )
-    // 粗体 **...**
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    // 斜体 *...*
-    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-    // 换行
-    .replace(/\n\n/g, "</p><p class='mt-2'>")
-    .replace(/\n/g, "<br/>");
-
-  return `<p>${html}</p>`;
-}
+const ARTIFACT_TYPES = [
+  ["general", "通用成果"],
+  ["experiment_report", "实验报告"],
+  ["calculation", "计算过程"],
+  ["error_analysis", "误差分析"],
+  ["plot_code", "绘图代码"],
+  ["review_outline", "复习提纲"],
+  ["mock_exam", "模拟试题"],
+  ["exam_coverage", "考点索引"],
+  ["mistake_explanation", "错题解析"],
+  ["quick_memory", "速记卡"],
+  ["mermaid", "思维导图"],
+  ["code_explanation", "代码说明"],
+] as const;
 
 export function MessageBubble({
+  id,
   role,
   content,
   reasoningContent,
   tokenCount,
   isStreaming = false,
+  onSaveArtifact,
 }: MessageBubbleProps) {
   const [showReasoning, setShowReasoning] = useState(false);
-
+  const [showSave, setShowSave] = useState(false);
+  const [title, setTitle] = useState("AI 成果");
+  const [type, setType] = useState("general");
+  const [saving, setSaving] = useState(false);
   const isUser = role === "user";
   const isAssistant = role === "assistant";
-
-  if (!isUser && !isAssistant) return null;
 
   const toggleReasoning = useCallback(() => {
     setShowReasoning((prev) => !prev);
   }, []);
 
+  if (!isUser && !isAssistant) return null;
+
+  async function saveArtifact() {
+    if (!id || !onSaveArtifact) return;
+    setSaving(true);
+    try {
+      await onSaveArtifact({ messageId: id, title, type, content });
+      setShowSave(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <div
-      className={cn(
-        "flex gap-3 px-4 py-3",
-        isUser && "flex-row-reverse"
-      )}
-    >
-      {/* 头像 */}
+    <div className={cn("flex gap-3 px-4 py-3", isUser && "flex-row-reverse")}>
       <div
         className={cn(
           "flex items-center justify-center w-7 h-7 rounded-[var(--radius-sm)] shrink-0 mt-0.5",
@@ -76,70 +80,87 @@ export function MessageBubble({
             : "bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)]"
         )}
       >
-        {isUser ? (
-          <User size={14} strokeWidth={2} />
-        ) : (
-          <Bot size={14} strokeWidth={2} />
-        )}
+        {isUser ? <User size={14} /> : <Bot size={14} />}
       </div>
 
-      {/* 内容 */}
       <div className={cn("flex-1 min-w-0", isUser && "flex flex-col items-end")}>
-        {/* 思维链（可折叠） */}
         {reasoningContent && (
           <div className="mb-2">
             <button
               onClick={toggleReasoning}
-              className={cn(
-                "flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]",
-                "hover:text-[var(--color-text-secondary)] transition-colors"
-              )}
+              className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]"
             >
-              {showReasoning ? (
-                <ChevronDown size={12} strokeWidth={2} />
-              ) : (
-                <ChevronRight size={12} strokeWidth={2} />
-              )}
+              {showReasoning ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               思考过程
             </button>
             {showReasoning && (
-              <div
-                className={cn(
-                  "mt-1.5 pl-3 border-l-2 border-[var(--color-border)]",
-                  "text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap"
-                )}
-              >
+              <div className="mt-1.5 pl-3 border-l-2 border-[var(--color-border)] text-xs whitespace-pre-wrap">
                 {reasoningContent}
               </div>
             )}
           </div>
         )}
 
-        {/* 主要内容 */}
         <div
           className={cn(
             "text-sm leading-relaxed",
             isUser
-              ? "bg-[var(--color-accent-muted)] text-[var(--color-text-primary)] px-3 py-2 rounded-[var(--radius-md)] max-w-[85%]"
+              ? "bg-[var(--color-accent-muted)] px-3 py-2 rounded-[var(--radius-md)] max-w-[85%]"
               : "text-[var(--color-text-primary)]"
           )}
         >
           {content ? (
-            <div
-              className="prose-sm"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
-            />
+            <div className="prose-sm break-words">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {content}
+              </ReactMarkdown>
+            </div>
           ) : isStreaming ? (
             <span className="typing-cursor" />
           ) : null}
-
-          {/* 流式输出光标 */}
-          {isStreaming && content && (
-            <span className="typing-cursor" />
-          )}
+          {isStreaming && content && <span className="typing-cursor" />}
         </div>
 
-        {/* Token 计数 */}
+        {isAssistant && onSaveArtifact && id && !isStreaming && content && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => setShowSave((current) => !current)}
+              className="flex items-center gap-1 text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
+            >
+              <Save size={12} />
+              保存为成果
+            </button>
+            {showSave && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className="h-8 min-w-40 rounded border border-[var(--color-border)] bg-transparent px-2 text-xs"
+                  maxLength={150}
+                />
+                <select
+                  value={type}
+                  onChange={(event) => setType(event.target.value)}
+                  className="h-8 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-xs"
+                >
+                  {ARTIFACT_TYPES.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={saving || !title.trim()}
+                  onClick={saveArtifact}
+                  className="h-8 rounded bg-[var(--color-accent)] px-3 text-xs text-white disabled:opacity-50"
+                >
+                  {saving ? "保存中" : "保存"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {tokenCount != null && (
           <span className="mt-1 text-[10px] font-mono text-[var(--color-text-tertiary)]">
             {tokenCount.toLocaleString()} tokens

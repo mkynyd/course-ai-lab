@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: [
+    "pdfjs-dist",
+    "@napi-rs/canvas",
+    "pdfkit",
+    "@fontsource/noto-sans-sc",
+    "fonteditor-core",
+  ],
   // Turbopack root fix
   turbopack: {
     root: process.cwd(),

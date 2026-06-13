@@ -11,7 +11,12 @@ export default async function ChatPage() {
 
   // Check if user has an API key configured
   const apiKey = await prisma.apiKey.findUnique({
-    where: { userId: session.user.id },
+    where: {
+      userId_provider: {
+        userId: session.user.id,
+        provider: "deepseek",
+      },
+    },
     select: { id: true },
   });
 

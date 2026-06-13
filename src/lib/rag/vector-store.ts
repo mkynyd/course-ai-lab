@@ -51,6 +51,32 @@ export interface ChunkSearchResult {
   distance: number;
 }
 
+export interface KeywordChunkResult {
+  id: string;
+  content: string;
+  title: string | null;
+  fileAssetId: string | null;
+  projectId: string | null;
+  chunkIndex: number;
+  originalName: string | null;
+}
+
+export interface RetrieveProjectContextParams {
+  userId: string;
+  projectId: string;
+  selectedFileIds: string[];
+  query: string;
+  maxChars: number;
+  queryEmbedding?: number[];
+}
+
+export interface RetrievedProjectContext {
+  context: string;
+  notice: string | null;
+  usedFileIds: string[];
+  truncated: boolean;
+}
+
 // ============================================================
 // Text splitting
 // ============================================================
@@ -174,6 +200,219 @@ export async function searchSimilarChunks(
   );
 
   return rows || [];
+}
+
+function extractKeywords(query: string): string[] {
+  const runs = query
+    .toLowerCase()
+    .match(/[\p{Script=Han}a-z0-9_+-]{2,}/gu) || [];
+  const terms = new Set<string>();
+
+  for (const run of runs) {
+    if (run.length <= 8) {
+      terms.add(run);
+    } else {
+      terms.add(run.slice(0, 8));
+      if (/^\p{Script=Han}+$/u.test(run)) {
+        for (let i = 0; i < run.length - 1 && terms.size < 8; i += 2) {
+          terms.add(run.slice(i, i + 2));
+        }
+      }
+    }
+    if (terms.size >= 8) break;
+  }
+
+  return [...terms];
+}
+
+export async function searchChunksByKeyword(params: {
+  userId: string;
+  projectId: string;
+  query: string;
+  limit?: number;
+}): Promise<KeywordChunkResult[]> {
+  const keywords = extractKeywords(params.query);
+  if (keywords.length === 0) return [];
+
+  const rows = await prisma.documentChunk.findMany({
+    where: {
+      userId: params.userId,
+      projectId: params.projectId,
+      OR: keywords.map((keyword) => ({
+        content: { contains: keyword, mode: "insensitive" as const },
+      })),
+    },
+    orderBy: [{ fileAssetId: "asc" }, { chunkIndex: "asc" }],
+    take: params.limit || 12,
+    select: {
+      id: true,
+      content: true,
+      title: true,
+      fileAssetId: true,
+      projectId: true,
+      chunkIndex: true,
+      fileAsset: { select: { originalName: true } },
+    },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    content: row.content,
+    title: row.title,
+    fileAssetId: row.fileAssetId,
+    projectId: row.projectId,
+    chunkIndex: row.chunkIndex,
+    originalName: row.fileAsset?.originalName || row.title,
+  }));
+}
+
+function parserNotice(file: {
+  mimeType: string;
+  processingMetadata: unknown;
+  enhancedContent: string | null;
+  enhancementStatus: string;
+}) {
+  if (file.enhancedContent && file.enhancementStatus === "enhanced") {
+    return "以下内容为基于 OCR 原文整理的增强资料，原始 OCR 可能存在识别误差。";
+  }
+
+  const metadata =
+    file.processingMetadata && typeof file.processingMetadata === "object"
+      ? (file.processingMetadata as Record<string, unknown>)
+      : {};
+  if (metadata.parser === "pdf-text") {
+    return "以下内容来自 PDF 文本提取，可能存在页码顺序或格式丢失。";
+  }
+  if (
+    metadata.parser === "minimax-pdf-vision" ||
+    file.mimeType.startsWith("image/")
+  ) {
+    return "以下内容来自图片 OCR/视觉解析，可能存在识别误差。涉及数字、公式和单位时请提醒用户核对。";
+  }
+  return "以下资料来自用户选中文件或关键词检索。";
+}
+
+export async function retrieveProjectContext(
+  params: RetrieveProjectContextParams
+): Promise<RetrievedProjectContext> {
+  const sections: Array<{
+    key: string;
+    fileAssetId: string;
+    markdown: string;
+  }> = [];
+  const seen = new Set<string>();
+
+  if (params.selectedFileIds.length > 0) {
+    const files = await prisma.fileAsset.findMany({
+      where: {
+        id: { in: [...new Set(params.selectedFileIds)] },
+        userId: params.userId,
+        projectId: params.projectId,
+      },
+      select: {
+        id: true,
+        originalName: true,
+        mimeType: true,
+        status: true,
+        textContent: true,
+        enhancedContent: true,
+        enhancementStatus: true,
+        processingMetadata: true,
+      },
+    });
+
+    for (const file of files) {
+      const content =
+        file.enhancementStatus === "enhanced" && file.enhancedContent
+          ? file.enhancedContent
+          : file.textContent;
+      if (!content || !["parsed", "partial"].includes(file.status)) continue;
+      const key = `${file.id}:enhanced-or-full`;
+      seen.add(key);
+      sections.push({
+        key,
+        fileAssetId: file.id,
+        markdown: `## 来源：${file.originalName}\n\n> ${parserNotice(file)}\n\n${content}`,
+      });
+    }
+  }
+
+  const currentChars = sections.reduce(
+    (total, section) => total + section.markdown.length,
+    0
+  );
+  if (
+    params.selectedFileIds.length === 0 ||
+    currentChars < Math.min(params.maxChars, 3000)
+  ) {
+    const keywordChunks = await searchChunksByKeyword({
+      userId: params.userId,
+      projectId: params.projectId,
+      query: params.query,
+    });
+
+    for (const chunk of keywordChunks) {
+      const key = `${chunk.fileAssetId || "none"}:${chunk.chunkIndex}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      sections.push({
+        key,
+        fileAssetId: chunk.fileAssetId || "",
+        markdown: `## 来源：${chunk.originalName || chunk.title || "项目资料"}（chunk ${chunk.chunkIndex + 1}）\n\n> 以下资料来自用户选中文件或关键词检索。\n\n${chunk.content}`,
+      });
+    }
+  }
+
+  if (params.queryEmbedding) {
+    const vectorChunks = await searchSimilarChunks({
+      userId: params.userId,
+      projectId: params.projectId,
+      queryEmbedding: params.queryEmbedding,
+    });
+    for (const chunk of vectorChunks) {
+      const key = `${chunk.fileAssetId || "none"}:${chunk.chunkIndex}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      sections.push({
+        key,
+        fileAssetId: chunk.fileAssetId || "",
+        markdown: `## 来源：${chunk.title || "项目资料"}（chunk ${chunk.chunkIndex + 1}）\n\n${chunk.content}`,
+      });
+    }
+  }
+
+  if (sections.length === 0) {
+    return {
+      context: "",
+      notice: "未找到可用于回答的项目资料。",
+      usedFileIds: [],
+      truncated: false,
+    };
+  }
+
+  let context = "";
+  let truncated = false;
+  for (const section of sections) {
+    const separator = context ? "\n\n---\n\n" : "";
+    const remaining = params.maxChars - context.length - separator.length;
+    if (remaining <= 0) {
+      truncated = true;
+      break;
+    }
+    if (section.markdown.length > remaining) {
+      context += `${separator}${section.markdown.slice(0, remaining)}`;
+      truncated = true;
+      break;
+    }
+    context += `${separator}${section.markdown}`;
+  }
+
+  return {
+    context,
+    notice: null,
+    usedFileIds: [...new Set(sections.map((section) => section.fileAssetId).filter(Boolean))],
+    truncated,
+  };
 }
 
 /**

@@ -33,6 +33,8 @@ export async function GET(
           mimeType: true,
           size: true,
           status: true,
+          enhancementStatus: true,
+          processingMetadata: true,
           createdAt: true,
         },
       },

@@ -14,6 +14,9 @@ import { AlertCircle, Hash, Loader } from "lucide-react";
 import { useChat, type ChatMessage } from "@/lib/hooks/use-chat";
 import type { ProjectFile } from "@/components/project/file-list";
 import type { ProjectType } from "@/components/chat/quick-task-bar";
+import { FileContentDialog } from "@/components/project/file-content-dialog";
+import { ArtifactLibrary } from "@/components/artifact/artifact-library";
+import { Button } from "@/components/ui/button";
 
 interface ProjectData {
   id: string;
@@ -32,6 +35,10 @@ export default function ProjectDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
+  const [activeFile, setActiveFile] = useState<ProjectFile | null>(null);
+  const [fileMessage, setFileMessage] = useState<string | null>(null);
+  const [showArtifacts, setShowArtifacts] = useState(false);
+  const [artifactRefreshKey, setArtifactRefreshKey] = useState(0);
   const selectedFileIdList = useMemo(
     () => Array.from(selectedFileIds),
     [selectedFileIds]
@@ -111,6 +118,64 @@ export default function ProjectDetailPage() {
     } catch {
       // 静默处理
     }
+  }
+
+  async function runFileAction(file: ProjectFile, action: "parse" | "enhance") {
+    setFileMessage(action === "parse" ? "正在解析资料..." : "正在进行知识增强...");
+    setProject((current) =>
+      current
+        ? {
+            ...current,
+            files: current.files.map((item) =>
+              item.id === file.id
+                ? action === "parse"
+                  ? { ...item, status: "parsing" }
+                  : { ...item, enhancementStatus: "enhancing" }
+                : item
+            ),
+          }
+        : current
+    );
+    try {
+      const res = await fetch(`/api/files/${file.id}/${action}`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "操作失败");
+      setFileMessage(
+        action === "parse"
+          ? data.file?.truncated
+            ? "解析完成，仅处理了首批页面，已可用于上下文"
+            : "解析完成，已可用于上下文"
+          : "知识增强完成"
+      );
+    } catch (err) {
+      setFileMessage(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      await fetchProject();
+    }
+  }
+
+  async function saveArtifact(input: {
+    messageId: string;
+    title: string;
+    type: string;
+    content: string;
+  }) {
+    const response = await fetch(`/api/projects/${projectId}/artifacts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...input,
+        conversationId,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(
+        typeof data.error === "string" ? data.error : "成果保存失败"
+      );
+    }
+    setArtifactRefreshKey((value) => value + 1);
+    setFileMessage("已保存到成果库");
   }
 
   async function handleSend(content: string) {
@@ -197,6 +262,9 @@ export default function ProjectDetailPage() {
           onFileToggle={handleFileToggle}
           onFileDelete={handleFileDelete}
           onFileUploaded={fetchProject}
+          onFileParse={(file) => void runFileAction(file, "parse")}
+          onFileEnhance={(file) => void runFileAction(file, "enhance")}
+          onFileView={setActiveFile}
           onNewConversation={handleNewConversation}
           onConversationSelect={handleConversationSelect}
           activeConversationId={conversationId}
@@ -238,6 +306,9 @@ export default function ProjectDetailPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => setShowArtifacts(true)}>
+              成果库
+            </Button>
             <ModelSelector model={model} onChange={setModel} disabled={isStreaming} />
             <Switch
               checked={thinkingEnabled}
@@ -288,11 +359,13 @@ export default function ProjectDetailPage() {
             messages.map((msg) => (
               <MessageBubble
                 key={msg.id}
+                id={msg.id}
                 role={msg.role}
                 content={msg.content}
                 reasoningContent={msg.reasoningContent}
                 tokenCount={msg.tokenCount ?? undefined}
                 isStreaming={msg.isStreaming}
+                onSaveArtifact={msg.role === "assistant" ? saveArtifact : undefined}
               />
             ))
           )}
@@ -318,6 +391,12 @@ export default function ProjectDetailPage() {
             </button>
           </div>
         )}
+        {fileMessage && (
+          <div className="mx-4 mb-2 flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-2 text-xs">
+            <span>{fileMessage}</span>
+            <button onClick={() => setFileMessage(null)}>关闭</button>
+          </div>
+        )}
 
         {/* 输入框 */}
         <ChatInput
@@ -326,14 +405,27 @@ export default function ProjectDetailPage() {
           isStreaming={isStreaming}
           value={chatInputValue}
           onValueChange={setChatInputValue}
-          disabled={project.files.length > 0 && selectedFileIds.size === 0}
         />
         {project.files.length > 0 && selectedFileIds.size === 0 && (
           <p className="px-4 pb-2 -mt-1 text-[11px] text-[var(--color-text-tertiary)] bg-[var(--color-surface)]">
-            请先在左侧选择至少一个文件，或新建普通聊天。
+            未选择文件时，系统会在当前项目中进行关键词检索。
           </p>
         )}
       </div>
+      {activeFile && (
+        <FileContentDialog
+          file={activeFile}
+          onClose={() => setActiveFile(null)}
+          onUpdated={() => void fetchProject()}
+        />
+      )}
+      {showArtifacts && (
+        <ArtifactLibrary
+          projectId={projectId}
+          refreshKey={artifactRefreshKey}
+          onClose={() => setShowArtifacts(false)}
+        />
+      )}
     </div>
   );
 }

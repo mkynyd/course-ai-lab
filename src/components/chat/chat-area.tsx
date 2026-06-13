@@ -143,6 +143,7 @@ export function ChatArea({
           messages.map((msg) => (
             <MessageBubble
               key={msg.id}
+              id={msg.id}
               role={msg.role}
               content={msg.content}
               reasoningContent={msg.reasoningContent}
