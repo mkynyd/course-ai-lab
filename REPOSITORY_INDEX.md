@@ -15,6 +15,7 @@ light-ai-chat/
 ├── AGENTS.md                          # Agent 约束规则
 ├── CLAUDE.md                          # Claude Code 入口（→ AGENTS.md）
 ├── IMPLEMENTATION.md                  # 缓存架构实现说明
+├── PROJECT_SUMMARY.md                 # 项目对话、架构与进度总结
 ├── PRODUCT.md                         # 产品设计文档
 ├── README.md                          # 项目说明
 ├── REPOSITORY_INDEX.md                # 本文件 — 仓库索引
