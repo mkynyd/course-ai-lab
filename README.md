@@ -7,13 +7,12 @@
 <p align="center">
   将通用 AI 对话与项目化资料管理相结合 — 上传课件/实验数据/代码，选择上下文进行对话，把有价值的回答保存为可导出的成果
 </p>
-
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" alt="Next.js 16" />
   <img src="https://img.shields.io/badge/TypeScript-5-blue?logo=typescript" alt="TypeScript 5" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-pgvector?logo=postgresql" alt="PostgreSQL + pgvector" />
-  <img src="https://img.shields.io/badge/Anthropic_SDK-统一双供应商-orange" alt="Anthropic SDK" />
 </p>
+
 
 ---
 
@@ -21,7 +20,6 @@
 
 - [项目简介](#项目简介)
 - [核心特性](#核心特性)
-- [创新点](#创新点)
 - [技术栈](#技术栈)
 - [快速开始](#快速开始)
 - [项目结构](#项目结构)
@@ -39,12 +37,6 @@
 ### 目标用户
 
 面向需要整理课程资料、实验数据、代码和复习材料的大学生与学习者。用户通常在桌面端持续使用，需要快速切换上下文并保持工作区专注。
-
-### 设计理念
-
-- **克制、可靠、专注** — 界面如成熟的生产力工具，信息结构清晰，交互反馈直接
-- **一个稳定的应用壳层** — 承载聊天与项目导航，进入项目后优先让出空间给任务和对话
-- **WCAG AA 可访问性** — 键盘导航、可见焦点、足够颜色对比、语义化标签
 
 ---
 
@@ -69,37 +61,7 @@
 ### Artifact 成果库
 - 对话中的优质回答可保存为 Artifact，支持 14 种成果类型
 - 一键导出 Markdown / DOCX / PDF
-- Markdown 为唯一真相源，AST 级转换保证格式一致
-
-### 安全加密
-- API Key: AES-256-GCM 加密存储，每个用户每个 Provider 独立加密
-- 密码: bcrypt 哈希
-- Session: NextAuth JWT 策略
-- 全路由归属校验（userId → projectId → conversationId → messageId）
-
-### 四层缓存架构
-TanStack Query 客户端缓存 → React `cache()` 请求去重 → Redis 应用缓存（降级到内存）→ DeepSeek/MiniMax API 自动缓存。缓存用量透明展示。
-
-### 引导式 AI 教学
-不是"你是一个 AI 助手"的通用 prompt，而是 4 套教学法驱动的角色定义 — 实验导师、复习导师、代码导师、视觉转录工具。所有不确定内容标注"[需补充]"或"[待验证]"。
-
----
-
-## 创新点
-
-| # | 创新点 | 说明 |
-|---|--------|------|
-| 1 | **单 SDK 双供应商** | `@anthropic-ai/sdk` 同时驱动 DeepSeek + MiniMax，消息格式、流式事件完全统一 |
-| 2 | **关键词规则引擎路由** | 16 种任务类型零 token 自动判定，准确率 >90% |
-| 3 | **Prompt 模板系统** | 5 套角色 Prompt 集中版本化管理，缓存友好 |
-| 4 | **PDF 双模解析引擎** | 文字型 PDF.js 秒级提取 / 扫描型 MiniMax OCR 降级，智能分流 |
-| 5 | **降级 RAG** | 选中文件 → 关键词 → 向量，渐进式架构，零外部依赖即可工作 |
-| 6 | **AST 级文件导出** | Markdown → DOCX/PDF，无 Chromium 依赖 |
-| 7 | **四层缓存 + 可观测性** | 客户端/服务端/Redis/API 四层，命中率实时展示 |
-| 8 | **Redis 故障自动降级** | 30 秒熔断 + 有界内存窗口，Redis 离线时应用仍可用 |
-| 9 | **引导式教学策略** | 4 套教学法 Prompt，不编造数据，标注不确定性 |
-
-> 详见 [`docs/project-innovations.md`](docs/project-innovations.md)（15 项创新点完整说明）
+- Markdown 为唯一源，AST 级转换保证格式一致
 
 ---
 
@@ -110,7 +72,7 @@ TanStack Query 客户端缓存 → React `cache()` 请求去重 → Redis 应用
 | **框架** | Next.js 16.2 (App Router, React 19, TypeScript 5) |
 | **数据库** | PostgreSQL 16 + pgvector (Docker) |
 | **ORM** | Prisma 7.8 |
-| **AI SDK** | `@anthropic-ai/sdk` 0.104（统一驱动 DeepSeek + MiniMax） |
+| **AI SDK** | `@anthropic-ai/sdk` |
 | **缓存** | Redis 7 + TanStack Query + React `cache()` |
 | **认证** | NextAuth.js v5 (JWT, Credentials Provider) |
 | **样式** | Tailwind CSS 4 |
