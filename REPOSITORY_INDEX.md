@@ -32,7 +32,7 @@ light-ai-chat/
 ├── .gitignore
 ├── dev.db                             # 旧 SQLite 数据库（已废弃）
 │
-├── docs/                              # 📁 文档
+├── docs/                              # 文档
 │   ├── MiniMax/                       #   MiniMax API 文档（18 个文件）
 │   ├── DeepSeek/                      #   DeepSeek API 文档（12 个文件）
 │   ├── superpowers/plans/             #   架构设计计划
@@ -41,18 +41,18 @@ light-ai-chat/
 │   ├── database-postgresql-pgvector.md     # 数据库运维指南
 │   └── project-innovations.md         #   项目创新点汇总（15 项）
 │
-├── prisma/                            # 📁 数据库
+├── prisma/                            # 数据库
 │   ├── schema.prisma                  #   Prisma schema（7 个模型）
 │   └── migrations/                    #   数据库迁移文件
 │       ├── 20260613075534_migrate_to_postgresql_pgvector/
 │       └── 20260613143000_add_minimax_pipeline_and_artifacts/
 │
-├── public/                            # 📁 静态资源
+├── public/                            # 静态资源
 │   └── *.svg                          #   图标
 │
-├── uploads/                           # 📁 用户上传文件存储
+├── uploads/                           # 用户上传文件存储
 │
-└── src/                               # 📁 源代码
+└── src/                               # 源代码
     ├── middleware.ts                  #   NextAuth 路由保护中间件
     ├── types/
     │   └── next-auth.d.ts             #   NextAuth 类型扩展
