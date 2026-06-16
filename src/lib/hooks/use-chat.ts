@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   readSSEStream,
@@ -21,6 +21,11 @@ export interface ChatMessage {
   cacheHitTokens?: number | null;
   cacheMissTokens?: number | null;
   isStreaming?: boolean;
+}
+
+export interface SendMessageInput {
+  content: string;
+  hiddenPrompt?: string;
 }
 
 interface UseChatOptions {
@@ -47,12 +52,25 @@ export function useChat(options: UseChatOptions = {}) {
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [model, setModel] = useState(options.model || "deepseek-v4-pro");
   const [thinkingEnabled, setThinkingEnabled] = useState(
-    options.thinkingEnabled ?? false
+    options.thinkingEnabled ?? true
   );
   const abortRef = useRef<AbortController | null>(null);
 
+  useEffect(() => {
+    if (conversationId || messages.length > 0) return;
+    const nextModel = options.model;
+    const nextThinkingEnabled = options.thinkingEnabled;
+    queueMicrotask(() => {
+      if (nextModel) setModel(nextModel);
+      if (nextThinkingEnabled !== undefined) {
+        setThinkingEnabled(nextThinkingEnabled);
+      }
+    });
+  }, [conversationId, messages.length, options.model, options.thinkingEnabled]);
+
   const performSend = useCallback(
-    async (content: string) => {
+    async (input: SendMessageInput) => {
+      const content = input.content;
       if (!content.trim()) return;
 
       // Abort any previous stream
@@ -79,6 +97,7 @@ export function useChat(options: UseChatOptions = {}) {
           body: JSON.stringify(buildChatRequestBody({
             conversationId,
             message: content.trim(),
+            hiddenPrompt: input.hiddenPrompt,
             model,
             thinkingEnabled,
             reasoningEffort: options.reasoningEffort ?? "high",
@@ -201,7 +220,10 @@ export function useChat(options: UseChatOptions = {}) {
   );
   const sendMutation = useMutation({ mutationFn: performSend });
   const sendMessage = useCallback(
-    (content: string) => sendMutation.mutateAsync(content),
+    (input: string | SendMessageInput) =>
+      sendMutation.mutateAsync(
+        typeof input === "string" ? { content: input } : input
+      ),
     [sendMutation]
   );
 
@@ -220,10 +242,18 @@ export function useChat(options: UseChatOptions = {}) {
   }, []);
 
   const loadConversation = useCallback(
-    (nextConversationId: string, nextMessages: ChatMessage[]) => {
+    (
+      nextConversationId: string,
+      nextMessages: ChatMessage[],
+      settings?: { model?: string; thinkingEnabled?: boolean }
+    ) => {
       abortRef.current?.abort();
       setConversationId(nextConversationId);
       setMessages(nextMessages);
+      if (settings?.model) setModel(settings.model);
+      if (settings?.thinkingEnabled !== undefined) {
+        setThinkingEnabled(settings.thinkingEnabled);
+      }
       setUsage(null);
       setError(null);
       setIsStreaming(false);

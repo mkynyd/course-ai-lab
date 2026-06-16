@@ -2,6 +2,7 @@ export interface ConversationSummary {
   id: string;
   title: string;
   model: string;
+  thinkingEnabled?: boolean;
   projectId?: string | null;
   updatedAt: string;
 }
@@ -28,9 +29,21 @@ export interface ProjectFile {
   mimeType: string;
   size: number;
   status: string;
+  category?: string | null;
+  categoryConfidence?: number | null;
   enhancementStatus?: string;
   processingMetadata?: Record<string, unknown> | null;
   createdAt: string;
+}
+
+export interface QuickActionSummary {
+  id: string;
+  title: string;
+  prompt: string;
+  isSystem: boolean;
+  sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ProjectSummary {
@@ -39,6 +52,7 @@ export interface ProjectSummary {
   description: string | null;
   type: string;
   defaultModel?: string | null;
+  thinkingEnabled?: boolean;
   updatedAt: string;
   _count: { conversations: number; files: number };
 }
@@ -46,6 +60,7 @@ export interface ProjectSummary {
 export interface ProjectDetail extends ProjectSummary {
   files: ProjectFile[];
   conversations: ConversationSummary[];
+  quickActions?: QuickActionSummary[];
 }
 
 export interface ArtifactSummary {

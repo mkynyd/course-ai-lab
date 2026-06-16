@@ -3,6 +3,7 @@ import type { ProjectType } from "@/components/chat/quick-task-bar";
 export interface ChatRequestInput {
   conversationId?: string;
   message: string;
+  hiddenPrompt?: string;
   model: string;
   thinkingEnabled: boolean;
   reasoningEffort: "high" | "max";
@@ -19,6 +20,10 @@ export function buildChatRequestBody(input: ChatRequestInput): ChatRequestInput 
     thinkingEnabled: input.thinkingEnabled,
     reasoningEffort: input.reasoningEffort,
   };
+
+  if (input.hiddenPrompt) {
+    body.hiddenPrompt = input.hiddenPrompt;
+  }
 
   if (input.projectId) {
     body.projectId = input.projectId;

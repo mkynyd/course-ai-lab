@@ -14,6 +14,8 @@ export interface CreateProjectInput {
   description?: string;
   type: "experiment" | "review" | "coding" | "general";
   defaultModel?: string;
+  thinkingEnabled?: boolean;
+  quickActions?: Array<{ title: string; prompt: string }>;
 }
 
 export function useProjects() {

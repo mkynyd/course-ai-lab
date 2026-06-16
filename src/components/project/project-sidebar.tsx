@@ -3,8 +3,13 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { FileUpload } from "@/components/project/file-upload";
-import { FileList, type ProjectFile } from "@/components/project/file-list";
+import {
+  FileList,
+  type FileSelectionIntent,
+  type ProjectFile,
+} from "@/components/project/file-list";
 import { Button } from "@/components/ui/button";
+import { FILE_CATEGORIES, type FileCategory } from "@/lib/file-categories";
 import {
   ArrowLeft,
   FolderOpen,
@@ -25,12 +30,18 @@ interface ProjectData {
 interface ProjectSidebarProps {
   project: ProjectData;
   selectedFileIds: Set<string>;
-  onFileToggle: (id: string) => void;
+  onFileToggle: (id: string, intent: FileSelectionIntent) => void;
+  onSelectAllFiles: () => void;
   onFileDelete: (id: string) => void;
   onFileUploaded: () => void;
   onFileParse: (file: ProjectFile) => void;
   onFileEnhance: (file: ProjectFile) => void;
   onFileView: (file: ProjectFile) => void;
+  onFileCategoryChange: (id: string, category: FileCategory | null) => void;
+  onBatchDelete: () => void;
+  onBatchReparse: () => void;
+  onBatchCategorize: (category: FileCategory) => void;
+  onBatchDownload: () => void;
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
   activeConversationId?: string;
@@ -48,11 +59,17 @@ export function ProjectSidebar({
   project,
   selectedFileIds,
   onFileToggle,
+  onSelectAllFiles,
   onFileDelete,
   onFileUploaded,
   onFileParse,
   onFileEnhance,
   onFileView,
+  onFileCategoryChange,
+  onBatchDelete,
+  onBatchReparse,
+  onBatchCategorize,
+  onBatchDownload,
   onNewConversation,
   onConversationSelect,
   activeConversationId,
@@ -113,10 +130,45 @@ export function ProjectSidebar({
             <span className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wider">
               资料文件
             </span>
-            <span className="text-[10px] font-mono text-[var(--color-text-tertiary)]">
+            <button
+              type="button"
+              onClick={onSelectAllFiles}
+              className="text-[10px] font-mono text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
+              aria-label="全选资料文件"
+            >
               {selectedFileIds.size}/{files.length}
-            </span>
+            </button>
           </div>
+          {selectedFileIds.size > 0 && (
+            <div className="mb-2 flex flex-wrap items-center gap-1 rounded-[var(--radius-md)] border border-[var(--color-border)] p-1">
+              <Button variant="ghost" size="sm" onClick={onBatchDelete}>
+                删除
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onBatchReparse}>
+                重新解析
+              </Button>
+              <select
+                aria-label="批量修改分类"
+                defaultValue=""
+                onChange={(event) => {
+                  if (!event.target.value) return;
+                  onBatchCategorize(event.target.value as FileCategory);
+                  event.target.value = "";
+                }}
+                className="h-7 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1 text-xs"
+              >
+                <option value="">修改分类</option>
+                {FILE_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+              <Button variant="ghost" size="sm" onClick={onBatchDownload}>
+                下载 Markdown
+              </Button>
+            </div>
+          )}
           <FileUpload
             projectId={project.id}
             onUploaded={onFileUploaded}
@@ -129,6 +181,8 @@ export function ProjectSidebar({
             onParse={onFileParse}
             onEnhance={onFileEnhance}
             onView={onFileView}
+            onCategoryChange={onFileCategoryChange}
+            defaultGroupsCollapsed
             className="mt-2"
           />
         </div>

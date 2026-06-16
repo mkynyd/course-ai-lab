@@ -1,20 +1,24 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { ProjectSidebar } from "@/components/project/project-sidebar";
-import { QuickTaskBar } from "@/components/chat/quick-task-bar";
+import { QuickTaskBar, type QuickTaskSendInput } from "@/components/chat/quick-task-bar";
 import { ChatInput } from "@/components/chat/chat-input";
 import { VirtualMessageList } from "@/components/chat/virtual-message-list";
 import { ModelSelector } from "@/components/chat/model-selector";
 import { ContextRing } from "@/components/chat/context-ring";
 import { Switch } from "@/components/ui/switch";
 import { AlertCircle, Hash, Loader, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useChat } from "@/lib/hooks/use-chat";
-import type { ProjectFile } from "@/components/project/file-list";
+import { useChat, type SendMessageInput } from "@/lib/hooks/use-chat";
+import type {
+  FileSelectionIntent,
+  ProjectFile,
+} from "@/components/project/file-list";
 import type { ProjectType } from "@/components/chat/quick-task-bar";
+import type { FileCategory } from "@/lib/file-categories";
 import { FileContentDialog } from "@/components/project/file-content-dialog";
 import { ArtifactLibrary } from "@/components/artifact/artifact-library";
 import { Button } from "@/components/ui/button";
@@ -33,6 +37,7 @@ export default function ProjectDetailPage() {
   const projectQuery = useProject(projectId);
   const saveArtifactMutation = useSaveArtifact(projectId);
   const project = projectQuery.data || null;
+  const refetchProject = projectQuery.refetch;
   const isLoading = projectQuery.isPending;
   const [desktopProjectSidebarOpen, setDesktopProjectSidebarOpen] =
     useState(true);
@@ -50,6 +55,9 @@ export default function ProjectDetailPage() {
 
   // Chat state
   const [chatInputValue, setChatInputValue] = useState("");
+  const [pendingMessageQueue, setPendingMessageQueue] = useState<SendMessageInput[]>([]);
+  const drainingQueueRef = useRef(false);
+  const lastSelectedFileIndexRef = useRef<number | null>(null);
   const {
     messages,
     isStreaming,
@@ -68,17 +76,87 @@ export default function ProjectDetailPage() {
   } = useChat({
     initialConversationId: undefined,
     initialMessages: [],
+    model: project?.defaultModel || "deepseek-v4-pro",
+    thinkingEnabled: project?.thinkingEnabled ?? true,
     projectId,
     selectedFileIds: selectedFileIdList,
     mode: (project?.type as ProjectType | undefined) ?? "general",
   });
+  const hasParsingFiles = Boolean(
+    project?.files.some((file) => file.status === "parsing")
+  );
 
-  function handleFileToggle(id: string) {
+  useEffect(() => {
+    fetch("/api/files/cleanup-stale", { method: "POST" })
+      .then(() => refetchProject())
+      .catch(() => {});
+  }, [projectId, refetchProject]);
+
+  useEffect(() => {
+    if (!hasParsingFiles) return;
+    const timer = window.setInterval(() => {
+      void refetchProject();
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [hasParsingFiles, refetchProject]);
+
+  useEffect(() => {
+    if (
+      hasParsingFiles ||
+      isStreaming ||
+      pendingMessageQueue.length === 0 ||
+      drainingQueueRef.current
+    ) {
+      return;
+    }
+
+    drainingQueueRef.current = true;
+    const queue = [...pendingMessageQueue];
+    setPendingMessageQueue([]);
+    void (async () => {
+      for (const item of queue) {
+        await sendMessage(item);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.detail(projectId),
+      });
+      drainingQueueRef.current = false;
+    })().catch((err) => {
+      setFileMessage(err instanceof Error ? err.message : "队列消息发送失败");
+      drainingQueueRef.current = false;
+    });
+  }, [
+    hasParsingFiles,
+    isStreaming,
+    pendingMessageQueue,
+    projectId,
+    queryClient,
+    sendMessage,
+  ]);
+
+  function handleFileToggle(id: string, intent: FileSelectionIntent) {
     setSelectedFileIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const orderedFiles = project?.files || [];
+      if (intent.range && lastSelectedFileIndexRef.current !== null) {
+        const start = Math.min(lastSelectedFileIndexRef.current, intent.index);
+        const end = Math.max(lastSelectedFileIndexRef.current, intent.index);
+        for (const file of orderedFiles.slice(start, end + 1)) {
+          next.add(file.id);
+        }
+      } else {
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+      }
+      lastSelectedFileIndexRef.current = intent.index;
       return next;
+    });
+  }
+
+  function handleSelectAllFiles() {
+    setSelectedFileIds((prev) => {
+      const ids = new Set((project?.files || []).map((file) => file.id));
+      return prev.size === ids.size ? new Set() : ids;
     });
   }
 
@@ -121,8 +199,13 @@ export default function ProjectDetailPage() {
             }
           : current
     );
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 300_000);
     try {
-      const res = await fetch(`/api/files/${file.id}/${action}`, { method: "POST" });
+      const res = await fetch(`/api/files/${file.id}/${action}`, {
+        method: "POST",
+        signal: controller.signal,
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "操作失败");
       setFileMessage(
@@ -133,8 +216,25 @@ export default function ProjectDetailPage() {
           : "知识增强完成"
       );
     } catch (err) {
-      setFileMessage(err instanceof Error ? err.message : "操作失败");
+      if (action === "parse" && err instanceof Error && err.name === "AbortError") {
+        queryClient.setQueryData<ProjectDetail>(
+          queryKeys.projects.detail(projectId),
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  files: current.files.map((item) =>
+                    item.id === file.id ? { ...item, status: "failed" } : item
+                  ),
+                }
+              : current
+        );
+        setFileMessage("解析超过 5 分钟，已在前端标记为失败");
+      } else {
+        setFileMessage(err instanceof Error ? err.message : "操作失败");
+      }
     } finally {
+      window.clearTimeout(timeout);
       await queryClient.invalidateQueries({
         queryKey: queryKeys.projects.detail(projectId),
       });
@@ -142,6 +242,53 @@ export default function ProjectDetailPage() {
         queryKey: queryKeys.projects.files(projectId),
       });
     }
+  }
+
+  async function handleFileCategoryChange(id: string, category: FileCategory | null) {
+    const res = await fetch(`/api/files/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setFileMessage(data.error || "分类更新失败");
+      return;
+    }
+    await projectQuery.refetch();
+  }
+
+  async function runBatchAction(
+    action: "delete" | "reparse" | "categorize" | "download",
+    category?: FileCategory
+  ) {
+    const fileIds = Array.from(selectedFileIds);
+    if (fileIds.length === 0) return;
+    const res = await fetch(`/api/projects/${projectId}/files/batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, fileIds, category }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setFileMessage(data.error || "批量操作失败");
+      return;
+    }
+    if (action === "download") {
+      const blob = new Blob([data.content], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = data.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else if (action === "delete") {
+      setSelectedFileIds(new Set());
+    }
+    await projectQuery.refetch();
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.projects.files(projectId),
+    });
   }
 
   async function saveArtifact(input: {
@@ -158,9 +305,13 @@ export default function ProjectDetailPage() {
     setFileMessage("已保存到成果库");
   }
 
-  async function handleSend(content: string) {
-    setChatInputValue("");
-    await sendMessage(content);
+  async function sendOrQueue(input: SendMessageInput) {
+    if (hasParsingFiles) {
+      setPendingMessageQueue((current) => [...current, input]);
+      setFileMessage("文件解析中，请稍候...");
+      return;
+    }
+    await sendMessage(input);
     await queryClient.invalidateQueries({
       queryKey: queryKeys.projects.detail(projectId),
     });
@@ -169,8 +320,17 @@ export default function ProjectDetailPage() {
     });
   }
 
-  function handleQuickTaskFill(prompt: string) {
-    setChatInputValue(prompt);
+  async function handleSend(content: string) {
+    setChatInputValue("");
+    await sendOrQueue({ content });
+  }
+
+  async function handleQuickTaskSend(input: QuickTaskSendInput) {
+    setChatInputValue("");
+    await sendOrQueue({
+      content: input.label,
+      hiddenPrompt: input.prompt,
+    });
   }
 
   async function handleConversationSelect(nextConversationId: string) {
@@ -189,7 +349,11 @@ export default function ProjectDetailPage() {
         conversation.messages.map((message) => ({
           ...message,
           role: message.role as "user" | "assistant" | "system",
-        }))
+        })),
+        {
+          model: conversation.model,
+          thinkingEnabled: conversation.thinkingEnabled ?? true,
+        }
       );
       setChatInputValue("");
     } catch (err) {
@@ -276,11 +440,21 @@ export default function ProjectDetailPage() {
             project={project}
             selectedFileIds={selectedFileIds}
             onFileToggle={handleFileToggle}
+            onSelectAllFiles={handleSelectAllFiles}
             onFileDelete={handleFileDelete}
             onFileUploaded={() => void projectQuery.refetch()}
             onFileParse={(file) => void runFileAction(file, "parse")}
             onFileEnhance={(file) => void runFileAction(file, "enhance")}
             onFileView={setActiveFile}
+            onFileCategoryChange={(id, category) =>
+              void handleFileCategoryChange(id, category)
+            }
+            onBatchDelete={() => void runBatchAction("delete")}
+            onBatchReparse={() => void runBatchAction("reparse")}
+            onBatchCategorize={(category) =>
+              void runBatchAction("categorize", category)
+            }
+            onBatchDownload={() => void runBatchAction("download")}
             onNewConversation={handleNewConversation}
             onConversationSelect={handleConversationSelect}
             activeConversationId={conversationId}
@@ -360,7 +534,9 @@ export default function ProjectDetailPage() {
         <div className="px-4 py-2 border-b border-[var(--color-border-light)] shrink-0">
           <QuickTaskBar
             projectType={projectType}
-            onFill={handleQuickTaskFill}
+            actions={project.quickActions}
+            onSend={(input) => void handleQuickTaskSend(input)}
+            disabled={isStreaming}
           />
         </div>
 
@@ -425,10 +601,20 @@ export default function ProjectDetailPage() {
         )}
 
         {/* 输入框 */}
+        {hasParsingFiles && (
+          <div className="mx-4 mb-2 flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+            <Loader size={12} className="animate-spin" />
+            <span>文件解析中，请稍候...</span>
+            {pendingMessageQueue.length > 0 && (
+              <span className="font-mono">已排队 {pendingMessageQueue.length} 条</span>
+            )}
+          </div>
+        )}
         <ChatInput
           onSend={handleSend}
           onStop={abort}
           isStreaming={isStreaming}
+          disabled={hasParsingFiles}
           value={chatInputValue}
           onValueChange={setChatInputValue}
         />

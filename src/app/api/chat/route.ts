@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
   const {
     conversationId,
     message,
+    hiddenPrompt,
     model,
     thinkingEnabled,
     reasoningEffort,
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
     selectedFileIds,
     mode,
   } = body;
+  const effectivePrompt = hiddenPrompt || message;
 
   // 4. 校验项目与文件上下文
   let project = null;
@@ -137,6 +139,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    if (
+      conversation.model !== model ||
+      conversation.thinkingEnabled !== thinkingEnabled
+    ) {
+      conversation = await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { model, thinkingEnabled },
+      });
+    }
   } else {
     const title = message.slice(0, 100).replace(/\n/g, " ");
     conversation = await prisma.conversation.create({
@@ -144,6 +155,7 @@ export async function POST(request: NextRequest) {
         userId,
         title,
         model,
+        thinkingEnabled,
         projectId: project?.id || null,
       },
     });
@@ -165,12 +177,15 @@ export async function POST(request: NextRequest) {
     const projectMode = mode || project.type || "general";
     const modePrompt = getModePrompt(projectMode);
     systemPrompt = `${systemPrompt}\n\n【模式指令】\n${modePrompt}`;
+    if (hiddenPrompt) {
+      systemPrompt = `${systemPrompt}\n\n【快捷任务指令】\n${hiddenPrompt}`;
+    }
 
     const retrieval = await retrieveProjectContext({
       userId,
       projectId: project.id,
       selectedFileIds: uniqueFileIds,
-      query: message,
+      query: effectivePrompt,
       maxChars: 20000,
     });
     retrievedContext = retrieval.context;
@@ -188,10 +203,10 @@ export async function POST(request: NextRequest) {
 
   // 10. 构建 DeepSeek 消息数组（system prompt 在最前）
   const contextualUserMessage = retrievedContext
-    ? `# 项目资料\n\n${retrievedContext}\n\n# 用户问题\n\n${message}`
+    ? `# 项目资料\n\n${retrievedContext}\n\n# 用户问题\n\n${effectivePrompt}`
     : contextNotice
-      ? `${message}\n\n[系统提示：${contextNotice}]`
-      : message;
+      ? `${effectivePrompt}\n\n[系统提示：${contextNotice}]`
+      : effectivePrompt;
 
   const legacyMessages: DeepSeekMessage[] = [
     { role: "system", content: systemPrompt },
@@ -204,8 +219,8 @@ export async function POST(request: NextRequest) {
     {
       role: "user",
       content: contextNotice
-        ? `${message}\n\n[系统提示：${contextNotice}]`
-        : message,
+        ? `${effectivePrompt}\n\n[系统提示：${contextNotice}]`
+        : effectivePrompt,
     },
   ];
   const messages = cacheExperiments.adaptivePromptOrdering.enabled

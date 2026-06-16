@@ -7,6 +7,7 @@
 
 import { prisma } from "@/lib/db";
 import crypto from "crypto";
+import { matchProjectIndex, type ProjectIndexMatch } from "@/lib/rag/project-index";
 
 // ============================================================
 // Configuration
@@ -301,11 +302,30 @@ export async function retrieveProjectContext(
     markdown: string;
   }> = [];
   const seen = new Set<string>();
+  let summaryOnlyMatches: ProjectIndexMatch[] = [];
+  let contextFileIds = [...new Set(params.selectedFileIds)];
 
-  if (params.selectedFileIds.length > 0) {
+  if (contextFileIds.length === 0) {
+    try {
+      const indexMatches = await matchProjectIndex({
+        userId: params.userId,
+        projectId: params.projectId,
+        query: params.query,
+        limit: 5,
+      });
+      contextFileIds = indexMatches.fullLoadFileIds;
+      summaryOnlyMatches = indexMatches.summaryOnly;
+    } catch {
+      contextFileIds = [];
+      summaryOnlyMatches = [];
+    }
+  }
+
+  if (contextFileIds.length > 0) {
+    const fileOrder = new Map(contextFileIds.map((id, index) => [id, index]));
     const files = await prisma.fileAsset.findMany({
       where: {
-        id: { in: [...new Set(params.selectedFileIds)] },
+        id: { in: contextFileIds },
         userId: params.userId,
         projectId: params.projectId,
       },
@@ -321,7 +341,9 @@ export async function retrieveProjectContext(
       },
     });
 
-    for (const file of files) {
+    for (const file of files.sort(
+      (a, b) => (fileOrder.get(a.id) ?? 0) - (fileOrder.get(b.id) ?? 0)
+    )) {
       const content =
         file.enhancementStatus === "enhanced" && file.enhancedContent
           ? file.enhancedContent
@@ -337,12 +359,29 @@ export async function retrieveProjectContext(
     }
   }
 
+  if (summaryOnlyMatches.length > 0) {
+    sections.push({
+      key: "project-index-summary-only",
+      fileAssetId: "",
+      markdown: [
+        "## INDEX.md 相关文件摘要",
+        "",
+        "> 以下文件与当前问题相关，但超过 Top-5 全文加载上限，仅提供摘要。",
+        "",
+        ...summaryOnlyMatches.map(
+          (match) =>
+            `- ${match.originalName}（${match.category || "未分类"}）：${match.summary}`
+        ),
+      ].join("\n"),
+    });
+  }
+
   const currentChars = sections.reduce(
     (total, section) => total + section.markdown.length,
     0
   );
   if (
-    params.selectedFileIds.length === 0 ||
+    contextFileIds.length === 0 ||
     currentChars < Math.min(params.maxChars, 3000)
   ) {
     const keywordChunks = await searchChunksByKeyword({

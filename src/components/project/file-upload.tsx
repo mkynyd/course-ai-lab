@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Upload, X, AlertCircle, Check } from "lucide-react";
+import { Upload, AlertCircle, Check } from "lucide-react";
 import { useUploadFiles } from "@/lib/hooks/use-project-files";
 
 interface FileUploadProps {
@@ -16,8 +16,10 @@ const ALLOWED_TYPES = [
   ".ts", ".tsx", ".js", ".jsx", ".py",
   ".c", ".cpp", ".h", ".java", ".sql",
   ".html", ".css",
+  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+  ".wps", ".et", ".dps", ".pages", ".numbers", ".key",
   ".pdf",
-  ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
+  ".png", ".jpg", ".jpeg", ".webp",
 ];
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -108,7 +110,7 @@ export function FileUpload({ projectId, onUploaded, className }: FileUploadProps
               点击或拖拽文件上传（≤20MB，支持批量）
             </span>
             <span className="text-[10px] text-[var(--color-text-tertiary)] mt-0.5">
-              支持 TXT、MD、CSV、JSON、代码文件、PDF、图片
+              支持 Office、WPS、iWork、PDF、图片、文本/代码
             </span>
           </>
         )}

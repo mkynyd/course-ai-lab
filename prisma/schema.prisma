@@ -146,13 +146,14 @@ model RegistrationSyncNonce {
 }
 
 model Conversation {
-  id        String   @id @default(cuid())
-  userId    String
-  projectId String? // nullable — existing chats without project remain valid
-  title     String   @default("New Chat")
-  model     String   @default("deepseek-v4-pro")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String
+  projectId       String? // nullable — existing chats without project remain valid
+  title           String   @default("New Chat")
+  model           String   @default("deepseek-v4-pro")
+  thinkingEnabled Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   project   Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
@@ -185,21 +186,24 @@ model Message {
 // ============================================================
 
 model Project {
-  id           String   @id @default(cuid())
-  userId       String
-  name         String
-  description  String?
-  type         String   @default("general") // experiment, review, coding, general
-  defaultModel String?
-  systemPrompt String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  description     String?
+  type            String   @default("general") // experiment, review, coding, general
+  defaultModel    String   @default("deepseek-v4-pro")
+  thinkingEnabled Boolean  @default(true)
+  systemPrompt    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   conversations Conversation[]
   files         FileAsset[]
   chunks        DocumentChunk[]
   artifacts     Artifact[]
+  projectIndex  ProjectIndex?
+  quickActions  QuickAction[]
 
   @@index([userId])
 }
@@ -218,6 +222,8 @@ model FileAsset {
   enhancementStatus  String   @default("none") // none, enhancing, enhanced, stale, failed
   processingMetadata Json?
   status             String   @default("uploaded") // uploaded, parsed, failed
+  category           String?
+  categoryConfidence Float?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -228,6 +234,31 @@ model FileAsset {
   @@index([userId])
   @@index([projectId])
   @@index([status])
+  @@index([category])
+}
+
+model ProjectIndex {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  content   String
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model QuickAction {
+  id        String   @id @default(cuid())
+  projectId String
+  title     String
+  prompt    String
+  isSystem  Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 model Artifact {
