@@ -2,6 +2,7 @@ export interface ConversationSummary {
   id: string;
   title: string;
   model: string;
+  modelLock?: string | null;
   thinkingEnabled?: boolean;
   projectId?: string | null;
   updatedAt: string;

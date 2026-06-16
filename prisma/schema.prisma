@@ -151,6 +151,7 @@ model Conversation {
   projectId       String? // nullable — existing chats without project remain valid
   title           String   @default("New Chat")
   model           String   @default("deepseek-v4-pro")
+  modelLock       String?
   thinkingEnabled Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -299,8 +300,8 @@ model DocumentChunk {
   tokenCount  Int?
   metadata    Json?
 
-  // pgvector embedding — 1536 dimensions (OpenAI text-embedding-ada-002 compatible)
-  embedding Unsupported("vector(1536)")?
+  // pgvector embedding — 1024 dimensions (Aliyun Bailian text-embedding-v4)
+  embedding Unsupported("vector(1024)")?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

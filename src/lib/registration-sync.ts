@@ -9,7 +9,7 @@ export const syncEnvelopeSchema = z.object({
 
 const providerCredentialSchema = z.object({
   id: z.string().min(1).max(128),
-  provider: z.enum(["deepseek", "minimax"]),
+  provider: z.enum(["deepseek", "minimax", "mineru", "bailian"]),
   key: z.string().min(1).max(512),
   keyPrefix: z.string().min(1).max(64),
   status: z.enum(["active", "disabled"]),
@@ -22,7 +22,7 @@ const credentialProfileSchema = z
     name: z.string().min(1).max(120),
     status: z.enum(["active", "disabled"]),
     version: z.number().int().positive(),
-    credentials: z.array(providerCredentialSchema).min(1).max(2),
+    credentials: z.array(providerCredentialSchema).min(1).max(4),
   })
   .superRefine((profile, context) => {
     const providers = new Set(

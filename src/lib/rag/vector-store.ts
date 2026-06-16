@@ -7,14 +7,20 @@
 
 import { prisma } from "@/lib/db";
 import crypto from "crypto";
-import { matchProjectIndex, type ProjectIndexMatch } from "@/lib/rag/project-index";
+import { createTextMessage } from "@/lib/deepseek";
+import { getProviderApiKey } from "@/lib/data/provider-access";
+import {
+  matchProjectIndex,
+  refreshProjectIndex,
+  type ProjectIndexMatch,
+} from "@/lib/rag/project-index";
 
 // ============================================================
 // Configuration
 // ============================================================
 
-/** Embedding dimensions — change this when connecting an embedding model */
-export const EMBEDDING_DIM = 1536;
+/** Embedding dimensions — Aliyun Bailian text-embedding-v4 default */
+export const EMBEDDING_DIM = 1024;
 
 /** Default chunk size in characters */
 const CHUNK_SIZE = 1500;
@@ -215,15 +221,110 @@ function extractKeywords(query: string): string[] {
     } else {
       terms.add(run.slice(0, 8));
       if (/^\p{Script=Han}+$/u.test(run)) {
-        for (let i = 0; i < run.length - 1 && terms.size < 8; i += 2) {
+        for (let i = 0; i < run.length - 1 && terms.size < 20; i += 2) {
           terms.add(run.slice(i, i + 2));
         }
       }
     }
-    if (terms.size >= 8) break;
+    if (terms.size >= 20) break;
   }
 
   return [...terms];
+}
+
+function extractJsonFileIds(value: string): string[] {
+  const fenced = value.match(/```json\s*([\s\S]*?)```/i)?.[1];
+  const candidate = fenced || value.match(/\[[\s\S]*\]/)?.[0] || value;
+  const parsed = JSON.parse(candidate) as unknown;
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .map((item) => {
+      if (typeof item === "string") return item;
+      if (item && typeof item === "object") {
+        const record = item as Record<string, unknown>;
+        return typeof record.id === "string" ? record.id : null;
+      }
+      return null;
+    })
+    .filter((id): id is string => Boolean(id));
+}
+
+export async function selectFilesWithDeepSeek(params: {
+  userId: string;
+  projectId: string;
+  query: string;
+  limit?: number;
+}): Promise<{ fileIds: string[]; source: "agentic-retrieval" | "index-fallback" }> {
+  const limit = params.limit ?? 12;
+  const fallback = async () => {
+    const result = await matchProjectIndex({
+      userId: params.userId,
+      projectId: params.projectId,
+      query: params.query,
+      limit,
+    });
+    return {
+      fileIds: result.fullLoadFileIds,
+      source: "index-fallback" as const,
+    };
+  };
+
+  let apiKey: string;
+  try {
+    apiKey = await getProviderApiKey(params.userId, "deepseek");
+  } catch {
+    return fallback();
+  }
+
+  let projectIndex = await prisma.projectIndex.findUnique({
+    where: { projectId: params.projectId },
+    select: { content: true },
+  });
+  if (!projectIndex?.content) {
+    const content = await refreshProjectIndex({
+      userId: params.userId,
+      projectId: params.projectId,
+    });
+    projectIndex = { content };
+  }
+
+  const validFiles = await prisma.fileAsset.findMany({
+    where: {
+      userId: params.userId,
+      projectId: params.projectId,
+      status: { in: ["parsed", "partial"] },
+    },
+    select: { id: true },
+  });
+  const validIds = new Set(validFiles.map((file) => file.id));
+
+  try {
+    const output = await createTextMessage(apiKey, {
+      model: "deepseek-v4-flash",
+      maxTokens: 1200,
+      temperature: 0,
+      system:
+        "你是课程项目资料检索器。根据 INDEX.md 只选择与问题直接相关的文件。只能输出 JSON 数组。",
+      prompt: [
+        "从下面 INDEX.md 中选出最相关的文件 ID。",
+        `最多选择 ${limit} 个。不要选择无关文件。`,
+        "输出格式：[{\"id\":\"file_id\"}]",
+        "",
+        "# 用户问题",
+        params.query,
+        "",
+        "# INDEX.md",
+        projectIndex.content,
+      ].join("\n"),
+    });
+    const fileIds = [...new Set(extractJsonFileIds(output))]
+      .filter((id) => validIds.has(id))
+      .slice(0, limit);
+    if (fileIds.length === 0) return fallback();
+    return { fileIds, source: "agentic-retrieval" };
+  } catch {
+    return fallback();
+  }
 }
 
 export async function searchChunksByKeyword(params: {
@@ -267,6 +368,75 @@ export async function searchChunksByKeyword(params: {
   }));
 }
 
+export async function hybridSearch(params: {
+  userId: string;
+  projectId: string;
+  query: string;
+  queryEmbedding?: number[];
+  limit?: number;
+}): Promise<KeywordChunkResult[]> {
+  const limit = params.limit ?? 10;
+  const [vectorResults, keywordResults] = await Promise.all([
+    params.queryEmbedding
+      ? searchSimilarChunks({
+          userId: params.userId,
+          projectId: params.projectId,
+          queryEmbedding: params.queryEmbedding,
+          limit: limit * 2,
+        })
+      : Promise.resolve([]),
+    searchChunksByKeyword({
+      userId: params.userId,
+      projectId: params.projectId,
+      query: params.query,
+      limit: limit * 2,
+    }),
+  ]);
+
+  const scores = new Map<string, number>();
+  const k = 60;
+  for (const [rank, chunk] of vectorResults.entries()) {
+    scores.set(chunk.id, (scores.get(chunk.id) || 0) + 1 / (k + rank + 1));
+  }
+  for (const [rank, chunk] of keywordResults.entries()) {
+    scores.set(chunk.id, (scores.get(chunk.id) || 0) + 1 / (k + rank + 1));
+  }
+
+  const sortedIds = [...scores.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+  if (sortedIds.length === 0) return [];
+
+  const chunks = await prisma.documentChunk.findMany({
+    where: { id: { in: sortedIds }, userId: params.userId },
+    select: {
+      id: true,
+      content: true,
+      title: true,
+      fileAssetId: true,
+      projectId: true,
+      chunkIndex: true,
+      fileAsset: { select: { originalName: true } },
+    },
+  });
+  const byId = new Map(chunks.map((chunk) => [chunk.id, chunk]));
+
+  return sortedIds.flatMap((id) => {
+    const chunk = byId.get(id);
+    if (!chunk) return [];
+    return [{
+      id: chunk.id,
+      content: chunk.content,
+      title: chunk.title,
+      fileAssetId: chunk.fileAssetId,
+      projectId: chunk.projectId,
+      chunkIndex: chunk.chunkIndex,
+      originalName: chunk.fileAsset?.originalName || chunk.title,
+    }];
+  });
+}
+
 function parserNotice(file: {
   mimeType: string;
   processingMetadata: unknown;
@@ -307,14 +477,14 @@ export async function retrieveProjectContext(
 
   if (contextFileIds.length === 0) {
     try {
-      const indexMatches = await matchProjectIndex({
+      const selection = await selectFilesWithDeepSeek({
         userId: params.userId,
         projectId: params.projectId,
         query: params.query,
-        limit: 5,
+        limit: 12,
       });
-      contextFileIds = indexMatches.fullLoadFileIds;
-      summaryOnlyMatches = indexMatches.summaryOnly;
+      contextFileIds = selection.fileIds;
+      summaryOnlyMatches = [];
     } catch {
       contextFileIds = [];
       summaryOnlyMatches = [];
@@ -382,12 +552,13 @@ export async function retrieveProjectContext(
   );
   if (
     contextFileIds.length === 0 ||
-    currentChars < Math.min(params.maxChars, 3000)
+    currentChars < Math.min(params.maxChars, 12000)
   ) {
-    const keywordChunks = await searchChunksByKeyword({
+    const keywordChunks = await hybridSearch({
       userId: params.userId,
       projectId: params.projectId,
       query: params.query,
+      queryEmbedding: params.queryEmbedding,
     });
 
     for (const chunk of keywordChunks) {
@@ -398,24 +569,6 @@ export async function retrieveProjectContext(
         key,
         fileAssetId: chunk.fileAssetId || "",
         markdown: `## 来源：${chunk.originalName || chunk.title || "项目资料"}（chunk ${chunk.chunkIndex + 1}）\n\n> 以下资料来自用户选中文件或关键词检索。\n\n${chunk.content}`,
-      });
-    }
-  }
-
-  if (params.queryEmbedding) {
-    const vectorChunks = await searchSimilarChunks({
-      userId: params.userId,
-      projectId: params.projectId,
-      queryEmbedding: params.queryEmbedding,
-    });
-    for (const chunk of vectorChunks) {
-      const key = `${chunk.fileAssetId || "none"}:${chunk.chunkIndex}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      sections.push({
-        key,
-        fileAssetId: chunk.fileAssetId || "",
-        markdown: `## 来源：${chunk.title || "项目资料"}（chunk ${chunk.chunkIndex + 1}）\n\n${chunk.content}`,
       });
     }
   }

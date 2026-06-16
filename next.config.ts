@@ -3,15 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
 
-  // Allow up to 25MB request body for file uploads through proxy
-  // Default is 10MB (DEFAULT_BODY_CLONE_SIZE_LIMIT), insufficient for 20MB uploads.
+  // Allow multimodal chat attachments through the proxy.
   experimental: {
-    proxyClientMaxBodySize: "25mb",
+    proxyClientMaxBodySize: "120mb",
   },
   serverExternalPackages: [
     "pdfjs-dist",
     "@napi-rs/canvas",
     "pdfkit",
+    "adm-zip",
     "@fontsource/noto-sans-sc",
     "fonteditor-core",
   ],

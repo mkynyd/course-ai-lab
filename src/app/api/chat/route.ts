@@ -3,13 +3,67 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendMessageSchema, type SendMessageInput } from "@/lib/validators";
 import { streamChat, DeepSeekError, DeepSeekMessage } from "@/lib/deepseek";
+import { streamMiniMaxChat, MiniMaxChatError } from "@/lib/chat/minimax-chat";
+import { filterThinkingForMiniMax } from "@/lib/chat/history-adapter";
+import {
+  isTextAttachment,
+  routeModel,
+  type ServerFileAttachment,
+} from "@/lib/chat/router";
 import { checkRateLimit, RateLimits } from "@/lib/rate-limit";
 import { GLOBAL_SYSTEM_PROMPT, getModePrompt } from "@/lib/ai/prompts";
 import { retrieveProjectContext } from "@/lib/rag/vector-store";
+import { embedQuery } from "@/lib/rag/embedding";
 import { cacheExperiments } from "@/lib/cache/experiment-config";
 import { reorderMessagesForCache } from "@/lib/cache/prompt-reorder";
 import { getProviderApiKey } from "@/lib/data/provider-access";
 import { ProviderAccessError } from "@/lib/provider-access";
+
+async function parseRequest(request: NextRequest): Promise<{
+  body: SendMessageInput;
+  attachments: ServerFileAttachment[];
+}> {
+  const contentType = request.headers.get("content-type") || "";
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const messageField = formData.get("message");
+    if (typeof messageField !== "string") {
+      throw new Error("缺少消息字段");
+    }
+    const parsed = sendMessageSchema.safeParse(JSON.parse(messageField));
+    if (!parsed.success) {
+      throw new Error(JSON.stringify(parsed.error.flatten().fieldErrors));
+    }
+    const attachments: ServerFileAttachment[] = [];
+    for (const value of formData.getAll("attachments")) {
+      if (!(value instanceof File)) continue;
+      attachments.push({
+        name: value.name,
+        mimeType: value.type || "application/octet-stream",
+        size: value.size,
+        data: Buffer.from(await value.arrayBuffer()),
+      });
+    }
+    return { body: parsed.data, attachments };
+  }
+
+  const raw = await request.json();
+  const parsed = sendMessageSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error(JSON.stringify(parsed.error.flatten().fieldErrors));
+  }
+  return { body: parsed.data, attachments: [] };
+}
+
+async function textAttachmentContext(attachments: ServerFileAttachment[]) {
+  const sections = attachments
+    .filter(isTextAttachment)
+    .map((attachment) => {
+      const content = attachment.data.toString("utf-8");
+      return `---\n文件：${attachment.name}\n\n${content}`;
+    });
+  return sections.join("\n\n");
+}
 
 export async function POST(request: NextRequest) {
   // 1. 身份验证
@@ -34,18 +88,14 @@ export async function POST(request: NextRequest) {
 
   // 3. 解析并验证请求体
   let body: SendMessageInput;
+  let attachments: ServerFileAttachment[] = [];
   try {
-    const raw = await request.json();
-    const parsed = sendMessageSchema.safeParse(raw);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      );
-    }
-    body = parsed.data;
-  } catch {
-    return NextResponse.json({ error: "无效的 JSON 格式" }, { status: 400 });
+    const parsed = await parseRequest(request);
+    body = parsed.body;
+    attachments = parsed.attachments;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "无效的请求格式";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   const {
@@ -59,7 +109,11 @@ export async function POST(request: NextRequest) {
     selectedFileIds,
     mode,
   } = body;
-  const effectivePrompt = hiddenPrompt || message;
+  const attachmentText = await textAttachmentContext(attachments);
+  const effectivePrompt = [
+    hiddenPrompt || message,
+    attachmentText,
+  ].filter(Boolean).join("\n\n");
 
   // 4. 校验项目与文件上下文
   let project = null;
@@ -105,20 +159,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 5. 获取并解密 API Key
-  let apiKey: string;
-  try {
-    apiKey = await getProviderApiKey(userId, "deepseek");
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof ProviderAccessError
-            ? error.message
-            : "服务密钥暂时不可用",
-      },
-      { status: 403 }
-    );
+  const preflightRoute = !conversationId ? routeModel(null, attachments) : null;
+  let preflightApiKey: string | null = null;
+  if (preflightRoute) {
+    try {
+      preflightApiKey = await getProviderApiKey(userId, preflightRoute.provider);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof ProviderAccessError
+              ? error.message
+              : "服务密钥暂时不可用",
+        },
+        { status: 403 }
+      );
+    }
   }
 
   // 6. 获取或创建对话
@@ -161,6 +217,33 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const modelRoute = routeModel(conversation, attachments);
+  if (modelRoute.shouldLock) {
+    conversation = await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { modelLock: "minimax" },
+    });
+  }
+
+  let apiKey = preflightRoute?.provider === modelRoute.provider
+    ? preflightApiKey
+    : null;
+  if (!apiKey) {
+    try {
+      apiKey = await getProviderApiKey(userId, modelRoute.provider);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof ProviderAccessError
+              ? error.message
+              : "服务密钥暂时不可用",
+        },
+        { status: 403 }
+      );
+    }
+  }
+
   // 7. 获取对话历史
   const history = await prisma.message.findMany({
     where: { conversationId: conversation.id },
@@ -181,12 +264,21 @@ export async function POST(request: NextRequest) {
       systemPrompt = `${systemPrompt}\n\n【快捷任务指令】\n${hiddenPrompt}`;
     }
 
+    let queryEmbedding: number[] | undefined;
+    try {
+      const bailianKey = await getProviderApiKey(userId, "bailian");
+      queryEmbedding = await embedQuery(effectivePrompt, bailianKey);
+    } catch {
+      queryEmbedding = undefined;
+    }
+
     const retrieval = await retrieveProjectContext({
       userId,
       projectId: project.id,
       selectedFileIds: uniqueFileIds,
       query: effectivePrompt,
-      maxChars: 20000,
+      maxChars: 60000,
+      queryEmbedding,
     });
     retrievedContext = retrieval.context;
     contextNotice = retrieval.notice;
@@ -232,17 +324,24 @@ export async function POST(request: NextRequest) {
       )
     : legacyMessages;
 
-  // 11. 调用 DeepSeek
+  // 11. 调用模型
   let streamResult;
   try {
-    streamResult = await streamChat(apiKey, {
-      model,
-      messages,
-      thinking: thinkingEnabled
-        ? { type: "enabled" }
-        : { type: "disabled" },
-      reasoning_effort: reasoningEffort,
-    });
+    if (modelRoute.provider === "minimax") {
+      streamResult = await streamMiniMaxChat(apiKey, {
+        messages: filterThinkingForMiniMax(messages),
+        attachments: attachments.filter((attachment) => !isTextAttachment(attachment)),
+      });
+    } else {
+      streamResult = await streamChat(apiKey, {
+        model,
+        messages,
+        thinking: thinkingEnabled
+          ? { type: "enabled" }
+          : { type: "disabled" },
+        reasoning_effort: reasoningEffort,
+      });
+    }
   } catch (err) {
     if (err instanceof DeepSeekError) {
       return NextResponse.json(
@@ -250,8 +349,14 @@ export async function POST(request: NextRequest) {
         { status: err.status > 0 ? 502 : 500 }
       );
     }
+    if (err instanceof MiniMaxChatError) {
+      return NextResponse.json(
+        { error: err.message, minimaxStatus: err.status },
+        { status: err.status > 0 ? 502 : 500 }
+      );
+    }
     return NextResponse.json(
-      { error: "无法连接 DeepSeek API，请稍后重试" },
+      { error: "无法连接模型服务，请稍后重试" },
       { status: 502 }
     );
   }
@@ -296,6 +401,7 @@ export async function POST(request: NextRequest) {
       Connection: "keep-alive",
       "X-Conversation-Id": conversation.id,
       "X-Message-Id": assistantMessage.id,
+      "X-Model-Provider": modelRoute.provider,
     },
   });
 }

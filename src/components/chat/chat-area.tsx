@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useChat } from "@/lib/hooks/use-chat";
+import type { FileAttachment } from "@/lib/chat/router";
 import { ChatInput } from "@/components/chat/chat-input";
 import { VirtualMessageList } from "@/components/chat/virtual-message-list";
 import { ModelSelector } from "@/components/chat/model-selector";
@@ -47,6 +49,7 @@ export function ChatArea({
       role: m.role as "user" | "assistant" | "system",
     })),
   });
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
   // 计算 Token 总数
   const totalTokens = messages.reduce(
@@ -148,9 +151,11 @@ export function ChatArea({
 
       {/* 输入框 */}
       <ChatInput
-        onSend={sendMessage}
+        onSend={(content, files) => void sendMessage({ content, attachments: files })}
         onStop={abort}
         isStreaming={isStreaming}
+        attachments={attachments}
+        onAttachmentsChange={setAttachments}
       />
     </div>
   );

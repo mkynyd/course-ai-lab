@@ -13,6 +13,7 @@ import { ContextRing } from "@/components/chat/context-ring";
 import { Switch } from "@/components/ui/switch";
 import { AlertCircle, Hash, Loader, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useChat, type SendMessageInput } from "@/lib/hooks/use-chat";
+import type { FileAttachment } from "@/lib/chat/router";
 import type {
   FileSelectionIntent,
   ProjectFile,
@@ -55,6 +56,7 @@ export default function ProjectDetailPage() {
 
   // Chat state
   const [chatInputValue, setChatInputValue] = useState("");
+  const [chatAttachments, setChatAttachments] = useState<FileAttachment[]>([]);
   const [pendingMessageQueue, setPendingMessageQueue] = useState<SendMessageInput[]>([]);
   const drainingQueueRef = useRef(false);
   const lastSelectedFileIndexRef = useRef<number | null>(null);
@@ -154,10 +156,30 @@ export default function ProjectDetailPage() {
   }
 
   function handleSelectAllFiles() {
+    setSelectedFileIds(new Set((project?.files || []).map((file) => file.id)));
+  }
+
+  function handleClearFileSelection() {
+    setSelectedFileIds(new Set());
+    lastSelectedFileIndexRef.current = null;
+  }
+
+  function handleInvertFileSelection() {
     setSelectedFileIds((prev) => {
-      const ids = new Set((project?.files || []).map((file) => file.id));
-      return prev.size === ids.size ? new Set() : ids;
+      const next = new Set<string>();
+      for (const file of project?.files || []) {
+        if (!prev.has(file.id)) next.add(file.id);
+      }
+      return next;
     });
+  }
+
+  function handleSelectFilesByCategory(category: FileCategory) {
+    setSelectedFileIds(new Set(
+      (project?.files || [])
+        .filter((file) => file.category === category && (file.categoryConfidence ?? 1) >= 0.7)
+        .map((file) => file.id)
+    ));
   }
 
   async function handleFileDelete(id: string) {
@@ -260,9 +282,10 @@ export default function ProjectDetailPage() {
 
   async function runBatchAction(
     action: "delete" | "reparse" | "categorize" | "download",
-    category?: FileCategory
+    category?: FileCategory,
+    explicitFileIds?: string[]
   ) {
-    const fileIds = Array.from(selectedFileIds);
+    const fileIds = explicitFileIds || Array.from(selectedFileIds);
     if (fileIds.length === 0) return;
     const res = await fetch(`/api/projects/${projectId}/files/batch`, {
       method: "POST",
@@ -289,6 +312,20 @@ export default function ProjectDetailPage() {
     await queryClient.invalidateQueries({
       queryKey: queryKeys.projects.files(projectId),
     });
+  }
+
+  async function handleBatchReparseFailed() {
+    const fileIds = (project?.files || [])
+      .filter((file) => file.status === "failed")
+      .map((file) => file.id);
+    await runBatchAction("reparse", undefined, fileIds);
+  }
+
+  async function handleBatchAutoCategorize() {
+    const fileIds = (project?.files || [])
+      .filter((file) => ["parsed", "partial"].includes(file.status))
+      .map((file) => file.id);
+    await runBatchAction("categorize", undefined, fileIds);
   }
 
   async function saveArtifact(input: {
@@ -320,9 +357,9 @@ export default function ProjectDetailPage() {
     });
   }
 
-  async function handleSend(content: string) {
+  async function handleSend(content: string, attachments: FileAttachment[]) {
     setChatInputValue("");
-    await sendOrQueue({ content });
+    await sendOrQueue({ content, attachments });
   }
 
   async function handleQuickTaskSend(input: QuickTaskSendInput) {
@@ -356,6 +393,7 @@ export default function ProjectDetailPage() {
         }
       );
       setChatInputValue("");
+      setChatAttachments([]);
     } catch (err) {
       console.error(
         "加载项目对话失败:",
@@ -367,6 +405,7 @@ export default function ProjectDetailPage() {
   function handleNewConversation() {
     newConversation();
     setChatInputValue("");
+    setChatAttachments([]);
   }
 
   function toggleProjectSidebar() {
@@ -441,6 +480,9 @@ export default function ProjectDetailPage() {
             selectedFileIds={selectedFileIds}
             onFileToggle={handleFileToggle}
             onSelectAllFiles={handleSelectAllFiles}
+            onClearFileSelection={handleClearFileSelection}
+            onInvertFileSelection={handleInvertFileSelection}
+            onSelectFilesByCategory={handleSelectFilesByCategory}
             onFileDelete={handleFileDelete}
             onFileUploaded={() => void projectQuery.refetch()}
             onFileParse={(file) => void runFileAction(file, "parse")}
@@ -454,6 +496,8 @@ export default function ProjectDetailPage() {
             onBatchCategorize={(category) =>
               void runBatchAction("categorize", category)
             }
+            onBatchAutoCategorize={() => void handleBatchAutoCategorize()}
+            onBatchReparseFailed={() => void handleBatchReparseFailed()}
             onBatchDownload={() => void runBatchAction("download")}
             onNewConversation={handleNewConversation}
             onConversationSelect={handleConversationSelect}
@@ -617,6 +661,8 @@ export default function ProjectDetailPage() {
           disabled={hasParsingFiles}
           value={chatInputValue}
           onValueChange={setChatInputValue}
+          attachments={chatAttachments}
+          onAttachmentsChange={setChatAttachments}
         />
         {project.files.length > 0 && selectedFileIds.size === 0 && (
           <p className="px-4 pb-2 -mt-1 text-[11px] text-[var(--color-text-tertiary)] bg-[var(--color-surface)]">

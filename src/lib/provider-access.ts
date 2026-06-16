@@ -1,4 +1,4 @@
-export type ProviderName = "deepseek" | "minimax";
+export type ProviderName = "deepseek" | "minimax" | "mineru" | "bailian";
 
 type ProviderAccessRecord = {
   accessStatus: string;

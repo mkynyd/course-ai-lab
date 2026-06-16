@@ -114,8 +114,8 @@ export async function POST(
       data: {
         status: "parsing",
         processingMetadata: {
-          parsingStage: "converting",
-          parsingStageLabel: "转换格式中",
+          parsingStage: "uploading",
+          parsingStageLabel: "上传文件中",
           queuedAt: new Date().toISOString(),
         },
       },
