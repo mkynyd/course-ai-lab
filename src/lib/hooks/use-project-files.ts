@@ -50,3 +50,39 @@ export function useUploadFile(projectId: string) {
     },
   });
 }
+
+export function useUploadFiles(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (files: File[]) => {
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append("files", file);
+      }
+      const result = await fetchJson<{
+        files: ProjectFile[];
+        errors: Array<{ name: string; error: string }>;
+        summary: { total: number; succeeded: number; failed: number };
+      }>(`/api/projects/${projectId}/files`, {
+        method: "POST",
+        body: formData,
+      });
+      return result;
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData<ProjectFile[]>(
+        queryKeys.projects.files(projectId),
+        (current = []) => [...result.files, ...current]
+      );
+      return Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.projects.files(projectId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.projects.detail(projectId),
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
+      ]);
+    },
+  });
+}

@@ -25,7 +25,8 @@ const CODE_EXTENSIONS: Record<string, string> = {
   "css": "text/css",
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_FILES_PER_REQUEST = 20;
 const UPLOAD_DIR = path.join(process.cwd(), "uploads");
 
 export async function GET(
@@ -83,104 +84,165 @@ export async function POST(
 
   try {
     const formData = await request.formData();
-    const file = formData.get("file") as File | null;
 
-    if (!file) {
+    // Support both "files" (batch) and "file" (single backward compat)
+    let rawFiles = formData.getAll("files") as File[];
+    if (rawFiles.length === 0) {
+      const single = formData.get("file") as File | null;
+      if (single) rawFiles = [single];
+    }
+
+    if (rawFiles.length === 0) {
       return NextResponse.json({ error: "请选择文件" }, { status: 400 });
     }
 
-    if (file.size > MAX_FILE_SIZE) {
+    if (rawFiles.length > MAX_FILES_PER_REQUEST) {
       return NextResponse.json(
-        { error: "文件大小超过 10MB 限制" },
+        { error: `单次最多上传 ${MAX_FILES_PER_REQUEST} 个文件` },
         { status: 400 }
       );
     }
 
-    const originalName = file.name;
-    const ext = path.extname(originalName).toLowerCase().slice(1);
-
-    // Validate extension
-    if (!CODE_EXTENSIONS[ext] && ext !== "pdf" && !["png", "jpg", "jpeg", "gif", "bmp", "webp"].includes(ext)) {
-      return NextResponse.json(
-        { error: `不支持的文件类型: .${ext}` },
-        { status: 400 }
-      );
-    }
-
-    // Sanitize filename
-    const safeName = `${crypto.randomUUID()}${path.extname(originalName)}`;
-    const mimeType = CODE_EXTENSIONS[ext] || file.type || "application/octet-stream";
+    const results: Array<{
+      success: boolean;
+      file?: Record<string, unknown>;
+      error?: string;
+      originalName?: string;
+      note?: string;
+    }> = [];
 
     // Ensure upload directory exists
     await mkdir(UPLOAD_DIR, { recursive: true });
 
-    // Save file to disk
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const storagePath = path.join(UPLOAD_DIR, safeName);
-    await writeFile(storagePath, buffer);
-
-    // Parse text content if possible
-    let textContent: string | null = null;
-    let status = "uploaded";
-
-    if (CODE_EXTENSIONS[ext]) {
+    for (const file of rawFiles) {
       try {
-        textContent = buffer.toString("utf-8");
-        status = "parsed";
-      } catch {
-        status = "uploaded";
+        if (!(file instanceof File) || !file.name) {
+          results.push({ success: false, error: "无效的文件" });
+          continue;
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+          results.push({
+            success: false,
+            originalName: file.name,
+            error: `超过 20MB 限制`,
+          });
+          continue;
+        }
+
+        const originalName = file.name;
+        const ext = path.extname(originalName).toLowerCase().slice(1);
+
+        if (
+          !CODE_EXTENSIONS[ext] &&
+          ext !== "pdf" &&
+          !["png", "jpg", "jpeg", "gif", "bmp", "webp"].includes(ext)
+        ) {
+          results.push({
+            success: false,
+            originalName,
+            error: `不支持的文件类型: .${ext}`,
+          });
+          continue;
+        }
+
+        // Sanitize filename
+        const safeName = `${crypto.randomUUID()}${path.extname(originalName)}`;
+        const mimeType =
+          CODE_EXTENSIONS[ext] || file.type || "application/octet-stream";
+
+        // Save file to disk
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const storagePath = path.join(UPLOAD_DIR, safeName);
+        await writeFile(storagePath, buffer);
+
+        // Parse text content if possible
+        let textContent: string | null = null;
+        let status = "uploaded";
+
+        if (CODE_EXTENSIONS[ext]) {
+          try {
+            textContent = buffer.toString("utf-8");
+            status = "parsed";
+          } catch {
+            status = "uploaded";
+          }
+        } else {
+          textContent = null;
+          status = ["gif", "bmp"].includes(ext) ? "unsupported" : "uploaded";
+        }
+
+        const fileAsset = await prisma.fileAsset.create({
+          data: {
+            userId: session.user.id,
+            projectId,
+            filename: safeName,
+            originalName,
+            mimeType,
+            size: file.size,
+            storagePath: safeName,
+            textContent,
+            status,
+          },
+        });
+
+        // If text was parsed, create document chunks for RAG
+        if (textContent && textContent.trim().length > 0) {
+          createDocumentChunks({
+            fileAssetId: fileAsset.id,
+            projectId,
+            userId: session.user.id,
+            textContent,
+            title: originalName,
+          }).catch((err) => {
+            console.error(
+              `DocumentChunk creation failed for ${fileAsset.id}:`,
+              err
+            );
+          });
+        }
+
+        results.push({
+          success: true,
+          file: {
+            id: fileAsset.id,
+            filename: fileAsset.filename,
+            originalName: fileAsset.originalName,
+            mimeType: fileAsset.mimeType,
+            size: fileAsset.size,
+            status: fileAsset.status,
+            enhancementStatus: fileAsset.enhancementStatus,
+            createdAt: fileAsset.createdAt,
+          },
+          note:
+            status === "uploaded"
+              ? "当前版本暂不解析图片/PDF 内容，仅保存文件"
+              : undefined,
+        });
+      } catch (fileErr) {
+        console.error("File upload error:", fileErr);
+        results.push({
+          success: false,
+          originalName: (file as File)?.name || "未知文件",
+          error: "文件保存失败",
+        });
       }
-    } else {
-      // PDF, images — not parsed in MVP
-      textContent = null;
-      status = ["gif", "bmp"].includes(ext) ? "unsupported" : "uploaded";
     }
 
-    const fileAsset = await prisma.fileAsset.create({
-      data: {
-        userId: session.user.id,
-        projectId,
-        filename: safeName,
-        originalName,
-        mimeType,
-        size: file.size,
-        storagePath: safeName,
-        textContent,
-        status,
-      },
-    });
-
-    // If text was parsed, create document chunks for RAG
-    if (textContent && textContent.trim().length > 0) {
-      createDocumentChunks({
-        fileAssetId: fileAsset.id,
-        projectId,
-        userId: session.user.id,
-        textContent,
-        title: originalName,
-      }).catch((err) => {
-        console.error(`DocumentChunk creation failed for ${fileAsset.id}:`, err);
-      });
-    }
+    const succeeded = results.filter((r) => r.success);
+    const failed = results.filter((r) => !r.success);
 
     return NextResponse.json(
       {
-        file: {
-          id: fileAsset.id,
-          filename: fileAsset.filename,
-          originalName: fileAsset.originalName,
-          mimeType: fileAsset.mimeType,
-          size: fileAsset.size,
-          status: fileAsset.status,
-          enhancementStatus: fileAsset.enhancementStatus,
-          createdAt: fileAsset.createdAt,
+        files: succeeded.map((r) => r.file),
+        errors: failed.map((r) => ({ name: r.originalName, error: r.error })),
+        summary: {
+          total: results.length,
+          succeeded: succeeded.length,
+          failed: failed.length,
         },
-        note:
-          status === "uploaded"
-            ? "当前版本暂不解析图片/PDF 内容，仅保存文件"
-            : undefined,
       },
-      { status: 201 }
+      { status: succeeded.length > 0 ? 201 : 400 }
     );
   } catch (err) {
     console.error("File upload error:", err);
