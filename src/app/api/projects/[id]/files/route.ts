@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { createDocumentChunks } from "@/lib/rag/vector-store";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { startFileParseBatch } from "@/lib/files/parse-job";
 
 const CODE_EXTENSIONS: Record<string, string> = {
   "txt": "text/plain",
@@ -23,6 +23,29 @@ const CODE_EXTENSIONS: Record<string, string> = {
   "sql": "text/x-sql",
   "html": "text/html",
   "css": "text/css",
+};
+
+const DOCUMENT_EXTENSIONS: Record<string, string> = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  wps: "application/vnd.ms-works",
+  et: "application/vnd.ms-excel",
+  dps: "application/vnd.ms-powerpoint",
+  pages: "application/vnd.apple.pages",
+  numbers: "application/vnd.apple.numbers",
+  key: "application/vnd.apple.keynote",
+};
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
 };
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -57,6 +80,10 @@ export async function GET(
       mimeType: true,
       size: true,
       status: true,
+      enhancementStatus: true,
+      processingMetadata: true,
+      category: true,
+      categoryConfidence: true,
       createdAt: true,
     },
   });
@@ -133,11 +160,7 @@ export async function POST(
         const originalName = file.name;
         const ext = path.extname(originalName).toLowerCase().slice(1);
 
-        if (
-          !CODE_EXTENSIONS[ext] &&
-          ext !== "pdf" &&
-          !["png", "jpg", "jpeg", "gif", "bmp", "webp"].includes(ext)
-        ) {
+        if (!CODE_EXTENSIONS[ext] && !DOCUMENT_EXTENSIONS[ext] && !IMAGE_EXTENSIONS[ext]) {
           results.push({
             success: false,
             originalName,
@@ -149,28 +172,16 @@ export async function POST(
         // Sanitize filename
         const safeName = `${crypto.randomUUID()}${path.extname(originalName)}`;
         const mimeType =
-          CODE_EXTENSIONS[ext] || file.type || "application/octet-stream";
+          CODE_EXTENSIONS[ext] ||
+          DOCUMENT_EXTENSIONS[ext] ||
+          IMAGE_EXTENSIONS[ext] ||
+          file.type ||
+          "application/octet-stream";
 
         // Save file to disk
         const buffer = Buffer.from(await file.arrayBuffer());
         const storagePath = path.join(UPLOAD_DIR, safeName);
         await writeFile(storagePath, buffer);
-
-        // Parse text content if possible
-        let textContent: string | null = null;
-        let status = "uploaded";
-
-        if (CODE_EXTENSIONS[ext]) {
-          try {
-            textContent = buffer.toString("utf-8");
-            status = "parsed";
-          } catch {
-            status = "uploaded";
-          }
-        } else {
-          textContent = null;
-          status = ["gif", "bmp"].includes(ext) ? "unsupported" : "uploaded";
-        }
 
         const fileAsset = await prisma.fileAsset.create({
           data: {
@@ -181,26 +192,15 @@ export async function POST(
             mimeType,
             size: file.size,
             storagePath: safeName,
-            textContent,
-            status,
+            textContent: null,
+            status: "parsing",
+            processingMetadata: {
+              parsingStage: "converting",
+              parsingStageLabel: "转换格式中",
+              queuedAt: new Date().toISOString(),
+            },
           },
         });
-
-        // If text was parsed, create document chunks for RAG
-        if (textContent && textContent.trim().length > 0) {
-          createDocumentChunks({
-            fileAssetId: fileAsset.id,
-            projectId,
-            userId: session.user.id,
-            textContent,
-            title: originalName,
-          }).catch((err) => {
-            console.error(
-              `DocumentChunk creation failed for ${fileAsset.id}:`,
-              err
-            );
-          });
-        }
 
         results.push({
           success: true,
@@ -212,12 +212,12 @@ export async function POST(
             size: fileAsset.size,
             status: fileAsset.status,
             enhancementStatus: fileAsset.enhancementStatus,
+            processingMetadata: fileAsset.processingMetadata,
+            category: fileAsset.category,
+            categoryConfidence: fileAsset.categoryConfidence,
             createdAt: fileAsset.createdAt,
           },
-          note:
-            status === "uploaded"
-              ? "当前版本暂不解析图片/PDF 内容，仅保存文件"
-              : undefined,
+          note: "文件已进入解析队列",
         });
       } catch (fileErr) {
         console.error("File upload error:", fileErr);
@@ -231,6 +231,15 @@ export async function POST(
 
     const succeeded = results.filter((r) => r.success);
     const failed = results.filter((r) => !r.success);
+    const queuedFileIds = succeeded
+      .map((r) => r.file?.id)
+      .filter((id): id is string => typeof id === "string");
+    if (queuedFileIds.length > 0) {
+      startFileParseBatch({
+        userId: session.user.id,
+        fileIds: queuedFileIds,
+      });
+    }
 
     return NextResponse.json(
       {

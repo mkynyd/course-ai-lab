@@ -2,12 +2,23 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { getDefaultQuickActions } from "@/lib/quick-actions";
 
 const createProjectSchema = z.object({
   name: z.string().min(1, "项目名称不能为空").max(100),
   description: z.string().max(2000).optional(),
   type: z.enum(["experiment", "review", "coding", "general"]),
   defaultModel: z.string().optional(),
+  thinkingEnabled: z.boolean().optional(),
+  quickActions: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(6),
+        prompt: z.string().min(1).max(200000),
+      })
+    )
+    .max(12)
+    .optional(),
 });
 
 export async function GET() {
@@ -57,6 +68,33 @@ export async function POST(request: Request) {
       description: body.description || null,
       type: body.type,
       defaultModel: body.defaultModel || "deepseek-v4-pro",
+      thinkingEnabled: body.thinkingEnabled ?? true,
+      quickActions: {
+        create: [
+          ...getDefaultQuickActions(body.type).map((action) => ({
+            title: action.title,
+            prompt: action.prompt,
+            isSystem: true,
+            sortOrder: action.sortOrder || 0,
+          })),
+          ...(body.quickActions || []).map((action, index) => ({
+            title: action.title,
+            prompt: action.prompt,
+            isSystem: false,
+            sortOrder: 100 + index,
+          })),
+        ],
+      },
+    },
+    include: {
+      files: true,
+      conversations: true,
+      quickActions: {
+        orderBy: [{ isSystem: "desc" }, { sortOrder: "asc" }],
+      },
+      _count: {
+        select: { conversations: true, files: true },
+      },
     },
   });
 

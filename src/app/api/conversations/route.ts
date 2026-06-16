@@ -15,6 +15,7 @@ export async function GET() {
       id: true,
       title: true,
       model: true,
+      thinkingEnabled: true,
       updatedAt: true,
     },
     take: 100,

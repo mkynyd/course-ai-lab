@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { registerSchema } from "@/lib/validators";
+import { registerSchema, sendMessageSchema } from "@/lib/validators";
 
 describe("registerSchema", () => {
   it("requires a registration code", () => {
@@ -21,5 +21,19 @@ describe("registerSchema", () => {
         password: "password123",
       })
     ).toThrow();
+  });
+});
+
+describe("sendMessageSchema", () => {
+  it("defaults project chat requests to thinking mode", () => {
+    expect(
+      sendMessageSchema.parse({
+        message: "总结资料",
+        model: "deepseek-v4-pro",
+      })
+    ).toMatchObject({
+      thinkingEnabled: true,
+      reasoningEffort: "high",
+    });
   });
 });

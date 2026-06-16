@@ -20,6 +20,8 @@ export default function NewProjectPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<string>("experiment");
+  const [quickActionDescription, setQuickActionDescription] = useState("");
+  const [customQuickActions, setCustomQuickActions] = useState<Array<{ title: string; prompt: string }>>([]);
   const [error, setError] = useState<string | null>(null);
   const createProject = useCreateProject();
 
@@ -37,11 +39,25 @@ export default function NewProjectPage() {
         name: name.trim(),
         description: description.trim() || undefined,
         type: type as "experiment" | "review" | "coding" | "general",
+        quickActions: customQuickActions,
       });
       router.push(`/projects/${data.project.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "创建项目失败，请重试");
     }
+  }
+
+  function addCustomQuickAction() {
+    const prompt = quickActionDescription.trim();
+    if (!prompt) return;
+    setCustomQuickActions((current) => [
+      ...current,
+      {
+        title: prompt.replace(/\s+/g, "").slice(0, 6) || "快捷操作",
+        prompt,
+      },
+    ]);
+    setQuickActionDescription("");
   }
 
   return (
@@ -130,6 +146,74 @@ export default function NewProjectPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+              自定义快捷操作（选填）
+            </label>
+            <div className="flex gap-2">
+              <Input
+                value={quickActionDescription}
+                onChange={(e) => setQuickActionDescription(e.target.value)}
+                placeholder="例如：把选中课件整理成考前速记表"
+              />
+              <Button type="button" onClick={addCustomQuickAction}>
+                新增
+              </Button>
+            </div>
+            {customQuickActions.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {customQuickActions.map((action, index) => (
+                  <div
+                    key={`${action.title}-${index}`}
+                    className="grid gap-1 rounded-[var(--radius-md)] border border-[var(--color-border)] px-2 py-1.5 text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={action.title}
+                        onChange={(event) =>
+                          setCustomQuickActions((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, title: event.target.value.slice(0, 6) }
+                                : item
+                            )
+                          )
+                        }
+                        className="h-7 w-20 rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2"
+                        aria-label="快捷操作标题"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCustomQuickActions((current) =>
+                            current.filter((_, itemIndex) => itemIndex !== index)
+                          )
+                        }
+                        className="ml-auto text-[var(--color-text-tertiary)] hover:text-[var(--color-error)]"
+                      >
+                        删除
+                      </button>
+                    </div>
+                    <textarea
+                      value={action.prompt}
+                      onChange={(event) =>
+                        setCustomQuickActions((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, prompt: event.target.value }
+                              : item
+                          )
+                        )
+                      }
+                      className="h-16 resize-none rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1"
+                      aria-label="快捷操作提示词"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && (

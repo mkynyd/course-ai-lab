@@ -1,36 +1,42 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
-import PDFDocument from "pdfkit";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { parsePdf } from "@/lib/files/pdf-parser";
 
-function createPdf(text?: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument();
-    const chunks: Buffer[] = [];
-    doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", reject);
-    if (text) doc.fontSize(10).text(text);
-    doc.end();
-  });
-}
+const mocks = vi.hoisted(() => ({
+  parseDocumentWithMiniMax: vi.fn(),
+}));
+
+vi.mock("@/lib/vision/minimax", () => ({
+  parseDocumentWithMiniMax: mocks.parseDocumentWithMiniMax,
+}));
 
 describe("parsePdf", () => {
-  it("extracts a text PDF without requiring MiniMax", async () => {
-    const data = await createPdf(
-      Array.from({ length: 80 }, (_, index) => `Operating systems concept ${index}.`).join(" ")
-    );
-    const result = await parsePdf({ data, filename: "course.pdf" });
-
-    expect(result.status).toBe("parsed");
-    expect(result.metadata.parser).toBe("pdf-text");
-    expect(result.content).toContain("Operating systems concept");
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("requests MiniMax configuration for an image-like PDF", async () => {
-    const data = await createPdf();
-    await expect(parsePdf({ data, filename: "scan.pdf" })).rejects.toThrow(
-      "需要 MiniMax 视觉解析"
-    );
+  it("requires MiniMax M3 native parsing for every PDF", async () => {
+    await expect(
+      parsePdf({ data: Buffer.from("%PDF-1.7"), filename: "course.pdf" })
+    ).rejects.toThrow("MiniMax M3 原生解析");
+  });
+
+  it("passes PDF bytes directly to MiniMax without rendering pages to images", async () => {
+    mocks.parseDocumentWithMiniMax.mockResolvedValue("# Parsed PDF");
+
+    const result = await parsePdf({
+      data: Buffer.from("%PDF-1.7"),
+      filename: "course.pdf",
+      minimaxApiKey: "minimax-key",
+    });
+
+    expect(mocks.parseDocumentWithMiniMax).toHaveBeenCalledWith({
+      apiKey: "minimax-key",
+      data: Buffer.from("%PDF-1.7"),
+      filename: "course.pdf",
+      mediaType: "application/pdf",
+    });
+    expect(result.metadata.parser).toBe("minimax-pdf-native");
+    expect(result.content).toContain("# Parsed PDF");
   });
 });

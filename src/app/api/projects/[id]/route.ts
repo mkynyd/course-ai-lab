@@ -8,6 +8,7 @@ const updateProjectSchema = z.object({
   description: z.string().max(2000).optional(),
   type: z.enum(["experiment", "review", "coding", "general"]).optional(),
   defaultModel: z.string().optional(),
+  thinkingEnabled: z.boolean().optional(),
   systemPrompt: z.string().optional(),
 });
 
@@ -35,6 +36,8 @@ export async function GET(
           status: true,
           enhancementStatus: true,
           processingMetadata: true,
+          category: true,
+          categoryConfidence: true,
           createdAt: true,
         },
       },
@@ -44,6 +47,19 @@ export async function GET(
           id: true,
           title: true,
           model: true,
+          thinkingEnabled: true,
+          updatedAt: true,
+        },
+      },
+      quickActions: {
+        orderBy: [{ isSystem: "desc" }, { sortOrder: "asc" }],
+        select: {
+          id: true,
+          title: true,
+          prompt: true,
+          isSystem: true,
+          sortOrder: true,
+          createdAt: true,
           updatedAt: true,
         },
       },
@@ -99,6 +115,7 @@ export async function PATCH(
       ...(body.description !== undefined && { description: body.description }),
       ...(body.type !== undefined && { type: body.type }),
       ...(body.defaultModel !== undefined && { defaultModel: body.defaultModel }),
+      ...(body.thinkingEnabled !== undefined && { thinkingEnabled: body.thinkingEnabled }),
       ...(body.systemPrompt !== undefined && { systemPrompt: body.systemPrompt }),
     },
   });
