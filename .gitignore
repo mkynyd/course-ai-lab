@@ -48,5 +48,5 @@ dev.db
 # local databases
 *.db
 
-# agent-generated index (not for git)
+.idea/
 REPOSITORY_INDEX.md

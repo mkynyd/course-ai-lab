@@ -1,7 +1,8 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
-import { Database, KeyRound, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { Database, KeyRound, RefreshCw, ShieldCheck } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useCacheMetrics } from "@/lib/hooks/use-cache-metrics";
@@ -9,6 +10,38 @@ import { useCacheMetrics } from "@/lib/hooks/use-cache-metrics";
 export default function SettingsPage() {
   const { data: session } = useSession();
   const cacheMetrics = useCacheMetrics(7);
+  const [switchCodeValue, setSwitchCodeValue] = useState("");
+  const [switchPending, setSwitchPending] = useState(false);
+  const [switchMessage, setSwitchMessage] = useState("");
+  const [switchError, setSwitchError] = useState(false);
+
+  async function handleSwitchCode() {
+    const code = switchCodeValue.trim();
+    if (!code) return;
+    setSwitchPending(true);
+    setSwitchMessage("");
+    setSwitchError(false);
+    try {
+      const res = await fetch("/api/user/switch-code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSwitchError(true);
+        setSwitchMessage(data.error || "更换失败");
+      } else {
+        setSwitchMessage("注册码更换成功，新模型配置已生效");
+        setSwitchCodeValue("");
+      }
+    } catch {
+      setSwitchError(true);
+      setSwitchMessage("网络错误，请重试");
+    } finally {
+      setSwitchPending(false);
+    }
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -38,6 +71,47 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
+          </div>
+          <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <RefreshCw
+                size={14}
+                className="text-[var(--color-text-tertiary)]"
+              />
+              <span className="text-sm font-medium">更换注册码</span>
+            </div>
+            <p className="text-xs leading-5 text-[var(--color-text-secondary)] mb-3">
+              输入新的注册码以切换到不同的服务配置。更换后立即生效，下次对话即可使用新模型。
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={switchCodeValue}
+                onChange={(e) => setSwitchCodeValue(e.target.value)}
+                placeholder="XXXX-XXXX-XXXX-XXXX"
+                className="h-10 flex-1 rounded-[var(--radius-md)] border bg-[var(--color-bg)] px-3 font-mono text-sm placeholder:text-[var(--color-text-tertiary)]"
+              />
+              <Button
+                variant="primary"
+                size="md"
+                disabled={switchPending || !switchCodeValue.trim()}
+                onClick={handleSwitchCode}
+                className="shrink-0"
+              >
+                {switchPending ? "验证中..." : "更换"}
+              </Button>
+            </div>
+            {switchMessage && (
+              <p
+                className={`mt-2 text-xs ${
+                  switchError
+                    ? "text-[var(--color-error)]"
+                    : "text-[var(--color-success)]"
+                }`}
+              >
+                {switchMessage}
+              </p>
+            )}
           </div>
         </section>
 
