@@ -64,29 +64,30 @@ export function MermaidBlock({ code, isStreaming = false }: MermaidBlockProps) {
 
   function downloadPNG() {
     if (!svg) return;
-    const svgEl = containerRef.current?.querySelector("svg");
-    if (!svgEl) return;
 
-    const svgData = new XMLSerializer().serializeToString(svgEl);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-
+    // Use the raw SVG state string — more reliable than DOM querying
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
     const img = new Image();
+
     img.onload = () => {
-      const canvas = document.createElement("canvas");
       const scale = 2;
-      canvas.width = img.naturalWidth * scale;
-      canvas.height = img.naturalHeight * scale;
+      // Use a generous fallback size if natural dimensions are 0
+      const w = img.naturalWidth || 800;
+      const h = img.naturalHeight || 600;
+      const canvas = document.createElement("canvas");
+      canvas.width = w * scale;
+      canvas.height = h * scale;
       const ctx = canvas.getContext("2d")!;
       ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
 
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const downloadUrl = URL.createObjectURL(blob);
+      canvas.toBlob((pngBlob) => {
+        if (!pngBlob) return;
+        const downloadUrl = URL.createObjectURL(pngBlob);
         const a = document.createElement("a");
         a.href = downloadUrl;
         a.download = `mermaid-${id}.png`;
@@ -96,15 +97,18 @@ export function MermaidBlock({ code, isStreaming = false }: MermaidBlockProps) {
         URL.revokeObjectURL(downloadUrl);
       }, "image/png");
     };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      console.error("Failed to load SVG for PNG export");
+    };
+
     img.src = url;
   }
 
   function downloadSVG() {
     if (!svg) return;
-    const svgEl = containerRef.current?.querySelector("svg");
-    if (!svgEl) return;
-    const svgData = new XMLSerializer().serializeToString(svgEl);
-    const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
