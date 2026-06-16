@@ -2,8 +2,8 @@
 
 import { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Upload, X } from "lucide-react";
-import { useUploadFile } from "@/lib/hooks/use-project-files";
+import { Upload, X, AlertCircle, Check } from "lucide-react";
+import { useUploadFiles } from "@/lib/hooks/use-project-files";
 
 interface FileUploadProps {
   projectId: string;
@@ -20,19 +20,38 @@ const ALLOWED_TYPES = [
   ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
 ];
 
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+
 export function FileUpload({ projectId, onUploaded, className }: FileUploadProps) {
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploadMutation = useUploadFile(projectId);
+  const uploadMutation = useUploadFiles(projectId);
 
-  const uploadFile = useCallback(
-    async (file: File) => {
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
       setError(null);
 
+      // Validate each file size on client side
+      const oversized = files.filter((f) => f.size > MAX_FILE_SIZE);
+      if (oversized.length > 0) {
+        setError(
+          `超过 20MB 限制: ${oversized.map((f) => f.name).join(", ")}`
+        );
+        return;
+      }
+
       try {
-        await uploadMutation.mutateAsync(file);
-        onUploaded();
+        const result = await uploadMutation.mutateAsync(files);
+        if (result.errors.length > 0) {
+          const errorMsgs = result.errors.map(
+            (e) => `${e.name}: ${e.error}`
+          );
+          setError(errorMsgs.join("; "));
+        }
+        if (result.files.length > 0) {
+          onUploaded();
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "上传失败，请重试");
       }
@@ -41,22 +60,24 @@ export function FileUpload({ projectId, onUploaded, className }: FileUploadProps
   );
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      uploadFile(files[0]);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      uploadFiles(files);
     }
-    // Reset input so same file can be re-uploaded
+    // Reset input so same files can be re-uploaded
     e.target.value = "";
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragging(false);
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      uploadFile(files[0]);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      uploadFiles(files);
     }
   }
+
+  const uploading = uploadMutation.isPending;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -76,7 +97,7 @@ export function FileUpload({ projectId, onUploaded, className }: FileUploadProps
         )}
         onClick={() => inputRef.current?.click()}
       >
-        {uploadMutation.isPending ? (
+        {uploading ? (
           <span className="text-xs text-[var(--color-text-secondary)]">
             上传中…
           </span>
@@ -84,7 +105,7 @@ export function FileUpload({ projectId, onUploaded, className }: FileUploadProps
           <>
             <Upload size={16} strokeWidth={1.5} className="text-[var(--color-text-tertiary)] mb-1" />
             <span className="text-xs text-[var(--color-text-tertiary)]">
-              点击或拖拽文件上传（≤10MB）
+              点击或拖拽文件上传（≤20MB，支持批量）
             </span>
             <span className="text-[10px] text-[var(--color-text-tertiary)] mt-0.5">
               支持 TXT、MD、CSV、JSON、代码文件、PDF、图片
@@ -94,9 +115,16 @@ export function FileUpload({ projectId, onUploaded, className }: FileUploadProps
       </div>
 
       {error && (
-        <div className="flex items-center gap-1 text-xs text-[var(--color-error)]">
-          <X size={12} strokeWidth={2} />
-          {error}
+        <div className="flex items-start gap-1 text-xs text-[var(--color-error)]">
+          <AlertCircle size={12} strokeWidth={2} className="shrink-0 mt-0.5" />
+          <span className="leading-relaxed">{error}</span>
+        </div>
+      )}
+
+      {uploadMutation.data && uploadMutation.data.errors.length === 0 && uploadMutation.data.files.length > 0 && !uploading && (
+        <div className="flex items-center gap-1 text-xs text-[var(--color-success)]">
+          <Check size={12} strokeWidth={2} />
+          已上传 {uploadMutation.data.files.length} 个文件
         </div>
       )}
 
@@ -105,6 +133,7 @@ export function FileUpload({ projectId, onUploaded, className }: FileUploadProps
         type="file"
         className="hidden"
         accept={ALLOWED_TYPES.join(",")}
+        multiple
         onChange={handleChange}
       />
     </div>

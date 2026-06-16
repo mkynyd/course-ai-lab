@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+
+  // Allow up to 25MB request body for file uploads through proxy
+  // Default is 10MB (DEFAULT_BODY_CLONE_SIZE_LIMIT), insufficient for 20MB uploads.
+  experimental: {
+    proxyClientMaxBodySize: "25mb",
+  },
   serverExternalPackages: [
     "pdfjs-dist",
     "@napi-rs/canvas",
