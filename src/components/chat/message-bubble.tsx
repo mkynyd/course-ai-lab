@@ -3,7 +3,11 @@
 import { memo, useCallback, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import rehypeHighlight from "rehype-highlight";
 import { ChevronDown, ChevronRight, User, Bot, Save } from "lucide-react";
+import { MermaidBlock } from "@/components/chat/mermaid-block";
 import { cn } from "@/lib/utils";
 
 interface MessageBubbleProps {
@@ -111,7 +115,30 @@ function MessageBubbleComponent({
         >
           {content ? (
             <div className="prose-sm break-words">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex, rehypeHighlight]}
+                components={{
+                  code(props) {
+                    const { className, children, ...rest } = props;
+                    const match = /language-(\w+)/.exec(className || "");
+                    const code = String(children).replace(/\n$/, "");
+                    if (match?.[1] === "mermaid") {
+                      return (
+                        <MermaidBlock
+                          code={code}
+                          isStreaming={isStreaming}
+                        />
+                      );
+                    }
+                    return (
+                      <code className={className} {...rest}>
+                        {children}
+                      </code>
+                    );
+                  },
+                }}
+              >
                 {content}
               </ReactMarkdown>
             </div>

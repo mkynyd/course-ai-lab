@@ -41,7 +41,10 @@ export async function POST(
         status: result.status,
         hasTextContent: true,
         parser: result.metadata.parser,
-        truncated: result.metadata.truncated || false,
+        truncated:
+          "truncated" in result.metadata
+            ? Boolean(result.metadata.truncated)
+            : false,
       },
     });
   } catch (error) {

@@ -9,6 +9,7 @@ import {
 import {
   buildChatRequestBody,
 } from "@/lib/chat-request";
+import type { FileAttachment } from "@/lib/chat/router";
 import type { ProjectType } from "@/components/chat/quick-task-bar";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -26,6 +27,7 @@ export interface ChatMessage {
 export interface SendMessageInput {
   content: string;
   hiddenPrompt?: string;
+  attachments?: FileAttachment[];
 }
 
 interface UseChatOptions {
@@ -70,8 +72,9 @@ export function useChat(options: UseChatOptions = {}) {
 
   const performSend = useCallback(
     async (input: SendMessageInput) => {
-      const content = input.content;
-      if (!content.trim()) return;
+      const attachments = input.attachments || [];
+      const content = input.content.trim() || (attachments.length > 0 ? "请阅读附件。" : "");
+      if (!content.trim() && attachments.length === 0) return;
 
       // Abort any previous stream
       abortRef.current?.abort();
@@ -82,7 +85,9 @@ export function useChat(options: UseChatOptions = {}) {
       const userMessage: ChatMessage = {
         id: `user-${Date.now()}`,
         role: "user",
-        content: content.trim(),
+        content: attachments.length > 0
+          ? `${content.trim()}\n\n${attachments.map((attachment) => `[附件] ${attachment.name}`).join("\n")}`
+          : content.trim(),
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -91,10 +96,7 @@ export function useChat(options: UseChatOptions = {}) {
         const controller = new AbortController();
         abortRef.current = controller;
 
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildChatRequestBody({
+        const requestBody = buildChatRequestBody({
             conversationId,
             message: content.trim(),
             hiddenPrompt: input.hiddenPrompt,
@@ -104,9 +106,24 @@ export function useChat(options: UseChatOptions = {}) {
             projectId: options.projectId,
             selectedFileIds: options.selectedFileIds,
             mode: options.mode,
-          })),
-          signal: controller.signal,
         });
+        const fetchOptions: RequestInit = {
+          method: "POST",
+          signal: controller.signal,
+        };
+        if (attachments.length > 0) {
+          const formData = new FormData();
+          formData.append("message", JSON.stringify(requestBody));
+          for (const attachment of attachments) {
+            formData.append("attachments", attachment.data, attachment.name);
+          }
+          fetchOptions.body = formData;
+        } else {
+          fetchOptions.headers = { "Content-Type": "application/json" };
+          fetchOptions.body = JSON.stringify(requestBody);
+        }
+
+        const response = await fetch("/api/chat", fetchOptions);
 
         if (!response.ok) {
           const data = await response.json();

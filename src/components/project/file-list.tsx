@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { FILE_CATEGORIES, type FileCategory } from "@/lib/file-categories";
+import { Button } from "@/components/ui/button";
 
 export interface ProjectFile {
   id: string;
@@ -64,6 +65,8 @@ function statusLabel(file: ProjectFile) {
         ? "已提取文本"
         : parser === "minimax-pdf-vision" || parser === "minimax-pdf-native"
           ? "已通过视觉解析"
+          : parser === "mineru-pipeline"
+          ? "已通过 MinerU 解析"
           : "已解析，可用于检索";
     const enhanced =
       file.enhancementStatus === "enhanced"
@@ -92,11 +95,29 @@ function statusLabel(file: ProjectFile) {
 
 function parsingStageLabel(file: ProjectFile) {
   const stage = file.processingMetadata?.parsingStage;
+  if (stage === "uploading") return "上传文件中";
   if (stage === "converting") return "转换格式中";
+  if (stage === "pending") return "排队等待中";
   if (stage === "model") return "模型解析中";
   if (stage === "writing") return "写入中";
   if (stage === "complete") return "完成";
   return "模型解析中";
+}
+
+function parsingProgress(file: ProjectFile) {
+  const raw = file.processingMetadata?.progress;
+  if (!raw || typeof raw !== "object") return null;
+  const progress = raw as Record<string, unknown>;
+  const extractedPages = typeof progress.extractedPages === "number"
+    ? progress.extractedPages
+    : null;
+  const totalPages = typeof progress.totalPages === "number"
+    ? progress.totalPages
+    : null;
+  if (extractedPages == null || totalPages == null || totalPages <= 0) {
+    return null;
+  }
+  return { extractedPages, totalPages };
 }
 
 function categoryLabel(file: ProjectFile) {
@@ -157,6 +178,7 @@ export function FileList({
     const canEnhance =
       ["parsed", "partial"].includes(file.status) &&
       file.enhancementStatus !== "enhancing";
+    const progress = parsingProgress(file);
 
     return (
       <div
@@ -199,7 +221,9 @@ export function FileList({
                     <div className="h-full w-1/2 animate-pulse rounded-full bg-[var(--color-warning)]" />
                   </div>
                   <p className="text-[10px] text-[var(--color-warning)]">
-                    {parsingStageLabel(file)}
+                    {progress
+                      ? `解析中：${progress.extractedPages}/${progress.totalPages} 页`
+                      : parsingStageLabel(file)}
                   </p>
                 </div>
               )}
@@ -216,7 +240,7 @@ export function FileList({
                   )
                 }
                 onClick={(event) => event.stopPropagation()}
-                className="h-6 max-w-20 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1 text-[10px]"
+                className="h-7 max-w-20 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1 text-[10px]"
                 aria-label={`修改 ${file.originalName} 分类`}
               >
                 <option value="">未分类</option>
@@ -229,24 +253,24 @@ export function FileList({
             )}
             {file.status === "parsing" && <Loader size={12} className="animate-spin" />}
             {canParse && onParse && (
-              <button type="button" onClick={() => onParse(file)} className="p-1 text-[var(--color-accent)]" aria-label={`解析 ${file.originalName}`} title="重新解析">
+              <Button type="button" variant="ghost" size="sm" onClick={() => onParse(file)} aria-label={`解析 ${file.originalName}`} title="重新解析">
                 <ScanText size={12} />
-              </button>
+              </Button>
             )}
             {canEnhance && onEnhance && (
-              <button type="button" onClick={() => onEnhance(file)} className="p-1 text-[var(--color-accent)]" aria-label={`知识增强 ${file.originalName}`} title="知识增强">
+              <Button type="button" variant="ghost" size="sm" onClick={() => onEnhance(file)} aria-label={`知识增强 ${file.originalName}`} title="知识增强">
                 <Sparkles size={12} />
-              </button>
+              </Button>
             )}
             {["parsed", "partial"].includes(file.status) && onView && (
-              <button type="button" onClick={() => onView(file)} className="p-1 text-[var(--color-text-tertiary)]" aria-label={`查看 ${file.originalName}`} title="查看解析结果">
+              <Button type="button" variant="ghost" size="sm" onClick={() => onView(file)} aria-label={`查看 ${file.originalName}`} title="查看解析结果">
                 <Eye size={12} />
-              </button>
+              </Button>
             )}
             {onDelete && (
-              <button type="button" onClick={() => onDelete(file.id)} className="p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-error)]" aria-label={`删除 ${file.originalName}`}>
+              <Button type="button" variant="ghost" size="sm" onClick={() => onDelete(file.id)} aria-label={`删除 ${file.originalName}`}>
                 <Trash2 size={12} />
-              </button>
+              </Button>
             )}
           </div>
         </div>

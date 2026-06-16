@@ -1,23 +1,24 @@
-import { execFile } from "child_process";
 import crypto from "crypto";
-import { mkdtemp, readFile, rm } from "fs/promises";
-import os from "os";
+import { readFile } from "fs/promises";
 import path from "path";
-import { promisify } from "util";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getProviderApiKey } from "@/lib/data/provider-access";
 import { createDocumentChunks } from "@/lib/rag/vector-store";
-import { refreshProjectIndex } from "@/lib/rag/project-index";
-import { parsePdf } from "@/lib/files/pdf-parser";
-import { parseDocumentWithMiniMax, parseImageWithMiniMax } from "@/lib/vision/minimax";
+import {
+  generateFileIndexMetadata,
+  refreshProjectIndex,
+} from "@/lib/rag/project-index";
 import { categorizeFiles } from "@/lib/files/categorize";
+import { parseFileWithMinerU } from "@/lib/parse/mineru";
+import { embedChunksForFile } from "@/lib/rag/embedding";
 
-const execFileAsync = promisify(execFile);
 const UPLOAD_DIR = path.join(process.cwd(), "uploads");
 
 export const PARSING_STAGES = {
+  uploading: "上传文件中",
   converting: "转换格式中",
+  pending: "排队等待中",
   model: "模型解析中",
   writing: "写入中",
   complete: "完成",
@@ -49,6 +50,9 @@ const OFFICE_EXTENSIONS = new Set([
   "xlsx",
   "ppt",
   "pptx",
+]);
+
+const UNSUPPORTED_OFFICE_EXTENSIONS = new Set([
   "wps",
   "et",
   "dps",
@@ -98,37 +102,19 @@ async function updateStage(
   });
 }
 
-async function getMiniMaxKey(userId: string) {
+async function getMineruToken(userId: string) {
   try {
-    return await getProviderApiKey(userId, "minimax");
+    return await getProviderApiKey(userId, "mineru");
   } catch {
     return undefined;
   }
 }
 
-async function convertToPdf(inputPath: string) {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), "course-ai-lab-office-"));
+async function getBailianKey(userId: string) {
   try {
-    await execFileAsync("soffice", [
-      "--headless",
-      "--convert-to",
-      "pdf",
-      "--outdir",
-      tempDir,
-      inputPath,
-    ], { timeout: 120_000 });
-
-    const pdfPath = path.join(
-      tempDir,
-      `${path.basename(inputPath, path.extname(inputPath))}.pdf`
-    );
-    const data = await readFile(pdfPath);
-    return data;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Office 转 PDF 失败";
-    throw new Error(`Office/iWork/WPS 转 PDF 失败，请确认服务端已安装 LibreOffice：${message}`);
-  } finally {
-    await rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    return await getProviderApiKey(userId, "bailian");
+  } catch {
+    return undefined;
   }
 }
 
@@ -157,67 +143,51 @@ async function parseFileContent(options: {
     };
   }
 
-  const minimaxKey = await getMiniMaxKey(options.userId);
-  if (!minimaxKey) {
-    throw new Error("尚未配置 MiniMax API Key，请先在设置中添加");
+  if (UNSUPPORTED_OFFICE_EXTENSIONS.has(ext)) {
+    throw new Error("暂不支持此格式，请先转换为 docx/pptx/xlsx 后再上传");
   }
 
-  if (ext === "pdf" || options.file.mimeType === "application/pdf") {
-    await updateStage(options.file, "model", {
-      parser: "minimax-pdf-native",
-    });
-    return parsePdf({
-      data,
-      filename: options.file.originalName,
-      minimaxApiKey: minimaxKey,
-    });
+  const canUseMinerU =
+    ext === "pdf" ||
+    options.file.mimeType === "application/pdf" ||
+    OFFICE_EXTENSIONS.has(ext) ||
+    IMAGE_MEDIA_TYPES.has(options.file.mimeType);
+  if (!canUseMinerU) {
+    throw new Error(`不支持的文件类型: .${ext || options.file.mimeType}`);
   }
 
-  if (OFFICE_EXTENSIONS.has(ext)) {
-    await updateStage(options.file, "converting", {
-      parser: "libreoffice-to-pdf",
-    });
-    const pdf = await convertToPdf(resolvedPath);
-    await updateStage(options.file, "model", {
-      parser: "minimax-office-vision",
-    });
-    const content = await parseDocumentWithMiniMax({
-      apiKey: minimaxKey,
-      data: pdf,
-      filename: `${options.file.originalName}.pdf`,
-      mediaType: "application/pdf",
-    });
-    return {
-      content: `# ${options.file.originalName}\n\n${content}`,
-      status: "parsed" as const,
-      metadata: {
-        parser: "minimax-office-vision",
-        convertedToPdf: true,
-        parsedAt: new Date().toISOString(),
-      },
-    };
+  const mineruToken = await getMineruToken(options.userId);
+  if (!mineruToken) {
+    throw new Error("尚未配置 MinerU Token，请先在设置中添加");
   }
 
-  if (IMAGE_MEDIA_TYPES.has(options.file.mimeType)) {
-    await updateStage(options.file, "model", {
-      parser: "minimax-image",
-    });
-    const content = await parseImageWithMiniMax({
-      apiKey: minimaxKey,
-      data,
-      mediaType: options.file.mimeType as "image/png" | "image/jpeg" | "image/webp",
-    });
-    return {
-      content,
-      status: "parsed" as const,
-      metadata: {
-        parser: "minimax-image",
-        parsedAt: new Date().toISOString(),
-      },
-    };
-  }
+  const parsed = await parseFileWithMinerU({
+    token: mineruToken,
+    fileBuffer: data,
+    filename: options.file.originalName,
+    onProgress: (stage, progress) => {
+      const knownStage = stage in PARSING_STAGES
+        ? stage as keyof typeof PARSING_STAGES
+        : "model";
+      void updateStage(options.file, knownStage, {
+        parser: "mineru-pipeline",
+        ...(progress
+          ? {
+              progress: {
+                extractedPages: progress.current,
+                totalPages: progress.total,
+              },
+            }
+          : {}),
+      });
+    },
+  });
 
-  throw new Error(`不支持的文件类型: .${ext || options.file.mimeType}`);
+  return {
+    content: parsed.content,
+    status: "parsed" as const,
+    metadata: parsed.metadata,
+  };
 }
 
 export async function parseFileAsset(input: {
@@ -231,7 +201,7 @@ export async function parseFileAsset(input: {
     throw new Error("文件不存在");
   }
 
-  await updateStage(file, "converting", {
+  await updateStage(file, "uploading", {
     parseStartedAt: new Date().toISOString(),
     parseRunId: crypto.randomUUID(),
   });
@@ -241,7 +211,19 @@ export async function parseFileAsset(input: {
       userId: input.userId,
       file,
     });
-    await updateStage(file, "writing", result.metadata);
+    const indexMetadata = await generateFileIndexMetadata({
+      userId: input.userId,
+      filename: file.originalName,
+      content: result.content,
+    });
+    const completedMetadata = {
+      ...result.metadata,
+      ...indexMetadata,
+      parsingStage: "complete",
+      parsingStageLabel: PARSING_STAGES.complete,
+    };
+
+    await updateStage(file, "writing", completedMetadata);
 
     await prisma.fileAsset.update({
       where: { id: file.id },
@@ -249,14 +231,11 @@ export async function parseFileAsset(input: {
         textContent: result.content,
         status: result.status,
         enhancementStatus: file.enhancedContent ? "stale" : "none",
-        processingMetadata: mergeMetadata(file.processingMetadata, {
-          ...result.metadata,
-          parsingStage: "complete",
-          parsingStageLabel: PARSING_STAGES.complete,
-        }),
+        processingMetadata: mergeMetadata(file.processingMetadata, completedMetadata),
       },
     });
 
+    let chunksCreated = false;
     try {
       await createDocumentChunks({
         fileAssetId: file.id,
@@ -265,6 +244,7 @@ export async function parseFileAsset(input: {
         textContent: result.content,
         title: file.originalName,
       });
+      chunksCreated = true;
     } catch {
       await prisma.fileAsset.update({
         where: { id: file.id },
@@ -275,6 +255,22 @@ export async function parseFileAsset(input: {
           }),
         },
       });
+    }
+
+    if (chunksCreated) {
+      const bailianKey = await getBailianKey(input.userId);
+      if (bailianKey) {
+        await embedChunksForFile({
+          fileAssetId: file.id,
+          apiKey: bailianKey,
+        }).catch((error) => {
+          console.error(
+            "Embedding failed for file:",
+            file.id,
+            error instanceof Error ? error.message : error
+          );
+        });
+      }
     }
 
     if (file.projectId) {

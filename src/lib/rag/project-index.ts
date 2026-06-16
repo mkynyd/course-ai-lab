@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { createTextMessage } from "@/lib/deepseek";
+import { getProviderApiKey } from "@/lib/data/provider-access";
 export { FILE_CATEGORIES, type FileCategory } from "@/lib/file-categories";
 
 interface IndexFile {
@@ -9,6 +11,7 @@ interface IndexFile {
   status: string;
   textContent: string | null;
   enhancedContent: string | null;
+  processingMetadata: unknown;
 }
 
 export interface RefreshProjectIndexInput {
@@ -44,7 +47,7 @@ function normalize(value: string) {
   return value.toLowerCase().replace(/\s+/g, "");
 }
 
-function summarize(content: string | null, maxLength = 100) {
+function summarize(content: string | null, maxLength = 200) {
   const text = compactText(content || "");
   if (!text) return "暂无可检索正文";
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
@@ -77,11 +80,35 @@ function fileContent(file: IndexFile) {
   return file.enhancedContent || file.textContent || "";
 }
 
+function metadataRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? value as Record<string, unknown> : {};
+}
+
+function metadataSummary(file: IndexFile) {
+  const metadata = metadataRecord(file.processingMetadata);
+  return typeof metadata.summary === "string" && metadata.summary.trim()
+    ? summarize(metadata.summary, 200)
+    : summarize(fileContent(file), 200);
+}
+
+function metadataKeywords(file: IndexFile) {
+  const metadata = metadataRecord(file.processingMetadata);
+  const raw = Array.isArray(metadata.keywords) ? metadata.keywords : null;
+  if (raw) {
+    const keywords = raw
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    if (keywords.length > 0) return keywords;
+  }
+  return tokenize(`${file.originalName} ${file.category || ""} ${fileContent(file)}`, 5);
+}
+
 export function buildProjectIndexEntries(files: IndexFile[]) {
   return files.map((file) => {
-    const content = fileContent(file);
-    const summary = summarize(content);
-    const keywords = tokenize(`${file.originalName} ${file.category || ""} ${content}`, 10);
+    const summary = metadataSummary(file);
+    const keywords = metadataKeywords(file);
     const category =
       file.category && (file.categoryConfidence ?? 1) >= 0.7
         ? file.category
@@ -94,7 +121,15 @@ export function buildProjectIndexEntries(files: IndexFile[]) {
       status: file.status,
       summary,
       keywords,
-      line: `- 文件ID：${file.id} | 文件名：${file.originalName} | 分类：${category} | 摘要：${summary} | 关键术语：${keywords.join("、") || "无"} | 状态：${file.status}`,
+      line: [
+        `- **${file.originalName}** [${file.status}]`,
+        `  - ID: ${file.id}`,
+        `  - 状态：${file.status}`,
+        `  - 分类：${category}`,
+        `  - 摘要：${summary}`,
+        `  - 标签：${keywords.join("、") || "无"}`,
+        `  - 关键术语：${keywords.join("、") || "无"}`,
+      ].join("\n"),
     };
   });
 }
@@ -124,6 +159,7 @@ async function getIndexableFiles(input: RefreshProjectIndexInput): Promise<Index
       status: true,
       textContent: true,
       enhancedContent: true,
+      processingMetadata: true,
     },
   });
 }
@@ -132,13 +168,22 @@ export async function refreshProjectIndex(input: RefreshProjectIndexInput) {
   await assertProjectAccess(input);
   const files = await getIndexableFiles(input);
   const entries = buildProjectIndexEntries(files);
+  const groups = new Map<string, typeof entries>();
+  for (const entry of entries) {
+    groups.set(entry.category, [...(groups.get(entry.category) || []), entry]);
+  }
   const content = [
-    "# INDEX.md",
+    "## 项目文件索引",
     "",
     `项目ID：${input.projectId}`,
     `文件数：${entries.length}`,
     "",
-    ...entries.map((entry) => entry.line),
+    ...Array.from(groups.entries()).flatMap(([category, group]) => [
+      `### ${category}`,
+      "",
+      ...group.map((entry) => entry.line),
+      "",
+    ]),
   ].join("\n");
 
   await prisma.projectIndex.upsert({
@@ -148,6 +193,71 @@ export async function refreshProjectIndex(input: RefreshProjectIndexInput) {
   });
 
   return content;
+}
+
+export function fallbackIndexMetadata(input: {
+  filename: string;
+  content: string | null;
+}) {
+  const summary = summarize(input.content, 200);
+  const keywords = tokenize(`${input.filename} ${input.content || ""}`, 5);
+  return { summary, keywords };
+}
+
+function parseMetadataJson(value: string) {
+  const fenced = value.match(/```json\s*([\s\S]*?)```/i)?.[1];
+  const candidate = fenced || value.match(/\{[\s\S]*\}/)?.[0] || value;
+  const parsed = JSON.parse(candidate) as Record<string, unknown>;
+  const summary = typeof parsed.summary === "string"
+    ? summarize(parsed.summary, 200)
+    : "";
+  const keywords = Array.isArray(parsed.keywords)
+    ? parsed.keywords
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 5)
+    : [];
+  if (!summary || keywords.length === 0) {
+    throw new Error("Invalid index metadata");
+  }
+  return { summary, keywords };
+}
+
+export async function generateFileIndexMetadata(input: {
+  userId: string;
+  filename: string;
+  content: string | null;
+}) {
+  const fallback = fallbackIndexMetadata(input);
+  if (!input.content?.trim()) return fallback;
+
+  let apiKey: string;
+  try {
+    apiKey = await getProviderApiKey(input.userId, "deepseek");
+  } catch {
+    return fallback;
+  }
+
+  try {
+    const output = await createTextMessage(apiKey, {
+      model: "deepseek-v4-flash",
+      maxTokens: 500,
+      temperature: 0,
+      system: "你是课程资料索引器。只能输出 JSON，不要输出解释。",
+      prompt: [
+        "请为下面的课程资料生成一个不超过 200 个中文字符的摘要，以及 5 个关键词标签。",
+        "输出格式：{\"summary\":\"...\",\"keywords\":[\"...\",\"...\",\"...\",\"...\",\"...\"]}",
+        "",
+        `文件名：${input.filename}`,
+        "",
+        input.content.slice(0, 6000),
+      ].join("\n"),
+    });
+    return parseMetadataJson(output);
+  } catch {
+    return fallback;
+  }
 }
 
 function scoreEntry(entry: ReturnType<typeof buildProjectIndexEntries>[number], query: string) {

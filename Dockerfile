@@ -15,7 +15,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libreoffice fonts-noto-cjk \
+  && apt-get install -y --no-install-recommends fonts-noto-cjk \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs \

@@ -32,6 +32,9 @@ interface ProjectSidebarProps {
   selectedFileIds: Set<string>;
   onFileToggle: (id: string, intent: FileSelectionIntent) => void;
   onSelectAllFiles: () => void;
+  onClearFileSelection: () => void;
+  onInvertFileSelection: () => void;
+  onSelectFilesByCategory: (category: FileCategory) => void;
   onFileDelete: (id: string) => void;
   onFileUploaded: () => void;
   onFileParse: (file: ProjectFile) => void;
@@ -41,6 +44,8 @@ interface ProjectSidebarProps {
   onBatchDelete: () => void;
   onBatchReparse: () => void;
   onBatchCategorize: (category: FileCategory) => void;
+  onBatchAutoCategorize: () => void;
+  onBatchReparseFailed: () => void;
   onBatchDownload: () => void;
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
@@ -60,6 +65,9 @@ export function ProjectSidebar({
   selectedFileIds,
   onFileToggle,
   onSelectAllFiles,
+  onClearFileSelection,
+  onInvertFileSelection,
+  onSelectFilesByCategory,
   onFileDelete,
   onFileUploaded,
   onFileParse,
@@ -69,6 +77,8 @@ export function ProjectSidebar({
   onBatchDelete,
   onBatchReparse,
   onBatchCategorize,
+  onBatchAutoCategorize,
+  onBatchReparseFailed,
   onBatchDownload,
   onNewConversation,
   onConversationSelect,
@@ -77,6 +87,10 @@ export function ProjectSidebar({
 }: ProjectSidebarProps) {
   const filesQuery = useProjectFiles(project.id, project.files || []);
   const files = filesQuery.data || project.files || [];
+  const failedCount = files.filter((file) => file.status === "failed").length;
+  const categorizableCount = files.filter((file) =>
+    ["parsed", "partial"].includes(file.status)
+  ).length;
 
   return (
     <div className={cn("flex h-full flex-col overflow-hidden", className)}>
@@ -130,14 +144,89 @@ export function ProjectSidebar({
             <span className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wider">
               资料文件
             </span>
-            <button
-              type="button"
-              onClick={onSelectAllFiles}
-              className="text-[10px] font-mono text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
-              aria-label="全选资料文件"
-            >
+            <span className="text-[10px] font-mono text-[var(--color-text-tertiary)]">
               {selectedFileIds.size}/{files.length}
-            </button>
+            </span>
+          </div>
+          <div className="mb-2 flex flex-wrap items-center gap-1 rounded-[var(--radius-md)] border border-[var(--color-border)] p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onSelectAllFiles}
+              disabled={files.length === 0}
+            >
+              全选
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearFileSelection}
+              disabled={selectedFileIds.size === 0}
+            >
+              取消
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onInvertFileSelection}
+              disabled={files.length === 0}
+            >
+              反选
+            </Button>
+            <select
+              aria-label="按分类选择"
+              defaultValue=""
+              disabled={files.length === 0}
+              onChange={(event) => {
+                if (!event.target.value) return;
+                onSelectFilesByCategory(event.target.value as FileCategory);
+                event.target.value = "";
+              }}
+              className="h-7 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1 text-xs disabled:opacity-40"
+            >
+              <option value="">按分类选择</option>
+              {FILE_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="批量修改分类"
+              defaultValue=""
+              disabled={selectedFileIds.size === 0}
+              onChange={(event) => {
+                if (!event.target.value) return;
+                onBatchCategorize(event.target.value as FileCategory);
+                event.target.value = "";
+              }}
+              className="h-7 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1 text-xs disabled:opacity-40"
+            >
+              <option value="">修改分类</option>
+              {FILE_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-2 flex flex-wrap items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBatchReparseFailed}
+              disabled={failedCount === 0}
+            >
+              一键重解析失败文档
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBatchAutoCategorize}
+              disabled={categorizableCount === 0}
+            >
+              一键强制重新分类
+            </Button>
           </div>
           {selectedFileIds.size > 0 && (
             <div className="mb-2 flex flex-wrap items-center gap-1 rounded-[var(--radius-md)] border border-[var(--color-border)] p-1">
@@ -147,23 +236,6 @@ export function ProjectSidebar({
               <Button variant="ghost" size="sm" onClick={onBatchReparse}>
                 重新解析
               </Button>
-              <select
-                aria-label="批量修改分类"
-                defaultValue=""
-                onChange={(event) => {
-                  if (!event.target.value) return;
-                  onBatchCategorize(event.target.value as FileCategory);
-                  event.target.value = "";
-                }}
-                className="h-7 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1 text-xs"
-              >
-                <option value="">修改分类</option>
-                {FILE_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
               <Button variant="ghost" size="sm" onClick={onBatchDownload}>
                 下载 Markdown
               </Button>
