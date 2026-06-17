@@ -88,7 +88,7 @@ export default function NewProjectPage() {
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="例如：计算机网络实验、操作系统复习"
+              placeholder="例如：密码学复习"
             />
           </div>
 
