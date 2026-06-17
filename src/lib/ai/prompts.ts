@@ -69,7 +69,7 @@ export const TASK_ROUTER_PROMPT = `根据用户输入和已上传文件，判断
 // 实验工作台提示词
 // ============================================================
 
-export const EXPERIMENT_PROMPT = `你正在协助一位大学生完成计算机相关课程的实验任务。
+export const EXPERIMENT_PROMPT = `你正在协助一位大学生完成课程的实验任务。
 
 你的能力：
 1. 实验报告生成
