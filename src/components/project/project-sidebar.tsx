@@ -9,8 +9,9 @@ import {
   type ProjectFile,
 } from "@/components/project/file-list";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SelectMenu } from "@/components/ui/select-menu";
 import {
   SidebarContent,
@@ -112,15 +113,15 @@ export function ProjectSidebar({
     <div className={cn("flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground backdrop-blur-[var(--glass-blur)]", className)}>
       <SidebarHeader className="grid shrink-0 grid-cols-2 gap-2 p-3">
         <Button asChild variant="outline" size="md" className="w-full">
-          <Link href="/projects">
+          <Link href="/projects" className="min-w-0">
             <NavArrowLeft data-icon="inline-start" strokeWidth={2} />
-            项目空间
+            <span className="truncate">项目空间</span>
           </Link>
         </Button>
         <Button asChild variant="primary" size="md" className="w-full">
-          <Link href="/projects/new">
+          <Link href="/projects/new" className="min-w-0">
             <Plus data-icon="inline-start" strokeWidth={2} />
-            新建项目
+            <span className="truncate">新建项目</span>
           </Link>
         </Button>
       </SidebarHeader>
@@ -154,8 +155,8 @@ export function ProjectSidebar({
       </SidebarGroup>
 
       {/* 文件区域 */}
-      <SidebarContent className="px-3 pb-3">
-        <SidebarGroup className="px-0 py-1">
+      <SidebarContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3">
+        <SidebarGroup className="flex min-h-0 flex-1 flex-col px-0 py-1">
           <div className="mb-2 flex items-center justify-between">
             <div>
               <SidebarGroupLabel className="h-auto px-0 text-xs uppercase tracking-wider">
@@ -182,9 +183,8 @@ export function ProjectSidebar({
               />
             </div>
           )}
-          <Card size="sm" className="mb-2 bg-card/80 shadow-none">
-            <CardContent className="flex flex-col gap-1.5">
-            <div className="grid grid-cols-[1fr_1fr] gap-1.5">
+          <div className="mb-2 rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1.5">
+            <ButtonGroup className="grid w-full grid-cols-2 gap-1.5 [&>[data-slot=button]]:rounded-[var(--radius-md)]">
               <Button
                 variant={allSelected ? "secondary" : "primary"}
                 size="sm"
@@ -204,11 +204,12 @@ export function ProjectSidebar({
                 <RefreshDouble data-icon="inline-start" strokeWidth={2} />
                 重新解析
               </Button>
-            </div>
-            <div className="grid grid-cols-[1fr_1fr] gap-1.5">
+            </ButtonGroup>
+            <ButtonGroup className="mt-1.5 grid w-full grid-cols-2 gap-1.5 [&>[data-slot=button]]:rounded-[var(--radius-md)]">
               <SelectMenu
                 ariaLabel="筛选"
                 placeholder="筛选"
+                labelAlign="center"
                 disabled={files.length === 0}
                 options={FILE_CATEGORIES.map((category) => ({
                   value: category,
@@ -226,8 +227,8 @@ export function ProjectSidebar({
                 <MagicWand data-icon="inline-start" strokeWidth={2} />
                 重新分类
               </Button>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
+            </ButtonGroup>
+            <ButtonGroup className="mt-1.5 grid w-full grid-cols-3 gap-1.5 [&>[data-slot=button]]:rounded-[var(--radius-md)]">
               <Button
                 variant="secondary"
                 size="icon-sm"
@@ -261,24 +262,25 @@ export function ProjectSidebar({
               >
                 <Download strokeWidth={2} />
               </Button>
-            </div>
-            </CardContent>
-          </Card>
+            </ButtonGroup>
+          </div>
           <FileUpload
             projectId={project.id}
             onUploaded={onFileUploaded}
           />
-          <FileList
-            files={files}
-            selectedIds={selectedFileIds}
-            onToggle={onFileToggle}
-            defaultGroupsCollapsed
-            className="mt-2"
-          />
+          <ScrollArea className="mt-2 min-h-0 flex-1 rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
+            <FileList
+              files={files}
+              selectedIds={selectedFileIds}
+              onToggle={onFileToggle}
+              defaultGroupsCollapsed
+              className="p-1.5 pr-3"
+            />
+          </ScrollArea>
         </SidebarGroup>
 
         {/* 对话列表 */}
-        <SidebarGroup className="px-0 py-2">
+        <SidebarGroup className="max-h-[34%] shrink-0 px-0 py-2">
           <SidebarGroupLabel className="text-xs uppercase tracking-wider">
             项目对话
           </SidebarGroupLabel>
@@ -286,42 +288,44 @@ export function ProjectSidebar({
             <Plus strokeWidth={2} />
           </SidebarGroupAction>
           <SidebarGroupContent>
-          {project.conversations && project.conversations.length > 0 ? (
-            <SidebarMenu>
-              {project.conversations.map((conv) => (
-                <SidebarMenuItem
-                  key={conv.id}
-                >
-                  <SidebarMenuButton
-                    type="button"
-                    onClick={() => onConversationSelect(conv.id)}
-                    isActive={activeConversationId === conv.id}
-                    size="sm"
+          <ScrollArea className="max-h-40">
+            {project.conversations && project.conversations.length > 0 ? (
+              <SidebarMenu className="pr-3">
+                {project.conversations.map((conv) => (
+                  <SidebarMenuItem
+                    key={conv.id}
                   >
-                    <ChatLines strokeWidth={2} />
-                    <span>{conv.title}</span>
-                  </SidebarMenuButton>
-                  <SidebarMenuAction
-                    type="button"
-                    showOnHover
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onConversationDelete(conv.id, conv.title);
-                    }}
-                    className="hover:text-destructive"
-                    aria-label={`删除项目对话 ${conv.title}`}
-                    title="删除"
-                  >
-                    <Trash strokeWidth={2} />
-                  </SidebarMenuAction>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          ) : (
-            <p className="text-xs text-[var(--color-text-tertiary)] py-2">
-              暂无对话
-            </p>
-          )}
+                    <SidebarMenuButton
+                      type="button"
+                      onClick={() => onConversationSelect(conv.id)}
+                      isActive={activeConversationId === conv.id}
+                      size="sm"
+                    >
+                      <ChatLines strokeWidth={2} />
+                      <span>{conv.title}</span>
+                    </SidebarMenuButton>
+                    <SidebarMenuAction
+                      type="button"
+                      showOnHover
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onConversationDelete(conv.id, conv.title);
+                      }}
+                      className="hover:text-destructive"
+                      aria-label={`删除项目对话 ${conv.title}`}
+                      title="删除"
+                    >
+                      <Trash strokeWidth={2} />
+                    </SidebarMenuAction>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            ) : (
+              <p className="py-2 text-xs text-[var(--color-text-tertiary)]">
+                暂无对话
+              </p>
+            )}
+          </ScrollArea>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

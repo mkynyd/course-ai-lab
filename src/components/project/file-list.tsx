@@ -63,11 +63,7 @@ export function FileList({
 }: FileListProps) {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   if (files.length === 0) {
-    return (
-      <p className={cn("text-xs leading-relaxed text-[var(--color-text-tertiary)] py-4 text-center", className)}>
-        上传实验数据、代码、课件、试卷或笔记，开始构建项目上下文。
-      </p>
-    );
+    return null;
   }
 
   function isGroupOpen(category: string) {

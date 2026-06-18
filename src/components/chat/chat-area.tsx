@@ -74,11 +74,16 @@ export function ChatArea({
       >
         <div className="flex items-center gap-3">
           <ModelSelector model={model} onChange={setModel} disabled={isStreaming} />
-          <Switch
-            checked={thinkingEnabled}
-            onChange={setThinkingEnabled}
-            label="思考模式"
-          />
+          <label className="inline-flex shrink-0 items-center gap-2">
+            <Switch
+              checked={thinkingEnabled}
+              onCheckedChange={setThinkingEnabled}
+              aria-label="思考模式"
+            />
+            <span className="whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
+              思考模式
+            </span>
+          </label>
         </div>
 
         {usage && (
@@ -122,10 +127,10 @@ export function ChatArea({
           <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
             <div
               className={cn(
-                "mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]",
-                "border border-[var(--color-border)]",
-                "bg-[var(--color-panel)] shadow-[var(--shadow-panel)]"
-              )}
+	                "mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]",
+	                "border border-[var(--color-border)]",
+	                "bg-[var(--color-panel)]"
+	              )}
             >
               <Hash size={24} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
             </div>
@@ -158,7 +163,6 @@ export function ChatArea({
         isStreaming={isStreaming}
         attachments={attachments}
         onAttachmentsChange={setAttachments}
-        contextHint="普通对话模式，未绑定项目资料"
       />
     </div>
   );

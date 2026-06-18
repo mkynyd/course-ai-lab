@@ -60,17 +60,14 @@ export default function ProjectsPage() {
           </div>
         ) : projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-[var(--shadow-panel)]">
-	              <Folder width={24} height={24} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
+		              <Folder width={24} height={24} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
             </div>
             <h2 className="text-base font-medium text-[var(--color-text-primary)] mb-1">
               暂无项目
             </h2>
-            <p className="text-sm text-[var(--color-text-secondary)] max-w-sm mb-4">
-              创建一个项目空间，上传实验截图、代码、数据表、课件或试卷，开始构建上下文。
-            </p>
             <Link href="/projects/new">
-	              <Button variant="primary" size="md">
+		              <Button variant="primary" size="md">
 	                <Plus width={16} height={16} strokeWidth={2} />
 	                创建第一个项目
               </Button>

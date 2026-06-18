@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -10,6 +10,11 @@ import { ChevronDown, ChevronRight, User, Bot, Save } from "lucide-react";
 import { MermaidBlock } from "@/components/chat/mermaid-block";
 import { LoadingIndicator } from "@/components/workbench/loading-indicator";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Spinner } from "@/components/ui/spinner";
@@ -61,10 +66,8 @@ function MessageBubbleComponent({
   const [saving, setSaving] = useState(false);
   const isUser = role === "user";
   const isAssistant = role === "assistant";
-
-  const toggleReasoning = useCallback(() => {
-    setShowReasoning((prev) => !prev);
-  }, []);
+  const hasReasoning = Boolean(reasoningContent?.trim());
+  const shouldShowReasoning = isAssistant && (hasReasoning || isStreaming);
 
   if (!isUser && !isAssistant) return null;
 
@@ -88,7 +91,7 @@ function MessageBubbleComponent({
     >
       <div
         className={cn(
-	          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-lg)] border mt-0.5 shadow-sm",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-lg)] border mt-0.5",
           isUser
             ? "border-transparent bg-[var(--color-accent)] text-[var(--color-accent-contrast)]"
             : "border-[var(--color-border-light)] bg-[var(--color-panel-muted)] text-[var(--color-text-secondary)]"
@@ -98,29 +101,50 @@ function MessageBubbleComponent({
       </div>
 
       <div className={cn("flex-1 min-w-0", isUser && "flex flex-col items-end")}>
-        {reasoningContent && (
-          <div className="mb-2 w-full max-w-[74ch]">
-            <button
-              onClick={toggleReasoning}
-              className="flex items-center gap-1 rounded-[var(--radius-md)] px-1 py-0.5 text-xs text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
-              aria-expanded={showReasoning}
-            >
-              {showReasoning ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              思考过程
-            </button>
-            {showReasoning && (
-              <div className="mt-1.5 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-panel-muted)] px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap text-[var(--color-text-secondary)]">
-                {reasoningContent}
+        {shouldShowReasoning && (
+          <Collapsible
+            open={showReasoning}
+            onOpenChange={setShowReasoning}
+            className="mb-2 w-full max-w-[74ch]"
+          >
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-1.5 py-1 text-xs text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
+                aria-expanded={showReasoning}
+              >
+                {isStreaming && !hasReasoning ? (
+                  <Spinner className="size-3" />
+                ) : showReasoning ? (
+                  <ChevronDown size={12} />
+                ) : (
+                  <ChevronRight size={12} />
+                )}
+                {hasReasoning ? "思考过程" : "正在思考"}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-1.5 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-panel-muted)] px-3 py-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+                {hasReasoning ? (
+                  <div className="whitespace-pre-wrap">{reasoningContent}</div>
+                ) : (
+                  <LoadingIndicator
+                    size="sm"
+                    variant="lissajous"
+                    label="正在推理"
+                    detail="思考过程会在返回后同步显示"
+                  />
+                )}
               </div>
-            )}
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         <div
           className={cn(
             "text-sm",
             isUser
-	              ? "max-w-[85%] rounded-[var(--radius-xl)] border border-[var(--color-accent-muted)] bg-[var(--color-accent-soft)] px-3.5 py-2.5 leading-relaxed shadow-[var(--shadow-panel)]"
+              ? "max-w-[85%] rounded-[var(--radius-xl)] border border-[var(--color-accent-muted)] bg-[var(--color-accent-soft)] px-3.5 py-2.5 leading-relaxed"
               : "workbench-readable text-[var(--color-text-primary)]"
           )}
         >
@@ -154,7 +178,7 @@ function MessageBubbleComponent({
               </ReactMarkdown>
             </div>
           ) : isStreaming ? (
-	            <div className="rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-panel)] px-3 py-2 shadow-[var(--shadow-panel)] backdrop-blur-[var(--glass-blur)]">
+            <div className="rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-panel)] px-3 py-2 backdrop-blur-[var(--glass-blur)]">
               <LoadingIndicator
                 size="sm"
                 variant="lissajous"

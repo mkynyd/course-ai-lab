@@ -1,55 +1,33 @@
-"use client";
+"use client"
 
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { Switch as SwitchPrimitive } from "radix-ui"
 
-interface SwitchProps {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-  label?: string;
-  className?: string;
-}
+import { cn } from "@/lib/utils"
 
-export function Switch({
-  checked,
-  onChange,
-  disabled = false,
-  label,
+function Switch({
   className,
-}: SwitchProps) {
+  size = "default",
+  ...props
+}: React.ComponentProps<typeof SwitchPrimitive.Root> & {
+  size?: "sm" | "default"
+}) {
   return (
-    <label
+    <SwitchPrimitive.Root
+      data-slot="switch"
+      data-size={size}
       className={cn(
-        "inline-flex shrink-0 items-center gap-2 cursor-pointer select-none",
-        disabled && "opacity-50 cursor-not-allowed",
+        "peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 data-disabled:cursor-not-allowed data-disabled:opacity-50",
         className
       )}
+      {...props}
     >
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={() => !disabled && onChange(!checked)}
-        className={cn(
-          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full",
-          "border transition-colors duration-150",
-          checked
-            ? "bg-[var(--color-accent)] border-[var(--color-accent)]"
-            : "bg-[var(--color-ring-track)] border-[var(--color-border)]"
-        )}
-      >
-        <span
-          className={cn(
-            "inline-block h-3.5 w-3.5 rounded-full bg-[var(--color-accent-contrast)]",
-            "transition-transform duration-150",
-            checked ? "translate-x-[18px]" : "translate-x-[2px]"
-          )}
-        />
-      </button>
-      {label && (
-        <span className="whitespace-nowrap text-sm text-[var(--color-text-secondary)]">{label}</span>
-      )}
-    </label>
-  );
+      <SwitchPrimitive.Thumb
+        data-slot="switch-thumb"
+        className="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"
+      />
+    </SwitchPrimitive.Root>
+  )
 }
+
+export { Switch }

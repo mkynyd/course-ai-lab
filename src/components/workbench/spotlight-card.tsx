@@ -30,10 +30,10 @@ export function SpotlightCard({
     <div
       className={cn(
         "workbench-spotlight rounded-[var(--radius-xl)] border bg-[var(--color-surface)]",
-        "backdrop-blur-[var(--glass-blur)] transition-[border-color,box-shadow,background-color] duration-200",
+        "backdrop-blur-[var(--glass-blur)] transition-[border-color,background-color] duration-200",
         active
-          ? "border-[var(--color-accent)] shadow-[var(--shadow-float)]"
-          : "border-[var(--color-border-light)] shadow-[var(--shadow-panel)] hover:border-[var(--color-accent)]",
+          ? "workbench-border-glow border-[var(--color-accent)]"
+          : "border-[var(--color-border-light)] hover:border-[var(--color-accent-muted)]",
         className
       )}
       onPointerMove={handlePointerMove}

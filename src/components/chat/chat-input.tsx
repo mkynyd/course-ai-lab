@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { FileText, Paperclip, Send, StopCircle, X } from "lucide-react";
 import type { FileAttachment } from "@/lib/chat/router";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ChatInputProps {
   onSend: (message: string, attachments: FileAttachment[]) => void;
@@ -120,8 +122,8 @@ export function ChatInput({
       )}
       <div
         className={cn(
-	          "flex items-end gap-2 rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-panel)]",
-	          "focus-within:border-[var(--color-accent)] focus-within:ring-2 focus-within:ring-[var(--color-accent-muted)]"
+          "flex items-end gap-2 rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1.5",
+          "transition-[border-color,box-shadow] focus-within:border-[var(--color-accent-muted)] focus-within:ring-2 focus-within:ring-[var(--color-accent-muted)]"
         )}
       >
         <input
@@ -131,25 +133,19 @@ export function ChatInput({
           className="hidden"
           onChange={(event) => addFiles(event.target.files)}
         />
-        <button
+        <Button
           type="button"
           disabled={disabled || isStreaming}
           onClick={() => fileInputRef.current?.click()}
-          className={cn(
-            "flex items-center justify-center w-9 h-9 shrink-0",
-	            "rounded-[var(--radius-lg)]",
-            "border border-[var(--color-border-light)]",
-            "bg-[var(--color-panel-muted)] text-[var(--color-text-secondary)]",
-            "hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
-            "disabled:opacity-40 disabled:cursor-not-allowed",
-            "transition-colors duration-150"
-          )}
+          variant="outline"
+          size="icon-lg"
+          className="shrink-0 rounded-full bg-[var(--color-panel-muted)]"
           aria-label="添加附件"
           title="添加附件"
         >
           <Paperclip size={17} strokeWidth={2} />
-        </button>
-        <textarea
+        </Button>
+        <Textarea
           value={currentValue}
           onChange={(e) => updateValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -157,7 +153,7 @@ export function ChatInput({
           rows={1}
           disabled={disabled}
           className={cn(
-            "flex-1 resize-none max-h-32 border-0 bg-transparent px-1 py-2 text-sm",
+            "min-h-9 max-h-32 flex-1 resize-none border-0 bg-transparent px-1 py-2 text-sm shadow-none focus-visible:ring-0",
             "text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]",
             "focus:outline-none disabled:opacity-50"
           )}
@@ -170,37 +166,27 @@ export function ChatInput({
         />
 
         {isStreaming ? (
-          <button
+          <Button
             type="button"
             onClick={onStop}
-            className={cn(
-              "flex items-center justify-center w-9 h-9 shrink-0",
-              "rounded-[var(--radius-lg)]",
-              "border border-[var(--color-error-muted)]",
-              "bg-[var(--color-error-muted)] text-[var(--color-error)]",
-              "hover:bg-[var(--color-error)] hover:text-[var(--color-accent-contrast)]",
-              "transition-colors duration-150"
-            )}
+            variant="destructive"
+            size="icon-lg"
+            className="shrink-0 rounded-full"
             aria-label="停止生成"
           >
             <StopCircle size={17} strokeWidth={2} />
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             type="submit"
             disabled={!hasSendableContent || disabled}
-            className={cn(
-              "flex items-center justify-center w-9 h-9 shrink-0",
-              "rounded-[var(--radius-lg)]",
-              "bg-[var(--color-accent)] text-[var(--color-accent-contrast)]",
-              "hover:bg-[var(--color-accent-hover)]",
-              "disabled:opacity-40 disabled:cursor-not-allowed",
-              "transition-colors duration-150"
-            )}
+            variant="primary"
+            size="icon-lg"
+            className="shrink-0 rounded-full"
             aria-label="发送消息"
           >
             <Send size={17} strokeWidth={2} />
-          </button>
+          </Button>
         )}
       </div>
     </form>

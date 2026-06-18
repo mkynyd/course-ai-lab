@@ -366,10 +366,6 @@ export default function ProjectDetailPage() {
       : project.files.length > 0
         ? "项目资料按问题自动匹配"
         : "等待上传资料后构建项目上下文";
-  const blockedReason = hasParsingFiles
-    ? "文件解析中，消息会等待资料就绪后发送"
-    : undefined;
-
   return (
     <div className="relative flex h-full overflow-hidden">
       <button
@@ -489,12 +485,17 @@ export default function ProjectDetailPage() {
               成果库
             </Button>
             <ModelSelector model={model} onChange={setModel} disabled={isStreaming} />
-            <Switch
-              checked={thinkingEnabled}
-              onChange={setThinkingEnabled}
-              label="思考模式"
-              className="[&>span]:hidden sm:[&>span]:inline"
-            />
+            <label className="inline-flex shrink-0 items-center gap-2">
+              <Switch
+                checked={thinkingEnabled}
+                onCheckedChange={setThinkingEnabled}
+                disabled={isStreaming}
+                aria-label="思考模式"
+              />
+              <span className="hidden whitespace-nowrap text-sm text-[var(--color-text-secondary)] sm:inline">
+                思考模式
+              </span>
+            </label>
             {usage && (
               <ContextRing used={usage.totalTokens} />
             )}
@@ -518,23 +519,19 @@ export default function ProjectDetailPage() {
             <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
               <div
                 className={cn(
-                  "mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]",
-                  "border border-[var(--color-border)]",
-                  "bg-[var(--color-panel)] shadow-[var(--shadow-panel)]"
-                )}
+	                  "mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]",
+	                  "border border-[var(--color-border)]",
+	                  "bg-[var(--color-panel)]"
+	                )}
               >
 	                <Hashtag width={24} height={24} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
               </div>
               <h2 className="text-base font-medium text-[var(--color-text-primary)] mb-1">
                 {project.name}
               </h2>
-              {selectedFileIds.size > 0 ? (
+              {selectedFileIds.size > 0 && (
                 <p className="max-w-md text-sm leading-relaxed text-[var(--color-text-secondary)]">
                   已选择 {selectedFileIds.size} 个文件作为上下文，点击快捷任务或输入问题开始对话
-                </p>
-              ) : (
-                <p className="max-w-sm text-sm leading-relaxed text-[var(--color-text-secondary)]">
-                  上传实验截图、代码、数据表、课件或试卷，开始构建项目上下文
                 </p>
               )}
             </div>
@@ -577,20 +574,6 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {/* 输入框 */}
-        {hasParsingFiles && (
-          <div className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-info-muted)] bg-[var(--color-info-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
-            <LoadingIndicator
-              size="sm"
-              variant="rose"
-              label="文件解析中"
-              detail="消息会等待资料完成后发送"
-            />
-            {pendingMessageQueue.length > 0 && (
-              <span className="font-mono">已排队 {pendingMessageQueue.length} 条</span>
-            )}
-          </div>
-        )}
         <ChatInput
           onSend={handleSend}
           onStop={abort}
@@ -601,7 +584,6 @@ export default function ProjectDetailPage() {
           attachments={chatAttachments}
           onAttachmentsChange={setChatAttachments}
           contextHint={selectedFileIds.size > 0 ? contextHint : undefined}
-          blockedReason={blockedReason}
         />
       </div>
       {showArtifacts && (

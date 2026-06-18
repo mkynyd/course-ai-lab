@@ -1,10 +1,18 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarContent,
   SidebarFooter,
@@ -24,6 +32,7 @@ import {
   Trash,
   Xmark,
 } from "iconoir-react";
+import { ChevronDown, LogOut, Settings } from "lucide-react";
 import {
   useConversations,
   useDeleteConversation,
@@ -45,6 +54,7 @@ export function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { data: session } = useSession();
   const activeSection = pathname.startsWith("/projects") ? "projects" : "chat";
   const conversationsQuery = useConversations();
   const projectsQuery = useProjects();
@@ -79,6 +89,9 @@ export function Sidebar({
   const activeProjectId = pathname.startsWith("/projects/")
     ? pathname.split("/")[2]
     : null;
+  const accountName =
+    session?.user?.name || session?.user?.email || "账户";
+  const accountInitial = accountName.trim().slice(0, 1).toUpperCase() || "A";
 
   return (
     <SidebarProvider
@@ -269,14 +282,66 @@ export function Sidebar({
 
         <SidebarFooter
           className={cn(
-            "shrink-0 px-4 py-2",
+            "shrink-0 px-2 py-2",
             "transition-opacity duration-200 ease-out motion-reduce:transition-none",
-            collapsed && "lg:opacity-0"
+            collapsed ? "lg:px-2" : "lg:px-3"
           )}
         >
-          <span className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-tertiary)]">
-            DeepSeek V4
-          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "flex h-11 w-full min-w-0 items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-2 text-left",
+                  "text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
+                  collapsed && "lg:justify-center lg:px-0"
+                )}
+                aria-label="打开账户菜单"
+              >
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent-soft)] text-xs font-semibold text-[var(--color-accent)]">
+                  {accountInitial}
+                </span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1",
+                    collapsed && "lg:hidden"
+                  )}
+                >
+                  <span className="block truncate text-xs font-medium text-[var(--color-text-primary)]">
+                    {accountName}
+                  </span>
+                  <span className="block truncate text-[10px] text-[var(--color-text-tertiary)]">
+                    DeepSeek V4
+                  </span>
+                </span>
+                <ChevronDown
+                  size={14}
+                  strokeWidth={2}
+                  className={cn("shrink-0", collapsed && "lg:hidden")}
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="right"
+              align="end"
+              className="w-48 workbench-border-glow"
+            >
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <Settings size={14} strokeWidth={2} />
+                  设置
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => void signOut({ callbackUrl: "/login" })}
+              >
+                <LogOut size={14} strokeWidth={2} />
+                退出登录
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </SidebarFooter>
       </aside>
     </SidebarProvider>
