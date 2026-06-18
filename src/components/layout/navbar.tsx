@@ -1,14 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
-import { useState, useRef, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import {
-  Settings,
-  LogOut,
-  ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -19,23 +14,6 @@ interface NavbarProps {
 }
 
 export function Navbar({ onMenuToggle, sidebarCollapsed = false }: NavbarProps) {
-  const { data: session } = useSession();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // 点击外部关闭下拉菜单
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  if (!session?.user) return null;
-
   return (
     <header
       className={cn(
@@ -50,7 +28,7 @@ export function Navbar({ onMenuToggle, sidebarCollapsed = false }: NavbarProps) 
           onClick={onMenuToggle}
           className={cn(
             "inline-flex h-9 w-9 -ml-1 items-center justify-center rounded-[var(--radius-md)]",
-            "border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm",
+            "bg-[var(--color-surface)]",
             "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
             "transition-colors duration-150"
           )}
@@ -74,65 +52,6 @@ export function Navbar({ onMenuToggle, sidebarCollapsed = false }: NavbarProps) 
       {/* 右侧 */}
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <ThemeToggle />
-
-        {/* 用户菜单 */}
-        <div className="relative" ref={menuRef}>
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className={cn(
-	              "flex items-center gap-1.5 h-9 px-2 rounded-[var(--radius-md)] sm:px-2.5",
-              "text-sm text-[var(--color-text-secondary)]",
-              "border border-transparent hover:border-[var(--color-border-light)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
-              "transition-colors duration-150"
-            )}
-          >
-	            <span className="max-w-[82px] truncate sm:max-w-[120px]">
-              {session.user.name || session.user.email}
-            </span>
-            <ChevronDown
-              size={14}
-              strokeWidth={2}
-              className={cn(
-                "transition-transform duration-150",
-                menuOpen && "rotate-180"
-              )}
-            />
-          </button>
-
-          {menuOpen && (
-            <div
-              className={cn(
-                "absolute right-0 top-full mt-1 w-48 py-1 z-50",
-                "border border-[var(--color-border-light)] rounded-[var(--radius-lg)]",
-                "bg-[var(--color-panel)] shadow-[var(--shadow-float)] backdrop-blur-[var(--glass-blur)]"
-              )}
-            >
-              <Link
-                href="/settings"
-                onClick={() => setMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm",
-                  "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
-                  "transition-colors duration-150"
-                )}
-              >
-                <Settings size={14} strokeWidth={2} />
-                设置
-              </Link>
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className={cn(
-                  "flex items-center gap-2 w-full px-3 py-2 text-sm",
-                  "text-[var(--color-error)] hover:bg-[var(--color-error-muted)]",
-                  "transition-colors duration-150"
-                )}
-              >
-                <LogOut size={14} strokeWidth={2} />
-                退出登录
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </header>
   );

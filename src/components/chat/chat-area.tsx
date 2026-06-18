@@ -5,11 +5,9 @@ import { useChat } from "@/lib/hooks/use-chat";
 import type { FileAttachment } from "@/lib/chat/router";
 import { ChatInput } from "@/components/chat/chat-input";
 import { VirtualMessageList } from "@/components/chat/virtual-message-list";
-import { ModelSelector } from "@/components/chat/model-selector";
 import { TokenUsageBar } from "@/components/chat/token-usage-bar";
 import { ContextRing } from "@/components/chat/context-ring";
 import { CostDisplay } from "@/components/chat/cost-display";
-import { Switch } from "@/components/ui/switch";
 import { AmbientField } from "@/components/workbench/ambient-field";
 import { AlertCircle, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,9 +35,9 @@ export function ChatArea({
     error,
     usage,
     model,
-    thinkingEnabled,
+    reasoningEffort,
     setModel,
-    setThinkingEnabled,
+    setReasoningEffort,
     sendMessage,
     abort,
     clearError,
@@ -72,13 +70,8 @@ export function ChatArea({
           "bg-[var(--color-panel)] shrink-0 backdrop-blur-[var(--glass-blur)]"
         )}
       >
-        <div className="flex items-center gap-3">
-          <ModelSelector model={model} onChange={setModel} disabled={isStreaming} />
-          <Switch
-            checked={thinkingEnabled}
-            onChange={setThinkingEnabled}
-            label="思考模式"
-          />
+        <div className="text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)]">
+          聊天
         </div>
 
         {usage && (
@@ -100,7 +93,7 @@ export function ChatArea({
         <div
           className={cn(
             "flex items-center gap-2 px-4 py-2 mx-4 mt-2 rounded-[var(--radius-md)]",
-            "bg-[var(--color-error-muted)] border border-[var(--color-error)]/20",
+            "bg-[var(--color-error-muted)]",
             "text-sm text-[var(--color-error)]"
           )}
         >
@@ -122,10 +115,9 @@ export function ChatArea({
           <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
             <div
               className={cn(
-                "mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]",
-                "border border-[var(--color-border)]",
-                "bg-[var(--color-panel)] shadow-[var(--shadow-panel)]"
-              )}
+	                "mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]",
+	                "bg-[var(--color-panel)]"
+	              )}
             >
               <Hash size={24} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
             </div>
@@ -133,7 +125,7 @@ export function ChatArea({
               开始对话
             </h2>
             <p className="max-w-sm text-sm leading-relaxed text-[var(--color-text-secondary)]">
-              选择一个模型，切换思考模式，然后发送消息即可与 DeepSeek 开始对话。
+              选择强度和模型，然后发送消息即可开始对话。
             </p>
           </div>
         </div>
@@ -158,7 +150,10 @@ export function ChatArea({
         isStreaming={isStreaming}
         attachments={attachments}
         onAttachmentsChange={setAttachments}
-        contextHint="普通对话模式，未绑定项目资料"
+        model={model}
+        onModelChange={setModel}
+        reasoningEffort={reasoningEffort}
+        onReasoningEffortChange={setReasoningEffort}
       />
     </div>
   );

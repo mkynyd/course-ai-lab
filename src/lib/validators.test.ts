@@ -36,4 +36,16 @@ describe("sendMessageSchema", () => {
       reasoningEffort: "high",
     });
   });
+
+  it("allows explicit MiniMax M3 selection", () => {
+    expect(
+      sendMessageSchema.parse({
+        message: "分析图片资料",
+        model: "minimax-m3",
+      })
+    ).toMatchObject({
+      model: "minimax-m3",
+      thinkingEnabled: true,
+    });
+  });
 });

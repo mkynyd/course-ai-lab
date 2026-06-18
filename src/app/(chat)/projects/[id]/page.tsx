@@ -8,9 +8,7 @@ import { ProjectSidebar } from "@/components/project/project-sidebar";
 import { QuickTaskBar, type QuickTaskSendInput } from "@/components/chat/quick-task-bar";
 import { ChatInput } from "@/components/chat/chat-input";
 import { VirtualMessageList } from "@/components/chat/virtual-message-list";
-import { ModelSelector } from "@/components/chat/model-selector";
 import { ContextRing } from "@/components/chat/context-ring";
-import { Switch } from "@/components/ui/switch";
 import {
   Hashtag,
   SidebarCollapse,
@@ -23,9 +21,10 @@ import { useChat, type SendMessageInput } from "@/lib/hooks/use-chat";
 import type { FileAttachment } from "@/lib/chat/router";
 import type {
   FileSelectionIntent,
+  ProjectFile,
 } from "@/components/project/file-list";
+import { FileContentDialog } from "@/components/project/file-content-dialog";
 import type { ProjectType } from "@/components/chat/quick-task-bar";
-import type { FileCategory } from "@/lib/file-categories";
 import { ArtifactLibrary } from "@/components/artifact/artifact-library";
 import { Button } from "@/components/ui/button";
 import { useProject } from "@/lib/hooks/use-projects";
@@ -52,6 +51,7 @@ export default function ProjectDetailPage() {
     useState(false);
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
   const [fileMessage, setFileMessage] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<ProjectFile | null>(null);
   const [showArtifacts, setShowArtifacts] = useState(false);
   const [artifactRefreshKey, setArtifactRefreshKey] = useState(0);
   const selectedFileIdList = useMemo(
@@ -71,9 +71,9 @@ export default function ProjectDetailPage() {
     error,
     usage,
     model,
-    thinkingEnabled,
+    reasoningEffort,
     setModel,
-    setThinkingEnabled,
+    setReasoningEffort,
     sendMessage,
     abort,
     clearError,
@@ -169,17 +169,8 @@ export default function ProjectDetailPage() {
     lastSelectedFileIndexRef.current = null;
   }
 
-  function handleSelectFilesByCategory(category: FileCategory) {
-    setSelectedFileIds(new Set(
-      (project?.files || [])
-        .filter((file) => file.category === category && (file.categoryConfidence ?? 1) >= 0.7)
-        .map((file) => file.id)
-    ));
-  }
-
   async function runBatchAction(
     action: "delete" | "reparse" | "categorize" | "download",
-    category?: FileCategory,
     explicitFileIds?: string[]
   ) {
     const fileIds = explicitFileIds || Array.from(selectedFileIds);
@@ -187,7 +178,7 @@ export default function ProjectDetailPage() {
     const res = await fetch(`/api/projects/${projectId}/files/batch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, fileIds, category }),
+      body: JSON.stringify({ action, fileIds }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -215,14 +206,26 @@ export default function ProjectDetailPage() {
     const fileIds = (project?.files || [])
       .filter((file) => file.status === "failed")
       .map((file) => file.id);
-    await runBatchAction("reparse", undefined, fileIds);
+    await runBatchAction("reparse", fileIds);
   }
 
   async function handleBatchAutoCategorize() {
     const fileIds = (project?.files || [])
       .filter((file) => ["parsed", "partial"].includes(file.status))
       .map((file) => file.id);
-    await runBatchAction("categorize", undefined, fileIds);
+    await runBatchAction("categorize", fileIds);
+  }
+
+  async function handleFileAction(
+    action: "delete" | "reparse" | "download" | "preview",
+    fileId: string
+  ) {
+    if (action === "preview") {
+      const file = project?.files.find((item) => item.id === fileId) || null;
+      if (file) setPreviewFile(file);
+      return;
+    }
+    await runBatchAction(action, [fileId]);
   }
 
   async function saveArtifact(input: {
@@ -305,8 +308,7 @@ export default function ProjectDetailPage() {
     setChatAttachments([]);
   }
 
-  async function handleConversationDelete(id: string, title: string) {
-    if (!confirm(`确定要删除项目对话「${title}」吗？`)) return;
+  async function handleConversationDelete(id: string) {
     await deleteConversationMutation.mutateAsync(id);
     if (conversationId === id) {
       handleNewConversation();
@@ -366,10 +368,6 @@ export default function ProjectDetailPage() {
       : project.files.length > 0
         ? "项目资料按问题自动匹配"
         : "等待上传资料后构建项目上下文";
-  const blockedReason = hasParsingFiles
-    ? "文件解析中，消息会等待资料就绪后发送"
-    : undefined;
-
   return (
     <div className="relative flex h-full overflow-hidden">
       <button
@@ -391,7 +389,7 @@ export default function ProjectDetailPage() {
         aria-label="项目资料侧边栏"
         className={cn(
           "absolute inset-y-0 left-0 z-30 w-[280px] overflow-hidden",
-          "border-r border-[var(--color-border-light)] bg-[var(--color-surface)]",
+          "bg-[var(--color-surface)]",
           "transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
           mobileProjectSidebarOpen ? "translate-x-0" : "-translate-x-full",
           "md:static md:z-auto md:translate-x-0 md:transition-[width] md:duration-300 md:ease-[cubic-bezier(0.16,1,0.3,1)]",
@@ -400,7 +398,7 @@ export default function ProjectDetailPage() {
       >
         <div
           className={cn(
-            "h-full w-[280px] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+            "h-full w-full transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
             desktopProjectSidebarOpen
               ? "md:translate-x-0"
               : "md:-translate-x-full"
@@ -412,18 +410,16 @@ export default function ProjectDetailPage() {
             onFileToggle={handleFileToggle}
             onSelectAllFiles={handleSelectAllFiles}
             onClearFileSelection={handleClearFileSelection}
-            onSelectFilesByCategory={handleSelectFilesByCategory}
             onFileUploaded={() => void projectQuery.refetch()}
             onBatchDelete={() => void runBatchAction("delete")}
             onBatchReparse={() => void runBatchAction("reparse")}
             onBatchAutoCategorize={() => void handleBatchAutoCategorize()}
             onBatchReparseFailed={() => void handleBatchReparseFailed()}
             onBatchDownload={() => void runBatchAction("download")}
+            onFileAction={(action, fileId) => void handleFileAction(action, fileId)}
             onNewConversation={handleNewConversation}
             onConversationSelect={handleConversationSelect}
-            onConversationDelete={(id, title) =>
-              void handleConversationDelete(id, title)
-            }
+            onConversationDelete={(id) => void handleConversationDelete(id)}
             activeConversationId={conversationId}
           />
         </div>
@@ -444,7 +440,7 @@ export default function ProjectDetailPage() {
               onClick={toggleProjectSidebar}
               className={cn(
 	                "inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)]",
-	                "border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm",
+	                "bg-[var(--color-surface)]",
                 "text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
                 "transition-colors duration-150"
               )}
@@ -470,7 +466,7 @@ export default function ProjectDetailPage() {
                 <span className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                   {project.name}
                 </span>
-                <span className="hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--color-text-tertiary)] sm:inline">
+                <span className="hidden rounded-[var(--radius-md)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--color-text-tertiary)] sm:inline">
                   {projectModeLabel}
                 </span>
               </div>
@@ -488,13 +484,6 @@ export default function ProjectDetailPage() {
             >
               成果库
             </Button>
-            <ModelSelector model={model} onChange={setModel} disabled={isStreaming} />
-            <Switch
-              checked={thinkingEnabled}
-              onChange={setThinkingEnabled}
-              label="思考模式"
-              className="[&>span]:hidden sm:[&>span]:inline"
-            />
             {usage && (
               <ContextRing used={usage.totalTokens} />
             )}
@@ -518,23 +507,18 @@ export default function ProjectDetailPage() {
             <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
               <div
                 className={cn(
-                  "mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]",
-                  "border border-[var(--color-border)]",
-                  "bg-[var(--color-panel)] shadow-[var(--shadow-panel)]"
-                )}
+	                  "mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]",
+	                  "bg-[var(--color-panel)]"
+	                )}
               >
 	                <Hashtag width={24} height={24} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
               </div>
               <h2 className="text-base font-medium text-[var(--color-text-primary)] mb-1">
                 {project.name}
               </h2>
-              {selectedFileIds.size > 0 ? (
+              {selectedFileIds.size > 0 && (
                 <p className="max-w-md text-sm leading-relaxed text-[var(--color-text-secondary)]">
                   已选择 {selectedFileIds.size} 个文件作为上下文，点击快捷任务或输入问题开始对话
-                </p>
-              ) : (
-                <p className="max-w-sm text-sm leading-relaxed text-[var(--color-text-secondary)]">
-                  上传实验截图、代码、数据表、课件或试卷，开始构建项目上下文
                 </p>
               )}
             </div>
@@ -551,7 +535,7 @@ export default function ProjectDetailPage() {
           <div
             className={cn(
               "flex items-center gap-2 px-4 py-2 mx-4 mb-2 rounded-[var(--radius-md)]",
-              "bg-[var(--color-error-muted)] border border-[var(--color-error)]/20",
+              "bg-[var(--color-error-muted)]",
               "text-sm text-[var(--color-error)]"
             )}
           >
@@ -566,7 +550,7 @@ export default function ProjectDetailPage() {
           </div>
         )}
         {fileMessage && (
-          <div className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+          <div className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-[var(--radius-lg)] bg-[var(--color-panel)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
             <span>{fileMessage}</span>
             <button
               onClick={() => setFileMessage(null)}
@@ -577,20 +561,6 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {/* 输入框 */}
-        {hasParsingFiles && (
-          <div className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-info-muted)] bg-[var(--color-info-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
-            <LoadingIndicator
-              size="sm"
-              variant="rose"
-              label="文件解析中"
-              detail="消息会等待资料完成后发送"
-            />
-            {pendingMessageQueue.length > 0 && (
-              <span className="font-mono">已排队 {pendingMessageQueue.length} 条</span>
-            )}
-          </div>
-        )}
         <ChatInput
           onSend={handleSend}
           onStop={abort}
@@ -601,7 +571,10 @@ export default function ProjectDetailPage() {
           attachments={chatAttachments}
           onAttachmentsChange={setChatAttachments}
           contextHint={selectedFileIds.size > 0 ? contextHint : undefined}
-          blockedReason={blockedReason}
+          model={model}
+          onModelChange={setModel}
+          reasoningEffort={reasoningEffort}
+          onReasoningEffortChange={setReasoningEffort}
         />
       </div>
       {showArtifacts && (
@@ -609,6 +582,13 @@ export default function ProjectDetailPage() {
           projectId={projectId}
           refreshKey={artifactRefreshKey}
           onClose={() => setShowArtifacts(false)}
+        />
+      )}
+      {previewFile && (
+        <FileContentDialog
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+          onUpdated={() => void projectQuery.refetch()}
         />
       )}
     </div>

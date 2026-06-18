@@ -8,8 +8,24 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { MermaidBlock } from "@/components/chat/mermaid-block";
-import { AmbientField } from "@/components/workbench/ambient-field";
 import { LoadingIndicator } from "@/components/workbench/loading-indicator";
 import { cn } from "@/lib/utils";
 import {
@@ -52,7 +68,6 @@ export function ArtifactLibrary({
   }
 
   async function remove(id: string) {
-    if (!confirm("确定删除这个成果吗？")) return;
     await deleteArtifact.mutateAsync(id);
     if (selectedId === id) setSelectedId(undefined);
   }
@@ -82,7 +97,8 @@ export function ArtifactLibrary({
   };
 
   return (
-    <div
+    <TooltipProvider>
+      <div
       className={`fixed inset-0 z-50 flex justify-end bg-[var(--color-overlay)] transition-opacity duration-300 ease-out motion-reduce:transition-none ${
         visible ? "opacity-100" : "opacity-0"
       }`}
@@ -91,26 +107,33 @@ export function ArtifactLibrary({
       }}
     >
       <div
-	        className={`flex h-full w-full max-w-4xl flex-col border-l border-[var(--color-border-light)] bg-[var(--color-panel)] shadow-[var(--shadow-float)] backdrop-blur-[var(--glass-blur)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
+	        className={`flex h-full w-full max-w-4xl flex-col bg-[var(--color-panel)] shadow-[var(--shadow-float)] backdrop-blur-[var(--glass-blur)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
           visible ? "translate-x-0" : "translate-x-full"
         }`}
       >
-	        <div className="flex min-h-14 items-center justify-between border-b border-[var(--color-border-light)] px-4 py-3">
+	        <div className="flex min-h-14 items-center justify-between bg-[var(--color-panel)] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold">成果库</h2>
             <p className="text-xs text-[var(--color-text-tertiary)]">保存、阅读和导出 AI 生成成果</p>
           </div>
-          <button
-            onClick={close}
-            aria-label="关闭成果库"
-            className="inline-flex size-8 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-          >
-            <X size={16} />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                onClick={close}
+                aria-label="关闭成果库"
+                variant="outline"
+                size="icon"
+              >
+                <X size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">关闭</TooltipContent>
+          </Tooltip>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[280px_1fr]">
           {/* ------ Left: artifact list ------ */}
-          <div className="overflow-y-auto border-b border-[var(--color-border)] p-2 md:border-b-0 md:border-r">
+          <div className="overflow-y-auto bg-[var(--color-panel)] p-2">
             {artifactsQuery.isPending ? (
               <div className="p-3">
                 <LoadingIndicator
@@ -121,9 +144,8 @@ export function ArtifactLibrary({
                 />
               </div>
             ) : artifacts.length === 0 ? (
-              <div className="relative min-h-48 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
-	                <AmbientField density="compact" className="opacity-60" />
-                <div className="relative">
+              <div className="min-h-48 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-4">
+                <div>
                   <p className="text-sm font-medium text-[var(--color-text-primary)]">暂无成果</p>
                   <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-tertiary)]">
                     在助手回答下方点击「保存为成果」，这里会保留 Markdown 源内容和导出入口。
@@ -136,16 +158,16 @@ export function ArtifactLibrary({
                 <div
                   key={artifact.id}
                   className={cn(
-                    "mb-1 w-full rounded-[var(--radius-lg)] border p-2.5 text-left transition-colors",
+                    "mb-1 w-full rounded-[var(--radius-lg)] p-2.5 text-left transition-colors",
                     isSelected
-                      ? "workbench-glow border-[var(--color-accent)] bg-[var(--color-accent-soft)]"
-                      : "border-[var(--color-border-light)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)]"
+                      ? "bg-[var(--color-interaction-active)]"
+                      : "bg-[var(--color-surface)] hover:bg-[var(--color-interaction-hover)]"
                   )}
                 >
                   <button
                     type="button"
                     onClick={() => setSelectedId(artifact.id)}
-                    className="block w-full rounded-[var(--radius-md)] text-left focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
+                    className="block w-full rounded-[var(--radius-md)] text-left focus-visible:outline-none focus-visible:bg-[var(--color-interaction-hover)]"
                     aria-label={`查看成果 ${artifact.title}`}
                   >
                     <p className="truncate text-sm font-medium">{artifact.title}</p>
@@ -154,15 +176,68 @@ export function ArtifactLibrary({
                     </p>
                   </button>
                   <div className="mt-1.5 flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    <button className="rounded-[var(--radius-sm)] p-1 hover:bg-[var(--color-surface-hover)]" onClick={() => setSelectedId(artifact.id)} aria-label={`查看成果 ${artifact.title}`} title="查看">
-                      <Eye size={14} />
-                    </button>
-                    <a className="rounded-[var(--radius-sm)] p-1 hover:bg-[var(--color-surface-hover)]" href={`/api/artifacts/${artifact.id}/export?format=markdown`} onClick={() => markExport("md")} aria-label="导出 Markdown" title="下载 MD">
-                      <Download size={14} />
-                    </a>
-                    <button className="rounded-[var(--radius-sm)] p-1 hover:bg-[var(--color-error-muted)] hover:text-[var(--color-error)]" onClick={() => remove(artifact.id)} aria-label="删除成果" title="删除">
-                      <Trash2 size={14} />
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => setSelectedId(artifact.id)}
+                          aria-label={`查看成果 ${artifact.title}`}
+                        >
+                          <Eye size={14} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">查看</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button asChild variant="ghost" size="icon-xs">
+                          <a
+                            href={`/api/artifacts/${artifact.id}/export?format=markdown`}
+                            onClick={() => markExport("md")}
+                            aria-label="导出 Markdown"
+                          >
+                            <Download size={14} />
+                          </a>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">下载 MD</TooltipContent>
+                    </Tooltip>
+                    <AlertDialog>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="danger"
+                              size="icon-xs"
+                              aria-label={`删除成果 ${artifact.title}`}
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </AlertDialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">删除</TooltipContent>
+                      </Tooltip>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>删除成果</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            确定要删除「{artifact.title}」吗？这个 Markdown 成果将无法恢复。
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>取消</AlertDialogCancel>
+                          <AlertDialogAction
+                            variant="destructive"
+                            onClick={() => void remove(artifact.id)}
+                          >
+                            删除
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               );
@@ -181,7 +256,7 @@ export function ArtifactLibrary({
               </div>
             ) : selected ? (
               <>
-                <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-3">
+                <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[var(--radius-lg)] bg-[var(--color-panel)] p-2">
                   <h3 className="mr-auto text-base font-semibold">{selected.title}</h3>
                   <Button variant="ghost" size="sm" onClick={() => copy(selected.content)}><Copy size={14} />复制</Button>
                   {(["markdown", "docx", "pdf"] as const).map((format) => (
@@ -194,7 +269,7 @@ export function ArtifactLibrary({
                     </a>
                   ))}
                 </div>
-                <div className="workbench-readable prose-sm break-words rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-panel)] p-4">
+                <div className="workbench-readable markdown-body break-words rounded-[var(--radius-lg)] bg-[var(--color-panel)] p-4">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeKatex, rehypeHighlight]}
@@ -219,19 +294,19 @@ export function ArtifactLibrary({
                 </div>
               </>
             ) : (
-              <div className="relative flex min-h-60 items-center justify-center overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-panel)] p-4 text-center">
-	                <AmbientField density="compact" className="opacity-60" />
-                <p className="relative text-sm text-[var(--color-text-tertiary)]">选择一个成果查看内容和导出选项</p>
+              <div className="flex min-h-60 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-panel)] p-4 text-center">
+                <p className="text-sm text-[var(--color-text-tertiary)]">选择一个成果查看内容和导出选项</p>
               </div>
             )}
           </div>
         </div>
         {message && (
-          <div className="border-t border-[var(--color-border)] px-4 py-2 text-xs text-[var(--color-success)]">
+          <div className="bg-[var(--color-success-muted)] px-4 py-2 text-xs text-[var(--color-success)]">
             {message}
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

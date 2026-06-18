@@ -1,61 +1,159 @@
 "use client";
 
+import { useMemo } from "react";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+type Provider = "deepseek" | "minimax";
+type Strength = "fast" | "balanced" | "advanced";
+type ReasoningEffort = "high" | "max";
 
 interface ModelSelectorProps {
   model: string;
   onChange: (model: string) => void;
+  reasoningEffort?: ReasoningEffort;
+  onReasoningEffortChange?: (effort: ReasoningEffort) => void;
   disabled?: boolean;
+  compact?: boolean;
+  className?: string;
 }
 
-const models = [
-  {
-    id: "deepseek-v4-pro",
-    label: "Pro",
-    desc: "DeepSeek V4 Pro",
-    price: "¥3/¥6",
-  },
-  {
-    id: "deepseek-v4-flash",
-    label: "Flash",
-    desc: "DeepSeek V4 Flash",
-    price: "¥1/¥2",
-  },
+const STRENGTHS: Array<{ value: Strength; label: string; effort: ReasoningEffort }> = [
+  { value: "fast", label: "极速", effort: "high" },
+  { value: "balanced", label: "均衡", effort: "high" },
+  { value: "advanced", label: "高级", effort: "max" },
 ];
+
+const PROVIDERS: Array<{ value: Provider; label: string }> = [
+  { value: "deepseek", label: "DeepSeek" },
+  { value: "minimax", label: "MiniMax" },
+];
+
+function providerFor(model: string): Provider {
+  return model === "minimax-m3" ? "minimax" : "deepseek";
+}
+
+function strengthFor(model: string, effort: ReasoningEffort): Strength {
+  if (model === "deepseek-v4-flash") return "fast";
+  if (effort === "max") return "advanced";
+  return "balanced";
+}
+
+function modelFor(provider: Provider, strength: Strength) {
+  if (provider === "minimax") return "minimax-m3";
+  return strength === "fast" ? "deepseek-v4-flash" : "deepseek-v4-pro";
+}
 
 export function ModelSelector({
   model,
   onChange,
+  reasoningEffort = "max",
+  onReasoningEffortChange,
   disabled = false,
+  compact = false,
+  className,
 }: ModelSelectorProps) {
+  const provider = providerFor(model);
+  const strength = strengthFor(model, reasoningEffort);
+  const providerLabel = PROVIDERS.find((item) => item.value === provider)?.label ?? "DeepSeek";
+  const strengthLabel = STRENGTHS.find((item) => item.value === strength)?.label ?? "高级";
+
+  const triggerLabel = useMemo(
+    () => `${strengthLabel} · ${providerLabel}`,
+    [providerLabel, strengthLabel]
+  );
+
+  function setStrength(nextStrength: Strength) {
+    const next = STRENGTHS.find((item) => item.value === nextStrength);
+    if (!next) return;
+    onReasoningEffortChange?.(next.effort);
+    onChange(modelFor(provider, nextStrength));
+  }
+
+  function setProvider(nextProvider: Provider) {
+    onChange(modelFor(nextProvider, strength));
+  }
+
   return (
-    <div
-      className="flex shrink-0 items-center gap-1 rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-0.5 shadow-sm backdrop-blur-[var(--glass-blur)]"
-      role="radiogroup"
-      aria-label="Model"
-    >
-      {models.map((m) => {
-        const active = model === m.id;
-        return (
-          <button
-            key={m.id}
-            role="radio"
-            aria-checked={active}
-            disabled={disabled}
-            onClick={() => onChange(m.id)}
-            className={cn(
-              "rounded-[var(--radius-md)] px-2.5 py-1.5 text-xs sm:px-3",
-              "border transition-[background-color,border-color,color,box-shadow] duration-150",
-              active
-                ? "bg-[var(--color-accent)] text-[var(--color-accent-contrast)] border-[var(--color-accent)] shadow-sm"
-                : "border-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-            )}
-            title={`${m.desc} · ${m.price} per 1M tokens`}
-          >
-            {m.label}
-          </button>
-        );
-      })}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled}
+          className={cn(
+            "h-8 shrink-0 rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)] px-3 text-sm font-normal text-[var(--color-text-primary)] hover:bg-[var(--color-interaction-hover)] focus-visible:bg-[var(--color-interaction-active)]",
+            compact && "max-w-[min(72vw,14rem)]",
+            className
+          )}
+          aria-label="选择模型强度和模型"
+        >
+          <span className="truncate">{triggerLabel}</span>
+          <ChevronDown data-icon="inline-end" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={8}
+        className="w-56 rounded-[var(--radius-xl)] p-2"
+      >
+        <DropdownMenuLabel className="px-3 py-2 text-sm font-normal text-[var(--color-text-tertiary)]">
+          智能
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={strength}
+          onValueChange={(value) => setStrength(value as Strength)}
+        >
+          {STRENGTHS.map((item) => (
+            <DropdownMenuRadioItem
+              key={item.value}
+              value={item.value}
+              className="h-10 rounded-[var(--radius-md)] px-3 text-base"
+            >
+              {item.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator className="mx-3 my-2" />
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="h-10 rounded-[var(--radius-md)] px-3 text-base">
+              <span className="flex-1">模型</span>
+              <span className="text-sm text-[var(--color-text-tertiary)]">
+                {providerLabel}
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-40 rounded-[var(--radius-xl)] p-2">
+              {PROVIDERS.map((item) => (
+                <DropdownMenuItem
+                  key={item.value}
+                  onSelect={() => setProvider(item.value)}
+                  className="h-10 rounded-[var(--radius-md)] px-3 text-base"
+                >
+                  <span className="flex-1">{item.label}</span>
+                  {provider === item.value && <Check data-icon="inline-end" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

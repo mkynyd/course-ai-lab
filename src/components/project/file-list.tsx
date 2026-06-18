@@ -3,11 +3,36 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
-  NavArrowDown,
+  CubeScan,
+  Download,
+  Eye,
   NavArrowRight,
   Page,
+  Trash,
 } from "iconoir-react";
 import { FILE_CATEGORIES } from "@/lib/file-categories";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface ProjectFile {
   id: string;
@@ -33,6 +58,7 @@ interface FileListProps {
   files: ProjectFile[];
   selectedIds: Set<string>;
   onToggle: (id: string, intent: FileSelectionIntent) => void;
+  onFileAction?: (action: "delete" | "reparse" | "download" | "preview", file: ProjectFile) => void;
   defaultGroupsCollapsed?: boolean;
   className?: string;
 }
@@ -58,37 +84,37 @@ export function FileList({
   files,
   selectedIds,
   onToggle,
+  onFileAction,
   defaultGroupsCollapsed = false,
   className,
 }: FileListProps) {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<ProjectFile | null>(null);
+
   if (files.length === 0) {
-    return (
-      <p className={cn("text-xs leading-relaxed text-[var(--color-text-tertiary)] py-4 text-center", className)}>
-        上传实验数据、代码、课件、试卷或笔记，开始构建项目上下文。
-      </p>
-    );
+    return null;
   }
 
   function isGroupOpen(category: string) {
     return defaultGroupsCollapsed ? openGroups.has(category) : !openGroups.has(category);
   }
 
-  function toggleGroup(category: string) {
+  function setGroupOpen(category: string, open: boolean) {
     setOpenGroups((current) => {
       const next = new Set(current);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
+      const shouldStore = defaultGroupsCollapsed ? open : !open;
+      if (shouldStore) next.add(category);
+      else next.delete(category);
       return next;
     });
   }
 
   function renderFile(file: ProjectFile, index: number) {
     const selected = selectedIds.has(file.id);
+    const parsing = file.status === "parsing";
 
-    return (
+    const row = (
       <button
-        key={file.id}
         type="button"
         role="checkbox"
         aria-checked={selected}
@@ -102,42 +128,138 @@ export function FileList({
         }
         className={cn(
           "flex h-8 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-2 text-left",
-          "transition-[background-color,color] duration-150",
+          "transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:bg-[var(--color-interaction-hover)]",
           selected
-            ? "bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
-            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+            ? "bg-[var(--color-interaction-active)] text-[var(--color-text-primary)]"
+            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]"
         )}
       >
-        <Page width={14} height={14} strokeWidth={2} className="shrink-0 opacity-70" />
+        {parsing ? (
+          <Spinner className="shrink-0 text-[var(--color-text-tertiary)]" />
+        ) : (
+          <Page width={14} height={14} strokeWidth={2} className="shrink-0 opacity-70" />
+        )}
         <span className="min-w-0 flex-1 truncate text-xs font-medium">
           {file.originalName}
         </span>
+        {parsing && (
+          <span className="shrink-0 text-[10px] text-[var(--color-text-tertiary)]">
+            解析中
+          </span>
+        )}
       </button>
+    );
+
+    return (
+      <ContextMenu key={file.id}>
+        <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
+        <ContextMenuContent className="min-w-32">
+          <ContextMenuItem
+            className="justify-start text-left"
+            onSelect={() => onFileAction?.("preview", file)}
+          >
+            <Eye strokeWidth={2} />
+            预览
+          </ContextMenuItem>
+          <ContextMenuItem
+            className="justify-start text-left"
+            onSelect={() => onFileAction?.("download", file)}
+          >
+            <Download strokeWidth={2} />
+            下载
+          </ContextMenuItem>
+          <ContextMenuItem
+            className="justify-start text-left"
+            onSelect={() => onFileAction?.("reparse", file)}
+          >
+            <CubeScan strokeWidth={2} />
+            重新解析
+          </ContextMenuItem>
+          <ContextMenuItem
+            variant="destructive"
+            className="justify-start text-left"
+            onSelect={() => setDeleteTarget(file)}
+          >
+            <Trash strokeWidth={2} />
+            删除
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     );
   }
 
   return (
-    <div className={cn("workbench-animated-list space-y-1", className)}>
-      {groupedFiles(files).map((group) => {
-        const open = isGroupOpen(group.category);
-        return (
-          <div key={group.category} className="space-y-1">
-            <button
-              type="button"
-              onClick={() => toggleGroup(group.category)}
-              className="flex h-7 w-full items-center justify-between rounded-[var(--radius-md)] px-2 text-[11px] font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-hover)]"
-              aria-expanded={open}
+    <>
+      <div className={cn("workbench-animated-list flex flex-col gap-1", className)}>
+        {groupedFiles(files).map((group) => {
+          const open = isGroupOpen(group.category);
+          return (
+            <Collapsible
+              key={group.category}
+              open={open}
+              onOpenChange={(nextOpen) => setGroupOpen(group.category, nextOpen)}
+              className="flex flex-col gap-1"
             >
-              <span className="inline-flex items-center gap-1">
-                {open ? <NavArrowDown width={12} height={12} /> : <NavArrowRight width={12} height={12} />}
-                {group.category}
-              </span>
-              <span className="font-mono">{group.files.length}</span>
-            </button>
-            {open && group.files.map((file) => renderFile(file, files.indexOf(file)))}
-          </div>
-        );
-      })}
-    </div>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-7 w-full items-center justify-between rounded-[var(--radius-sm)] px-2 text-[11px] font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-interaction-hover)] focus-visible:outline-none focus-visible:bg-[var(--color-interaction-hover)]"
+                  aria-expanded={open}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    <NavArrowRight
+                      width={12}
+                      height={12}
+                      className={cn(
+                        "transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                        open && "rotate-90"
+                      )}
+                    />
+                    {group.category}
+                  </span>
+                  <span className="font-mono">{group.files.length}</span>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="grid overflow-hidden transition-[grid-template-rows,opacity,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] data-[state=closed]:grid-rows-[0fr] data-[state=closed]:-translate-y-1 data-[state=closed]:opacity-0 data-[state=open]:grid-rows-[1fr] data-[state=open]:translate-y-0 data-[state=open]:opacity-100 motion-reduce:transition-none">
+                <div className="min-h-0 overflow-hidden">
+                  <div className="flex flex-col gap-1 pt-1">
+                    {group.files.map((file) => renderFile(file, files.indexOf(file)))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          );
+        })}
+      </div>
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除文件</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除「{deleteTarget?.originalName}」吗？文件内容、解析结果和索引记录将无法恢复。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (deleteTarget) {
+                  onFileAction?.("delete", deleteTarget);
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -16,8 +16,8 @@ export function ThemeToggle({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex items-center border border-[var(--color-border-light)] rounded-[var(--radius-lg)] p-0.5",
-        "bg-[var(--color-surface)] shadow-sm backdrop-blur-[var(--glass-blur)]",
+        "flex items-center rounded-[var(--radius-lg)] p-0.5",
+        "bg-[var(--color-surface)] backdrop-blur-[var(--glass-blur)]",
         className
       )}
       role="radiogroup"
@@ -35,7 +35,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             className={cn(
               "flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] transition-colors duration-150",
               active
-                ? "bg-[var(--color-accent)] text-[var(--color-accent-contrast)] shadow-sm"
+                ? "bg-[var(--color-interaction-active)] text-[var(--color-text-primary)]"
                 : "text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
             )}
           >

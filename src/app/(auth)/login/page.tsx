@@ -57,7 +57,7 @@ function LoginForm() {
       </div>
 
       {/* 登录卡片 */}
-      <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-6">
+      <div className="rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
@@ -74,10 +74,9 @@ function LoginForm() {
               required
               className={cn(
                 "w-full h-10 px-3 text-sm rounded-[var(--radius-md)]",
-                "border border-[var(--color-border)]",
                 "bg-[var(--color-bg)] text-[var(--color-text-primary)]",
                 "placeholder:text-[var(--color-text-tertiary)]",
-                "focus:outline-none focus:border-[var(--color-accent)]",
+                "focus:outline-none focus:bg-[var(--color-interaction-active)]",
                 "transition-colors duration-150"
               )}
               placeholder="you@example.com"
@@ -99,10 +98,9 @@ function LoginForm() {
               required
               className={cn(
                 "w-full h-10 px-3 text-sm rounded-[var(--radius-md)]",
-                "border border-[var(--color-border)]",
                 "bg-[var(--color-bg)] text-[var(--color-text-primary)]",
                 "placeholder:text-[var(--color-text-tertiary)]",
-                "focus:outline-none focus:border-[var(--color-accent)]",
+                "focus:outline-none focus:bg-[var(--color-interaction-active)]",
                 "transition-colors duration-150",
                 "font-mono"
               )}
