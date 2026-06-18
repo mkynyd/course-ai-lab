@@ -10,7 +10,9 @@ import { ChevronDown, ChevronRight, User, Bot, Save } from "lucide-react";
 import { MermaidBlock } from "@/components/chat/mermaid-block";
 import { LoadingIndicator } from "@/components/workbench/loading-indicator";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 interface MessageBubbleProps {
@@ -177,10 +179,10 @@ function MessageBubbleComponent({
             </button>
             {showSave && (
 	              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-panel)] p-2 shadow-[var(--shadow-panel)] backdrop-blur-[var(--glass-blur)]">
-                <input
+                <Input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
-	                  className="h-8 min-w-40 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-2 text-xs focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-muted)]"
+                  className="min-w-40 text-xs"
                   maxLength={150}
                   aria-label="成果标题"
                 />
@@ -201,8 +203,8 @@ function MessageBubbleComponent({
                   variant="primary"
                   disabled={saving || !title.trim()}
                   onClick={saveArtifact}
-                  isLoading={saving}
                 >
+                  {saving && <Spinner data-icon="inline-start" />}
                   {saving ? "保存中" : "保存"}
                 </Button>
               </div>

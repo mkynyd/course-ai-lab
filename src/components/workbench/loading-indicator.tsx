@@ -1,7 +1,7 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 type LoadingVariant = "lissajous" | "rose" | "orbit";
 
@@ -14,8 +14,6 @@ interface LoadingIndicatorProps {
   className?: string;
 }
 
-const particleIndexes = [0, 1, 2, 3, 4, 5];
-
 export function LoadingIndicator({
   label = "正在计算",
   detail,
@@ -24,11 +22,7 @@ export function LoadingIndicator({
   speed = "calm",
   className,
 }: LoadingIndicatorProps) {
-  const speedMap = {
-    calm: "3.25s",
-    normal: "2.65s",
-    fast: "2.1s",
-  };
+  void variant;
 
   return (
     <div
@@ -37,21 +31,18 @@ export function LoadingIndicator({
       aria-live="polite"
       aria-label={detail ? `${label}，${detail}` : label}
     >
-      <div
-        className={cn("loading-indicator", `loading-indicator-${size}`)}
-        data-variant={variant}
-        style={{ "--loading-indicator-speed": speedMap[speed] } as CSSProperties}
+      <Spinner
+        className={cn(
+          "loading-indicator-spinner text-primary",
+          size === "sm" && "size-4",
+          size === "md" && "size-5",
+          size === "lg" && "size-7",
+          speed === "calm" && "duration-1000",
+          speed === "normal" && "duration-700",
+          speed === "fast" && "duration-500"
+        )}
         aria-hidden="true"
-      >
-        {particleIndexes.map((index) => (
-          <span
-            key={index}
-            className="loading-indicator-dot"
-            style={{ "--particle-index": index } as CSSProperties}
-          />
-        ))}
-        <span className="loading-indicator-ring" />
-      </div>
+      />
       <span className="min-w-0">
         <span className="block truncate text-xs font-medium text-[var(--color-text-primary)]">
           {label}

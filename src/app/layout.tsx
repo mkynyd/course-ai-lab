@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "course-ai-lab",
@@ -20,7 +25,7 @@ export default async function RootLayout({
   return (
     <html
       lang="zh-CN"
-      className={`${themeClass} h-full antialiased`}
+      className={cn("h-full", "antialiased", themeClass, "font-sans", geist.variable)}
       suppressHydrationWarning
     >
       <head>
@@ -44,7 +49,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-[var(--color-bg)] text-[var(--color-text-primary)]">
         <ThemeProvider initialTheme={themeCookie || "system"}>
-          {children}
+          <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
       </body>
     </html>
