@@ -8,4 +8,11 @@ describe("routeModel", () => {
       shouldLock: true,
     });
   });
+
+  it("routes to MiniMax when the user explicitly selects MiniMax M3 without forcing a lock", () => {
+    expect(routeModel(null, [], { requestedModel: "minimax-m3" })).toEqual({
+      provider: "minimax",
+      shouldLock: false,
+    });
+  });
 });

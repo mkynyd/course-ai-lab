@@ -1,18 +1,18 @@
 "use client";
 
-import type { HTMLAttributes, PointerEvent } from "react";
+import { forwardRef, type HTMLAttributes, type PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 
 interface SpotlightCardProps extends HTMLAttributes<HTMLDivElement> {
   active?: boolean;
 }
 
-export function SpotlightCard({
+export const SpotlightCard = forwardRef<HTMLDivElement, SpotlightCardProps>(function SpotlightCard({
   active = false,
   className,
   onPointerMove,
   ...props
-}: SpotlightCardProps) {
+}, ref) {
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     event.currentTarget.style.setProperty(
@@ -36,8 +36,9 @@ export function SpotlightCard({
           : "border-[var(--color-border-light)] hover:border-[var(--color-accent-muted)]",
         className
       )}
+      ref={ref}
       onPointerMove={handlePointerMove}
       {...props}
     />
   );
-}
+});

@@ -112,6 +112,7 @@ export async function streamMiniMaxChat(
   params: {
     messages: DeepSeekMessage[];
     attachments?: ServerFileAttachment[];
+    thinking?: boolean;
     maxTokens?: number;
   }
 ): Promise<{
@@ -126,7 +127,9 @@ export async function streamMiniMaxChat(
       model: "MiniMax-M3",
       max_tokens: params.maxTokens || 8192,
       temperature: 0.7,
-      thinking: { type: "disabled" },
+      thinking: params.thinking
+        ? ({ type: "enabled", budget_tokens: 4096 } as { type: "enabled"; budget_tokens: number })
+        : { type: "disabled" },
       system,
       messages: applyAttachmentsToLastUserMessage(
         history,

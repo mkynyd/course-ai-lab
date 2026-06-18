@@ -21,7 +21,9 @@ import { useChat, type SendMessageInput } from "@/lib/hooks/use-chat";
 import type { FileAttachment } from "@/lib/chat/router";
 import type {
   FileSelectionIntent,
+  ProjectFile,
 } from "@/components/project/file-list";
+import { FileContentDialog } from "@/components/project/file-content-dialog";
 import type { ProjectType } from "@/components/chat/quick-task-bar";
 import { ArtifactLibrary } from "@/components/artifact/artifact-library";
 import { Button } from "@/components/ui/button";
@@ -49,6 +51,7 @@ export default function ProjectDetailPage() {
     useState(false);
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
   const [fileMessage, setFileMessage] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<ProjectFile | null>(null);
   const [showArtifacts, setShowArtifacts] = useState(false);
   const [artifactRefreshKey, setArtifactRefreshKey] = useState(0);
   const selectedFileIdList = useMemo(
@@ -214,9 +217,14 @@ export default function ProjectDetailPage() {
   }
 
   async function handleFileAction(
-    action: "delete" | "reparse" | "download",
+    action: "delete" | "reparse" | "download" | "preview",
     fileId: string
   ) {
+    if (action === "preview") {
+      const file = project?.files.find((item) => item.id === fileId) || null;
+      if (file) setPreviewFile(file);
+      return;
+    }
     await runBatchAction(action, [fileId]);
   }
 
@@ -575,6 +583,13 @@ export default function ProjectDetailPage() {
           projectId={projectId}
           refreshKey={artifactRefreshKey}
           onClose={() => setShowArtifacts(false)}
+        />
+      )}
+      {previewFile && (
+        <FileContentDialog
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+          onUpdated={() => void projectQuery.refetch()}
         />
       )}
     </div>

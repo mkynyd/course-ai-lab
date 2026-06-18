@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   CubeScan,
   Download,
+  Eye,
   NavArrowDown,
   NavArrowRight,
   Page,
@@ -52,7 +53,7 @@ interface FileListProps {
   files: ProjectFile[];
   selectedIds: Set<string>;
   onToggle: (id: string, intent: FileSelectionIntent) => void;
-  onFileAction?: (action: "delete" | "reparse" | "download", file: ProjectFile) => void;
+  onFileAction?: (action: "delete" | "reparse" | "download" | "preview", file: ProjectFile) => void;
   defaultGroupsCollapsed?: boolean;
   className?: string;
 }
@@ -137,6 +138,13 @@ export function FileList({
       <ContextMenu key={file.id}>
         <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
         <ContextMenuContent className="min-w-32">
+          <ContextMenuItem
+            className="justify-start text-left"
+            onSelect={() => onFileAction?.("preview", file)}
+          >
+            <Eye strokeWidth={2} />
+            预览
+          </ContextMenuItem>
           <ContextMenuItem
             className="justify-start text-left"
             onSelect={() => onFileAction?.("download", file)}

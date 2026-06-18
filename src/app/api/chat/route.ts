@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
   );
 
   const preflightRoute = !conversationId
-    ? routeModel(null, attachments, { requiresVisionModel })
+    ? routeModel(null, attachments, { requiresVisionModel, requestedModel: model })
     : null;
   let preflightApiKey: string | null = null;
   if (preflightRoute) {
@@ -300,6 +300,7 @@ export async function POST(request: NextRequest) {
 
   const modelRoute = routeModel(conversation, attachments, {
     requiresVisionModel,
+    requestedModel: model,
   });
   const shouldCompressDeepSeekHistory =
     modelRoute.provider === "minimax" && conversation.modelLock !== "minimax";
@@ -393,6 +394,7 @@ export async function POST(request: NextRequest) {
       streamResult = await streamMiniMaxChat(apiKey, {
         messages: filterThinkingForMiniMax(routedMessages),
         attachments: attachments.filter((attachment) => !isTextAttachment(attachment)),
+        thinking: thinkingEnabled,
       });
     } else {
       streamResult = await streamChat(apiKey, {

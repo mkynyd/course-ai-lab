@@ -6,7 +6,6 @@ import type { FileAttachment } from "@/lib/chat/router";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { ModelSelector } from "@/components/chat/model-selector";
 import {
   Tooltip,
@@ -194,21 +193,11 @@ export function ChatInput({
               <ModelSelector
                 model={model}
                 onChange={onModelChange}
+                thinkingEnabled={thinkingEnabled}
+                onThinkingEnabledChange={onThinkingEnabledChange}
                 disabled={isStreaming || disabled}
                 compact
               />
-            )}
-            {onThinkingEnabledChange && thinkingEnabled !== undefined && (
-              <label className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)] px-2 text-xs text-[var(--color-text-secondary)]">
-                <Switch
-                  checked={thinkingEnabled}
-                  onCheckedChange={onThinkingEnabledChange}
-                  disabled={isStreaming || disabled}
-                  size="sm"
-                  aria-label="思考模式"
-                />
-                思考
-              </label>
             )}
           </div>
           {isStreaming ? (

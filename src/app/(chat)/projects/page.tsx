@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChatLines, Folder, Page, Plus, Trash } from "iconoir-react";
@@ -18,6 +20,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 const TYPE_LABELS: Record<string, string> = {
   experiment: "实验工作台",
@@ -27,10 +35,15 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const projectsQuery = useProjects();
   const deleteProjectMutation = useDeleteProject();
   const projects = projectsQuery.data || [];
   const isLoading = projectsQuery.isPending;
+  const [contextDeleteTarget, setContextDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   async function deleteProject(id: string) {
     await deleteProjectMutation.mutateAsync(id);
@@ -86,12 +99,13 @@ export default function ProjectsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {projects.map((project) => (
-              <SpotlightCard
-                key={project.id}
-                className={cn(
-                  "group relative p-5"
-                )}
-              >
+              <ContextMenu key={project.id}>
+                <ContextMenuTrigger asChild>
+                  <SpotlightCard
+                    className={cn(
+                      "group relative p-5"
+                    )}
+                  >
 	                  <div className="flex items-start justify-between mb-3">
 	                    <Link
 	                      href={`/projects/${project.id}`}
@@ -160,11 +174,57 @@ export default function ProjectsPage() {
 	                      </span>
 	                    </div>
 	                  </Link>
-              </SpotlightCard>
+                  </SpotlightCard>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="min-w-36">
+                  <ContextMenuItem
+                    onSelect={() => router.push(`/projects/${project.id}`)}
+                  >
+                    <Folder strokeWidth={2} />
+                    打开项目
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    variant="destructive"
+                    onSelect={() => setContextDeleteTarget(project)}
+                  >
+                    <Trash strokeWidth={2} />
+                    删除
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             ))}
           </div>
         )}
       </div>
+      <AlertDialog
+        open={contextDeleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setContextDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除项目</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除「{contextDeleteTarget?.name}」吗？相关文件和对话将被一并删除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (contextDeleteTarget) {
+                  void deleteProject(contextDeleteTarget.id);
+                  setContextDeleteTarget(null);
+                }
+              }}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

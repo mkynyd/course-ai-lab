@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsPanel } from "@/components/settings/settings-panel";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,8 +17,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +62,7 @@ import {
   useConversations,
   useDeleteConversation,
 } from "@/lib/hooks/use-conversations";
-import { useProjects } from "@/lib/hooks/use-projects";
+import { useDeleteProject, useProjects } from "@/lib/hooks/use-projects";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -70,6 +84,16 @@ export function Sidebar({
   const conversationsQuery = useConversations();
   const projectsQuery = useProjects();
   const deleteConversationMutation = useDeleteConversation();
+  const deleteProjectMutation = useDeleteProject();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [conversationDeleteTarget, setConversationDeleteTarget] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [projectDeleteTarget, setProjectDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const conversations = conversationsQuery.data || [];
   const projects = projectsQuery.data || [];
   const isLoading =
@@ -78,6 +102,11 @@ export function Sidebar({
   async function deleteConversation(id: string) {
     await deleteConversationMutation.mutateAsync(id);
     if (pathname === `/chat/${id}`) router.push("/chat");
+  }
+
+  async function deleteProject(id: string) {
+    await deleteProjectMutation.mutateAsync(id);
+    if (pathname === `/projects/${id}`) router.push("/projects");
   }
 
   function openSection(section: "chat" | "projects") {
@@ -233,46 +262,48 @@ export function Sidebar({
               conversations.length > 0 ? (
                 <SidebarMenu className="gap-1">
                   {conversations.map((conversation) => (
-                    <SidebarMenuItem
-                      key={conversation.id}
-                    >
-                      <SidebarMenuButton asChild isActive={activeConversationId === conversation.id}>
-                        <Link href={`/chat/${conversation.id}`} onClick={onClose}>
-                          <ChatLines strokeWidth={2} />
-                          <span>{conversation.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                    <ContextMenu key={conversation.id}>
+                      <ContextMenuTrigger asChild>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton asChild isActive={activeConversationId === conversation.id}>
+                            <Link href={`/chat/${conversation.id}`} onClick={onClose}>
+                              <ChatLines strokeWidth={2} />
+                              <span>{conversation.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
                           <SidebarMenuAction
                             type="button"
                             showOnHover
-                            onClick={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setConversationDeleteTarget(conversation);
+                            }}
                             className="hover:text-destructive"
                             aria-label={`删除「${conversation.title}」`}
                           >
                             <Trash strokeWidth={2} />
                           </SidebarMenuAction>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>删除对话</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              确定要删除「{conversation.title}」吗？这条对话记录将无法恢复。
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => void deleteConversation(conversation.id)}
-                            >
-                              删除
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </SidebarMenuItem>
+                        </SidebarMenuItem>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent className="min-w-36">
+                        <ContextMenuItem
+                          onSelect={() => {
+                            onClose();
+                            router.push(`/chat/${conversation.id}`);
+                          }}
+                        >
+                          <ChatLines strokeWidth={2} />
+                          打开对话
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          variant="destructive"
+                          onSelect={() => setConversationDeleteTarget(conversation)}
+                        >
+                          <Trash strokeWidth={2} />
+                          删除
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
                   ))}
                 </SidebarMenu>
               ) : (
@@ -285,16 +316,36 @@ export function Sidebar({
             ) : projects.length > 0 ? (
               <SidebarMenu className="gap-1">
                 {projects.map((project) => (
-                  <SidebarMenuItem
-                    key={project.id}
-                  >
-                    <SidebarMenuButton asChild isActive={activeProjectId === project.id} className="min-h-10">
-                      <Link href={`/projects/${project.id}`} onClick={onClose}>
+                  <ContextMenu key={project.id}>
+                    <ContextMenuTrigger asChild>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={activeProjectId === project.id} className="min-h-10">
+                          <Link href={`/projects/${project.id}`} onClick={onClose}>
+                            <Folder strokeWidth={2} />
+                            <span>{project.name}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="min-w-36">
+                      <ContextMenuItem
+                        onSelect={() => {
+                          onClose();
+                          router.push(`/projects/${project.id}`);
+                        }}
+                      >
                         <Folder strokeWidth={2} />
-                        <span>{project.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                        打开项目
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        variant="destructive"
+                        onSelect={() => setProjectDeleteTarget(project)}
+                      >
+                        <Trash strokeWidth={2} />
+                        删除
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 ))}
               </SidebarMenu>
             ) : (
@@ -353,11 +404,9 @@ export function Sidebar({
               align="end"
               className="w-48 workbench-border-glow"
             >
-              <DropdownMenuItem asChild>
-                <Link href="/settings">
-                  <Settings size={14} strokeWidth={2} />
-                  设置
-                </Link>
+              <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
+                <Settings size={14} strokeWidth={2} />
+                设置
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -370,6 +419,77 @@ export function Sidebar({
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarFooter>
+        <AlertDialog
+          open={conversationDeleteTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setConversationDeleteTarget(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>删除对话</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除「{conversationDeleteTarget?.title}」吗？这条对话记录将无法恢复。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={() => {
+                  if (conversationDeleteTarget) {
+                    void deleteConversation(conversationDeleteTarget.id);
+                    setConversationDeleteTarget(null);
+                  }
+                }}
+              >
+                删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog
+          open={projectDeleteTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setProjectDeleteTarget(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>删除项目</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除「{projectDeleteTarget?.name}」吗？相关文件和对话将被一并删除。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={() => {
+                  if (projectDeleteTarget) {
+                    void deleteProject(projectDeleteTarget.id);
+                    setProjectDeleteTarget(null);
+                  }
+                }}
+              >
+                删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogContent className="max-w-[min(920px,calc(100vw-2rem))] p-0 sm:max-w-[920px]">
+            <DialogHeader className="border-b border-[var(--color-border-light)] px-5 py-4">
+              <DialogTitle>设置</DialogTitle>
+              <DialogDescription>
+                管理服务访问、缓存、外观和账户。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="px-5 py-4">
+              <SettingsPanel compact />
+            </div>
+          </DialogContent>
+        </Dialog>
       </aside>
     </SidebarProvider>
   );

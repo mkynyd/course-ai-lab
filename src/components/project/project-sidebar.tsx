@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps, ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { FileUpload } from "@/components/project/file-upload";
@@ -21,19 +21,26 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarContent,
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import {
@@ -44,10 +51,13 @@ import {
   Folder,
   MagicWand,
   NavArrowLeft,
+  NavArrowDown,
+  NavArrowRight,
   Plus,
   RefreshDouble,
   Trash,
   ChatLines,
+  MoreHoriz,
 } from "iconoir-react";
 import { useProjectFiles } from "@/lib/hooks/use-project-files";
 import { LoadingIndicator } from "@/components/workbench/loading-indicator";
@@ -79,7 +89,7 @@ interface ProjectSidebarProps {
   onBatchAutoCategorize: () => void;
   onBatchReparseFailed: () => void;
   onBatchDownload: () => void;
-  onFileAction: (action: "delete" | "reparse" | "download", fileId: string) => void;
+  onFileAction: (action: "delete" | "reparse" | "download" | "preview", fileId: string) => void;
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
   onConversationDelete: (id: string, title: string) => void;
@@ -110,7 +120,7 @@ function ToolbarButton({
           type="button"
           variant="secondary"
           size="icon-sm"
-          className={cn("size-8 rounded-[var(--radius-sm)] border-0", className)}
+          className={cn("h-8 w-full rounded-[var(--radius-sm)] border-0", className)}
           aria-label={label}
           {...props}
         >
@@ -151,6 +161,12 @@ export function ProjectSidebar({
   ).length;
   const selectedCount = selectedFileIds.size;
   const allSelected = files.length > 0 && selectedCount === files.length;
+  const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
+  const [conversationsOpen, setConversationsOpen] = useState(true);
+  const [conversationDeleteTarget, setConversationDeleteTarget] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
   return (
     <SidebarProvider defaultOpen className="h-full min-h-0 w-full">
@@ -218,7 +234,7 @@ export function ProjectSidebar({
             </div>
           )}
           <TooltipProvider>
-            <ButtonGroup className="mb-2 grid w-fit grid-cols-4 gap-1 [&>*]:rounded-[var(--radius-sm)]! [&>*]:border-0!">
+            <ButtonGroup className="mb-2 grid w-full grid-cols-4 gap-1 [&>*]:rounded-[var(--radius-sm)]! [&>*]:border-0!">
               <ToolbarButton
                 label={allSelected ? "取消全选" : "全选"}
                 onClick={allSelected ? onClearFileSelection : onSelectAllFiles}
@@ -235,21 +251,11 @@ export function ProjectSidebar({
                   <CheckCircle strokeWidth={2} />
                 )}
               </ToolbarButton>
-              <ToolbarButton
-                label="删除当前上下文"
-                onClick={onBatchDelete}
-                disabled={selectedCount === 0}
-                className="hover:text-destructive"
-              >
-                <Trash strokeWidth={2} />
-              </ToolbarButton>
-              <ToolbarButton
-                label="重新解析"
-                onClick={onBatchReparseFailed}
-                disabled={failedCount === 0}
-              >
-                <RefreshDouble strokeWidth={2} />
-              </ToolbarButton>
+              <FileUpload
+                projectId={project.id}
+                onUploaded={onFileUploaded}
+                triggerClassName="h-8 w-full rounded-[var(--radius-sm)] border-0"
+              />
               <ToolbarButton
                 label="重新分类"
                 onClick={onBatchAutoCategorize}
@@ -257,27 +263,80 @@ export function ProjectSidebar({
               >
                 <MagicWand strokeWidth={2} />
               </ToolbarButton>
-              <FileUpload
-                projectId={project.id}
-                onUploaded={onFileUploaded}
-                triggerClassName="size-8 rounded-[var(--radius-sm)] border-0"
-              />
-              <ToolbarButton
-                label="解析当前上下文"
-                onClick={onBatchReparse}
-                disabled={selectedCount === 0}
-              >
-                <CubeScan strokeWidth={2} />
-              </ToolbarButton>
-              <ToolbarButton
-                label="下载当前上下文"
-                onClick={onBatchDownload}
-                disabled={selectedCount === 0}
-              >
-                <Download strokeWidth={2} />
-              </ToolbarButton>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="icon-sm"
+                        className="h-8 w-full rounded-[var(--radius-sm)] border-0"
+                        aria-label="更多资料操作"
+                      >
+                        <MoreHoriz strokeWidth={2} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">更多</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem
+                    disabled={failedCount === 0}
+                    onSelect={() => onBatchReparseFailed()}
+                  >
+                    <RefreshDouble strokeWidth={2} />
+                    重新解析
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={selectedCount === 0}
+                    onSelect={() => onBatchReparse()}
+                  >
+                    <CubeScan strokeWidth={2} />
+                    解析当前上下文
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={selectedCount === 0}
+                    onSelect={() => onBatchDownload()}
+                  >
+                    <Download strokeWidth={2} />
+                    下载当前上下文
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={selectedCount === 0}
+                    onSelect={() => setBatchDeleteOpen(true)}
+                  >
+                    <Trash strokeWidth={2} />
+                    删除当前上下文
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </ButtonGroup>
           </TooltipProvider>
+          <AlertDialog open={batchDeleteOpen} onOpenChange={setBatchDeleteOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>删除当前上下文</AlertDialogTitle>
+                <AlertDialogDescription>
+                  确定要删除已选择的 {selectedCount} 个文件吗？文件内容、解析结果和索引记录将无法恢复。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => {
+                    onBatchDelete();
+                    setBatchDeleteOpen(false);
+                  }}
+                >
+                  删除
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <ScrollArea className="max-h-[42vh] min-h-0">
             <FileList
               files={files}
@@ -292,69 +351,115 @@ export function ProjectSidebar({
 
         {/* 对话列表 */}
         <SidebarGroup className="min-h-0 shrink px-0 py-2">
-          <SidebarGroupLabel className="text-xs uppercase tracking-wider">
-            项目对话
-          </SidebarGroupLabel>
-          <SidebarGroupAction onClick={onNewConversation} aria-label="新建项目对话">
-            <Plus strokeWidth={2} />
-          </SidebarGroupAction>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setConversationsOpen((value) => !value)}
+              className="flex h-7 min-w-0 flex-1 items-center justify-between rounded-[var(--radius-sm)] px-2 text-[11px] font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-interaction-hover)] focus-visible:outline-none focus-visible:bg-[var(--color-interaction-hover)]"
+              aria-expanded={conversationsOpen}
+            >
+              <span className="inline-flex min-w-0 items-center gap-1">
+                {conversationsOpen ? (
+                  <NavArrowDown width={12} height={12} />
+                ) : (
+                  <NavArrowRight width={12} height={12} />
+                )}
+                <span className="truncate">项目对话</span>
+              </span>
+              <span className="font-mono">{project.conversations?.length || 0}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onNewConversation}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:bg-[var(--color-interaction-hover)]"
+              aria-label="新建项目对话"
+            >
+              <Plus width={14} height={14} strokeWidth={2} />
+            </button>
+          </div>
           <SidebarGroupContent>
-          <ScrollArea className="max-h-32">
-            {project.conversations && project.conversations.length > 0 ? (
-              <SidebarMenu className="pr-3">
-                {project.conversations.map((conv) => (
-                  <SidebarMenuItem
-                    key={conv.id}
-                  >
-                    <SidebarMenuButton
-                      type="button"
-                      onClick={() => onConversationSelect(conv.id)}
-                      isActive={activeConversationId === conv.id}
-                      size="sm"
-                    >
-                      <ChatLines strokeWidth={2} />
-                      <span>{conv.title}</span>
-                    </SidebarMenuButton>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <SidebarMenuAction
+            {conversationsOpen && (
+              <ScrollArea className="max-h-36">
+                {project.conversations && project.conversations.length > 0 ? (
+                  <div className="flex flex-col gap-1 pr-3">
+                    {project.conversations.map((conv) => {
+                      const active = activeConversationId === conv.id;
+                      const row = (
+                        <button
                           type="button"
-                          showOnHover
-                          onClick={(event) => event.stopPropagation()}
-                          className="hover:text-destructive"
-                          aria-label={`删除项目对话 ${conv.title}`}
+                          onClick={() => onConversationSelect(conv.id)}
+                          className={cn(
+                            "flex h-8 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-2 text-left text-xs",
+                            "transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:bg-[var(--color-interaction-hover)]",
+                            active
+                              ? "bg-[var(--color-interaction-active)] text-[var(--color-text-primary)]"
+                              : "text-[var(--color-text-secondary)] hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]"
+                          )}
                         >
-                          <Trash strokeWidth={2} />
-                        </SidebarMenuAction>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>删除项目对话</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            确定要删除「{conv.title}」吗？这条对话记录将无法恢复。
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>取消</AlertDialogCancel>
-                          <AlertDialogAction
-                            variant="destructive"
-                            onClick={() => onConversationDelete(conv.id, conv.title)}
-                          >
-                            删除
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            ) : (
-              <p className="py-2 text-xs text-[var(--color-text-tertiary)]">
-                暂无对话
-              </p>
+                          <ChatLines width={14} height={14} strokeWidth={2} className="shrink-0 opacity-70" />
+                          <span className="min-w-0 flex-1 truncate font-medium">{conv.title}</span>
+                        </button>
+                      );
+                      return (
+                        <ContextMenu key={conv.id}>
+                          <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
+                          <ContextMenuContent className="min-w-36">
+                            <ContextMenuItem onSelect={() => onConversationSelect(conv.id)}>
+                              <ChatLines strokeWidth={2} />
+                              打开对话
+                            </ContextMenuItem>
+                            <ContextMenuItem
+                              variant="destructive"
+                              onSelect={() => setConversationDeleteTarget(conv)}
+                            >
+                              <Trash strokeWidth={2} />
+                              删除
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="px-2 py-2 text-xs text-[var(--color-text-tertiary)]">
+                    暂无对话
+                  </p>
+                )}
+              </ScrollArea>
             )}
-          </ScrollArea>
           </SidebarGroupContent>
+          <AlertDialog
+            open={conversationDeleteTarget !== null}
+            onOpenChange={(open) => {
+              if (!open) setConversationDeleteTarget(null);
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>删除项目对话</AlertDialogTitle>
+                <AlertDialogDescription>
+                  确定要删除「{conversationDeleteTarget?.title}」吗？这条对话记录将无法恢复。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => {
+                    if (conversationDeleteTarget) {
+                      onConversationDelete(
+                        conversationDeleteTarget.id,
+                        conversationDeleteTarget.title
+                      );
+                      setConversationDeleteTarget(null);
+                    }
+                  }}
+                >
+                  删除
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </SidebarGroup>
       </SidebarContent>
     </div>
