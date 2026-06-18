@@ -71,9 +71,9 @@ export default function ProjectDetailPage() {
     error,
     usage,
     model,
-    thinkingEnabled,
+    reasoningEffort,
     setModel,
-    setThinkingEnabled,
+    setReasoningEffort,
     sendMessage,
     abort,
     clearError,
@@ -573,8 +573,8 @@ export default function ProjectDetailPage() {
           contextHint={selectedFileIds.size > 0 ? contextHint : undefined}
           model={model}
           onModelChange={setModel}
-          thinkingEnabled={thinkingEnabled}
-          onThinkingEnabledChange={setThinkingEnabled}
+          reasoningEffort={reasoningEffort}
+          onReasoningEffortChange={setReasoningEffort}
         />
       </div>
       {showArtifacts && (

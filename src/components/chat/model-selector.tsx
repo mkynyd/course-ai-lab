@@ -1,130 +1,159 @@
 "use client";
 
+import { useMemo } from "react";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+type Provider = "deepseek" | "minimax";
+type Strength = "fast" | "balanced" | "advanced";
+type ReasoningEffort = "high" | "max";
 
 interface ModelSelectorProps {
   model: string;
   onChange: (model: string) => void;
-  thinkingEnabled?: boolean;
-  onThinkingEnabledChange?: (checked: boolean) => void;
+  reasoningEffort?: ReasoningEffort;
+  onReasoningEffortChange?: (effort: ReasoningEffort) => void;
   disabled?: boolean;
   compact?: boolean;
   className?: string;
 }
 
-const DEEPSEEK_PROFILES = [
-  { value: "deepseek-v4-pro:thinking", model: "deepseek-v4-pro", thinking: true, label: "Pro · 思考" },
-  { value: "deepseek-v4-pro:plain", model: "deepseek-v4-pro", thinking: false, label: "Pro · 普通" },
-  { value: "deepseek-v4-flash:thinking", model: "deepseek-v4-flash", thinking: true, label: "Flash · 思考" },
-  { value: "deepseek-v4-flash:plain", model: "deepseek-v4-flash", thinking: false, label: "Flash · 普通" },
-] as const;
+const STRENGTHS: Array<{ value: Strength; label: string; effort: ReasoningEffort }> = [
+  { value: "fast", label: "极速", effort: "high" },
+  { value: "balanced", label: "均衡", effort: "high" },
+  { value: "advanced", label: "高级", effort: "max" },
+];
 
-const MINIMAX_PROFILES = [
-  { value: "minimax-m3:thinking", model: "minimax-m3", thinking: true, label: "M3 · 思考" },
-  { value: "minimax-m3:plain", model: "minimax-m3", thinking: false, label: "M3 · 普通" },
-] as const;
+const PROVIDERS: Array<{ value: Provider; label: string }> = [
+  { value: "deepseek", label: "DeepSeek" },
+  { value: "minimax", label: "MiniMax" },
+];
 
-function providerFor(model: string) {
+function providerFor(model: string): Provider {
   return model === "minimax-m3" ? "minimax" : "deepseek";
 }
 
-function profileValue(model: string, thinkingEnabled = true) {
-  const suffix = thinkingEnabled ? "thinking" : "plain";
-  if (model === "minimax-m3") return `minimax-m3:${suffix}`;
-  if (model === "deepseek-v4-flash") return `deepseek-v4-flash:${suffix}`;
-  return `deepseek-v4-pro:${suffix}`;
+function strengthFor(model: string, effort: ReasoningEffort): Strength {
+  if (model === "deepseek-v4-flash") return "fast";
+  if (effort === "max") return "advanced";
+  return "balanced";
+}
+
+function modelFor(provider: Provider, strength: Strength) {
+  if (provider === "minimax") return "minimax-m3";
+  return strength === "fast" ? "deepseek-v4-flash" : "deepseek-v4-pro";
 }
 
 export function ModelSelector({
   model,
   onChange,
-  thinkingEnabled = true,
-  onThinkingEnabledChange,
+  reasoningEffort = "max",
+  onReasoningEffortChange,
   disabled = false,
   compact = false,
   className,
 }: ModelSelectorProps) {
   const provider = providerFor(model);
-  const profiles = provider === "minimax" ? MINIMAX_PROFILES : DEEPSEEK_PROFILES;
+  const strength = strengthFor(model, reasoningEffort);
+  const providerLabel = PROVIDERS.find((item) => item.value === provider)?.label ?? "DeepSeek";
+  const strengthLabel = STRENGTHS.find((item) => item.value === strength)?.label ?? "高级";
 
-  function handleProviderChange(nextProvider: string) {
-    if (nextProvider === "minimax") {
-      onChange("minimax-m3");
-      return;
-    }
-    onChange(model === "deepseek-v4-flash" ? "deepseek-v4-flash" : "deepseek-v4-pro");
+  const triggerLabel = useMemo(
+    () => `${strengthLabel} · ${providerLabel}`,
+    [providerLabel, strengthLabel]
+  );
+
+  function setStrength(nextStrength: Strength) {
+    const next = STRENGTHS.find((item) => item.value === nextStrength);
+    if (!next) return;
+    onReasoningEffortChange?.(next.effort);
+    onChange(modelFor(provider, nextStrength));
   }
 
-  function handleProfileChange(value: string) {
-    const next = [...DEEPSEEK_PROFILES, ...MINIMAX_PROFILES].find(
-      (profile) => profile.value === value
-    );
-    if (!next) return;
-    onChange(next.model);
-    onThinkingEnabledChange?.(next.thinking);
+  function setProvider(nextProvider: Provider) {
+    onChange(modelFor(nextProvider, strength));
   }
 
   return (
-    <div
-      className={cn(
-        "flex shrink-0 items-center gap-1 rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)] p-0.5",
-        compact ? "max-w-[min(72vw,18rem)]" : "max-w-none",
-        className
-      )}
-      aria-label="模型设置"
-    >
-      <Select
-        value={provider}
-        onValueChange={handleProviderChange}
-        disabled={disabled}
-      >
-        <SelectTrigger
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <Button
+          type="button"
+          variant="ghost"
           size="sm"
-          className="h-7 rounded-[var(--radius-md)] border-0 bg-transparent px-2 text-xs hover:bg-[var(--color-interaction-hover)] focus-visible:ring-0"
-          aria-label="选择模型提供方"
+          disabled={disabled}
+          className={cn(
+            "h-8 shrink-0 rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)] px-3 text-sm font-normal text-[var(--color-text-primary)] hover:bg-[var(--color-interaction-hover)] focus-visible:bg-[var(--color-interaction-active)]",
+            compact && "max-w-[min(72vw,14rem)]",
+            className
+          )}
+          aria-label="选择模型强度和模型"
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectLabel>选择模型</SelectLabel>
-            <SelectItem value="deepseek">DeepSeek</SelectItem>
-            <SelectItem value="minimax">MiniMax</SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-      <Select
-        value={profileValue(model, thinkingEnabled)}
-        onValueChange={handleProfileChange}
-        disabled={disabled}
+          <span className="truncate">{triggerLabel}</span>
+          <ChevronDown data-icon="inline-end" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={8}
+        className="w-56 rounded-[var(--radius-xl)] p-2"
       >
-        <SelectTrigger
-          size="sm"
-          className="h-7 rounded-[var(--radius-md)] border-0 bg-[var(--color-surface)] px-2 text-xs hover:bg-[var(--color-interaction-hover)] focus-visible:ring-0"
-          aria-label="选择模型强度与思考模式"
+        <DropdownMenuLabel className="px-3 py-2 text-sm font-normal text-[var(--color-text-tertiary)]">
+          智能
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={strength}
+          onValueChange={(value) => setStrength(value as Strength)}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectLabel>强度与思考</SelectLabel>
-            {profiles.map((profile) => (
-              <SelectItem key={profile.value} value={profile.value}>
-                {profile.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    </div>
+          {STRENGTHS.map((item) => (
+            <DropdownMenuRadioItem
+              key={item.value}
+              value={item.value}
+              className="h-10 rounded-[var(--radius-md)] px-3 text-base"
+            >
+              {item.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator className="mx-3 my-2" />
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="h-10 rounded-[var(--radius-md)] px-3 text-base">
+              <span className="flex-1">模型</span>
+              <span className="text-sm text-[var(--color-text-tertiary)]">
+                {providerLabel}
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-40 rounded-[var(--radius-xl)] p-2">
+              {PROVIDERS.map((item) => (
+                <DropdownMenuItem
+                  key={item.value}
+                  onSelect={() => setProvider(item.value)}
+                  className="h-10 rounded-[var(--radius-md)] px-3 text-base"
+                >
+                  <span className="flex-1">{item.label}</span>
+                  {provider === item.value && <Check data-icon="inline-end" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

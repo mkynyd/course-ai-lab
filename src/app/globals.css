@@ -552,11 +552,11 @@ pre code {
 }
 
 .workbench-input-dock {
-  box-shadow: 0 -12px 30px oklch(0.25 0.03 257 / 0.04);
+  box-shadow: none;
 }
 
 .dark .workbench-input-dock {
-  box-shadow: 0 -12px 30px oklch(0.05 0.01 255 / 0.28);
+  box-shadow: none;
 }
 
 .loading-indicator-status {

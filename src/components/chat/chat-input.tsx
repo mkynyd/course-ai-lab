@@ -27,8 +27,8 @@ interface ChatInputProps {
   blockedReason?: string;
   model?: string;
   onModelChange?: (model: string) => void;
-  thinkingEnabled?: boolean;
-  onThinkingEnabledChange?: (checked: boolean) => void;
+  reasoningEffort?: "high" | "max";
+  onReasoningEffortChange?: (effort: "high" | "max") => void;
 }
 
 export function ChatInput({
@@ -43,8 +43,8 @@ export function ChatInput({
   blockedReason,
   model,
   onModelChange,
-  thinkingEnabled,
-  onThinkingEnabledChange,
+  reasoningEffort,
+  onReasoningEffortChange,
 }: ChatInputProps) {
   const [internalValue, setInternalValue] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -124,7 +124,7 @@ export function ChatInput({
       <div
         className={cn(
           "rounded-[calc(var(--radius-xl)+10px)] bg-[var(--color-surface)] p-2",
-          "transition-colors focus-within:bg-[var(--color-interaction-hover)]"
+          "outline-none ring-0 shadow-none focus-within:bg-[var(--color-surface)]"
         )}
       >
         {attachments.length > 0 && (
@@ -164,7 +164,7 @@ export function ChatInput({
           rows={1}
           disabled={disabled}
           className={cn(
-            "max-h-32 min-h-9 resize-none overflow-y-hidden border-0 bg-transparent px-2 py-2 text-sm shadow-none focus-visible:ring-0",
+            "max-h-32 min-h-9 resize-none overflow-y-hidden border-0 bg-transparent px-2 py-2 text-sm shadow-none outline-none ring-0 focus:outline-none focus-visible:ring-0",
             "text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]",
             "focus:outline-none disabled:opacity-50"
           )}
@@ -193,8 +193,8 @@ export function ChatInput({
               <ModelSelector
                 model={model}
                 onChange={onModelChange}
-                thinkingEnabled={thinkingEnabled}
-                onThinkingEnabledChange={onThinkingEnabledChange}
+                reasoningEffort={reasoningEffort}
+                onReasoningEffortChange={onReasoningEffortChange}
                 disabled={isStreaming || disabled}
                 compact
               />

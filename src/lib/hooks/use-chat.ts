@@ -41,6 +41,8 @@ interface UseChatOptions {
   mode?: ProjectType;
 }
 
+type ReasoningEffort = NonNullable<UseChatOptions["reasoningEffort"]>;
+
 export function useChat(options: UseChatOptions = {}) {
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>(
@@ -53,22 +55,28 @@ export function useChat(options: UseChatOptions = {}) {
   );
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [model, setModel] = useState(options.model || "deepseek-v4-pro");
-  const [thinkingEnabled, setThinkingEnabled] = useState(
-    options.thinkingEnabled ?? true
+  const [thinkingEnabled, setThinkingEnabledState] = useState(true);
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(
+    options.reasoningEffort ?? "max"
   );
   const abortRef = useRef<AbortController | null>(null);
+
+  const setThinkingEnabled = useCallback(() => {
+    setThinkingEnabledState(true);
+  }, []);
 
   useEffect(() => {
     if (conversationId || messages.length > 0) return;
     const nextModel = options.model;
-    const nextThinkingEnabled = options.thinkingEnabled;
+    const nextReasoningEffort = options.reasoningEffort;
     queueMicrotask(() => {
       if (nextModel) setModel(nextModel);
-      if (nextThinkingEnabled !== undefined) {
-        setThinkingEnabled(nextThinkingEnabled);
+      if (nextReasoningEffort) {
+        setReasoningEffort(nextReasoningEffort);
       }
+      setThinkingEnabledState(true);
     });
-  }, [conversationId, messages.length, options.model, options.thinkingEnabled]);
+  }, [conversationId, messages.length, options.model, options.reasoningEffort]);
 
   const performSend = useCallback(
     async (input: SendMessageInput) => {
@@ -112,8 +120,8 @@ export function useChat(options: UseChatOptions = {}) {
             message: content.trim(),
             hiddenPrompt: input.hiddenPrompt,
             model,
-            thinkingEnabled,
-            reasoningEffort: options.reasoningEffort ?? "high",
+            thinkingEnabled: true,
+            reasoningEffort,
             projectId: options.projectId,
             selectedFileIds: options.selectedFileIds,
             mode: options.mode,
@@ -237,8 +245,7 @@ export function useChat(options: UseChatOptions = {}) {
     [
       conversationId,
       model,
-      thinkingEnabled,
-      options.reasoningEffort,
+      reasoningEffort,
       options.projectId,
       options.selectedFileIds,
       options.mode,
@@ -278,9 +285,7 @@ export function useChat(options: UseChatOptions = {}) {
       setConversationId(nextConversationId);
       setMessages(nextMessages);
       if (settings?.model) setModel(settings.model);
-      if (settings?.thinkingEnabled !== undefined) {
-        setThinkingEnabled(settings.thinkingEnabled);
-      }
+      setThinkingEnabledState(true);
       setUsage(null);
       setError(null);
       setIsStreaming(false);
@@ -296,8 +301,10 @@ export function useChat(options: UseChatOptions = {}) {
     usage,
     model,
     thinkingEnabled,
+    reasoningEffort,
     setModel,
     setThinkingEnabled,
+    setReasoningEffort,
     sendMessage,
     abort,
     clearError,

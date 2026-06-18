@@ -35,9 +35,9 @@ export function ChatArea({
     error,
     usage,
     model,
-    thinkingEnabled,
+    reasoningEffort,
     setModel,
-    setThinkingEnabled,
+    setReasoningEffort,
     sendMessage,
     abort,
     clearError,
@@ -125,7 +125,7 @@ export function ChatArea({
               开始对话
             </h2>
             <p className="max-w-sm text-sm leading-relaxed text-[var(--color-text-secondary)]">
-              选择一个模型，切换思考模式，然后发送消息即可与 DeepSeek 开始对话。
+              选择强度和模型，然后发送消息即可开始对话。
             </p>
           </div>
         </div>
@@ -152,8 +152,8 @@ export function ChatArea({
         onAttachmentsChange={setAttachments}
         model={model}
         onModelChange={setModel}
-        thinkingEnabled={thinkingEnabled}
-        onThinkingEnabledChange={setThinkingEnabled}
+        reasoningEffort={reasoningEffort}
+        onReasoningEffortChange={setReasoningEffort}
       />
     </div>
   );
