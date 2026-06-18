@@ -389,7 +389,7 @@ export default function ProjectDetailPage() {
         aria-label="项目资料侧边栏"
         className={cn(
           "absolute inset-y-0 left-0 z-30 w-[280px] overflow-hidden",
-          "border-r border-[var(--color-border-light)] bg-[var(--color-surface)]",
+          "bg-[var(--color-surface)]",
           "transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
           mobileProjectSidebarOpen ? "translate-x-0" : "-translate-x-full",
           "md:static md:z-auto md:translate-x-0 md:transition-[width] md:duration-300 md:ease-[cubic-bezier(0.16,1,0.3,1)]",
@@ -398,7 +398,7 @@ export default function ProjectDetailPage() {
       >
         <div
           className={cn(
-            "h-full w-[280px] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+            "h-full w-full transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
             desktopProjectSidebarOpen
               ? "md:translate-x-0"
               : "md:-translate-x-full"
@@ -535,7 +535,7 @@ export default function ProjectDetailPage() {
           <div
             className={cn(
               "flex items-center gap-2 px-4 py-2 mx-4 mb-2 rounded-[var(--radius-md)]",
-              "bg-[var(--color-error-muted)] border border-[var(--color-error)]/20",
+              "bg-[var(--color-error-muted)]",
               "text-sm text-[var(--color-error)]"
             )}
           >

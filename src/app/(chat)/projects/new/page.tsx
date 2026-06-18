@@ -66,7 +66,7 @@ export default function NewProjectPage() {
       <div className="max-w-lg mx-auto px-4 py-8">
         {/* 页头 */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex items-center justify-center w-10 h-10 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="flex items-center justify-center w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface)]">
             <FolderOpen size={20} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
           </div>
           <div>
@@ -103,10 +103,9 @@ export default function NewProjectPage() {
               onChange={(e) => setDescription(e.target.value)}
               className={cn(
                 "w-full h-20 px-3 py-2 text-sm rounded-[var(--radius-md)] resize-none",
-                "border border-[var(--color-border)]",
                 "bg-[var(--color-bg)] text-[var(--color-text-primary)]",
                 "placeholder:text-[var(--color-text-tertiary)]",
-                "focus:outline-none focus:border-[var(--color-accent)]",
+                "focus:outline-none focus:bg-[var(--color-interaction-active)]",
                 "transition-colors duration-150"
               )}
               placeholder="简要描述这个项目的目标或内容"
@@ -125,10 +124,10 @@ export default function NewProjectPage() {
                   type="button"
                   onClick={() => setType(pt.value)}
                   className={cn(
-                    "text-left p-3 rounded-[var(--radius-md)] border transition-colors duration-150",
+                    "text-left p-3 rounded-[var(--radius-md)] transition-colors duration-150",
                     type === pt.value
-                      ? "border-[var(--color-accent)] bg-[var(--color-accent-muted)]"
-                      : "border-[var(--color-border)] hover:border-[var(--color-text-tertiary)]"
+                      ? "bg-[var(--color-interaction-active)]"
+                      : "bg-[var(--color-surface)] hover:bg-[var(--color-interaction-hover)]"
                   )}
                 >
                   <span
@@ -168,7 +167,7 @@ export default function NewProjectPage() {
                 {customQuickActions.map((action, index) => (
                   <div
                     key={`${action.title}-${index}`}
-                    className="grid gap-1 rounded-[var(--radius-md)] border border-[var(--color-border)] px-2 py-1.5 text-xs"
+                    className="grid gap-1 rounded-[var(--radius-md)] bg-[var(--color-surface)] px-2 py-1.5 text-xs"
                   >
                     <div className="flex items-center gap-2">
                       <input
@@ -182,7 +181,7 @@ export default function NewProjectPage() {
                             )
                           )
                         }
-                        className="h-7 w-20 rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2"
+                        className="h-7 w-20 rounded bg-[var(--color-bg)] px-2"
                         aria-label="快捷操作标题"
                       />
                       <button
@@ -208,7 +207,7 @@ export default function NewProjectPage() {
                           )
                         )
                       }
-                      className="h-16 resize-none rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1"
+                      className="h-16 resize-none rounded bg-[var(--color-bg)] px-2 py-1"
                       aria-label="快捷操作提示词"
                     />
                   </div>

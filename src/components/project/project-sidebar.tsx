@@ -169,8 +169,8 @@ export function ProjectSidebar({
   } | null>(null);
 
   return (
-    <SidebarProvider defaultOpen className="h-full min-h-0 w-full">
-    <div className={cn("flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground backdrop-blur-[var(--glass-blur)]", className)}>
+    <SidebarProvider defaultOpen className="h-full min-h-0 w-full overflow-hidden">
+    <div className={cn("flex h-full w-full min-w-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground backdrop-blur-[var(--glass-blur)]", className)}>
       <SidebarHeader className="grid shrink-0 grid-cols-2 gap-2 p-3">
         <Button asChild variant="outline" size="md" className="w-full">
           <Link href="/projects" className="min-w-0">
@@ -206,7 +206,7 @@ export function ProjectSidebar({
 
       {/* 文件区域 */}
       <SidebarContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3">
-        <SidebarGroup className="flex min-h-0 shrink-0 flex-col px-0 py-1">
+        <SidebarGroup className="flex min-h-0 flex-1 flex-col px-0 py-1">
           <div className="mb-2 flex items-center justify-between">
             <div>
               <SidebarGroupLabel className="h-auto px-0 text-xs uppercase tracking-wider">
@@ -221,7 +221,7 @@ export function ProjectSidebar({
             </span>
           </div>
           {(parsingCount > 0 || enhancingCount > 0) && (
-            <div className="mb-2 rounded-[var(--radius-lg)] border border-[var(--color-info-muted)] bg-[var(--color-info-muted)] px-2 py-1.5">
+            <div className="mb-2 rounded-[var(--radius-lg)] bg-[var(--color-info-muted)] px-2 py-1.5">
               <LoadingIndicator
                 size="sm"
                 variant="lissajous"
@@ -337,14 +337,14 @@ export function ProjectSidebar({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <ScrollArea className="max-h-[42vh] min-h-0">
+          <ScrollArea className="min-h-0 w-full flex-1 overflow-x-hidden">
             <FileList
               files={files}
               selectedIds={selectedFileIds}
               onToggle={onFileToggle}
               onFileAction={(action, file) => onFileAction(action, file.id)}
               defaultGroupsCollapsed
-              className="pr-3"
+              className="w-full overflow-hidden"
             />
           </ScrollArea>
         </SidebarGroup>
@@ -379,9 +379,9 @@ export function ProjectSidebar({
           </div>
           <SidebarGroupContent>
             {conversationsOpen && (
-              <ScrollArea className="max-h-36">
+              <ScrollArea className="max-h-36 w-full overflow-x-hidden">
                 {project.conversations && project.conversations.length > 0 ? (
-                  <div className="flex flex-col gap-1 pr-3">
+                  <div className="flex w-full flex-col gap-1 overflow-hidden">
                     {project.conversations.map((conv) => {
                       const active = activeConversationId === conv.id;
                       const row = (

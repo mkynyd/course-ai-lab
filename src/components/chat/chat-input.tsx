@@ -110,10 +110,10 @@ export function ChatInput({
       {blockedReason && (
         <div
           className={cn(
-            "flex min-h-7 flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border px-2 py-1",
+            "flex min-h-7 flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] px-2 py-1",
             blockedReason
-              ? "border-[var(--color-warning-muted)] bg-[var(--color-warning-muted)] text-[var(--color-warning)]"
-              : "border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+              ? "bg-[var(--color-warning-muted)] text-[var(--color-warning)]"
+              : "bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
           )}
         >
           <span className="min-w-0 truncate text-[11px]">
@@ -124,7 +124,7 @@ export function ChatInput({
       <div
         className={cn(
           "rounded-[calc(var(--radius-xl)+10px)] bg-[var(--color-surface)] p-2",
-          "transition-[box-shadow] focus-within:ring-2 focus-within:ring-[var(--color-accent-muted)]"
+          "transition-colors focus-within:bg-[var(--color-interaction-hover)]"
         )}
       >
         {attachments.length > 0 && (

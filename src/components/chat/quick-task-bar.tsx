@@ -65,8 +65,8 @@ function ActionButton({
         "rounded-[var(--radius-md)] px-3 py-1.5 text-xs",
         "bg-[var(--color-surface)]",
         "text-[var(--color-text-secondary)]",
-        "hover:bg-[var(--color-accent-muted)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)]",
-        "transition-[background-color,border-color,color] duration-150 whitespace-nowrap",
+        "hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]",
+        "transition-[background-color,color] duration-150 whitespace-nowrap",
         "disabled:opacity-40 disabled:cursor-not-allowed"
       )}
     >

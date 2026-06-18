@@ -91,10 +91,10 @@ function MessageBubbleComponent({
     >
       <div
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-lg)] border mt-0.5",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-lg)] mt-0.5",
           isUser
-            ? "border-transparent bg-[var(--color-accent)] text-[var(--color-accent-contrast)]"
-            : "border-[var(--color-border-light)] bg-[var(--color-panel-muted)] text-[var(--color-text-secondary)]"
+            ? "bg-[var(--color-accent)] text-[var(--color-accent-contrast)]"
+            : "bg-[var(--color-panel-muted)] text-[var(--color-text-secondary)]"
         )}
       >
         {isUser ? <User size={14} /> : <Bot size={14} />}
@@ -124,7 +124,7 @@ function MessageBubbleComponent({
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="mt-1.5 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-panel-muted)] px-3 py-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+              <div className="mt-1.5 rounded-[var(--radius-md)] bg-[var(--color-panel-muted)] px-3 py-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
                 {hasReasoning ? (
                   <div className="whitespace-pre-wrap">{reasoningContent}</div>
                 ) : (
@@ -144,7 +144,7 @@ function MessageBubbleComponent({
           className={cn(
             "text-sm",
             isUser
-              ? "max-w-[85%] rounded-[var(--radius-xl)] border border-[var(--color-accent-muted)] bg-[var(--color-accent-soft)] px-3.5 py-2.5 leading-relaxed"
+              ? "max-w-[85%] rounded-[var(--radius-xl)] bg-[var(--color-accent-soft)] px-3.5 py-2.5 leading-relaxed"
               : "workbench-readable text-[var(--color-text-primary)]"
           )}
         >
@@ -178,7 +178,7 @@ function MessageBubbleComponent({
               </ReactMarkdown>
             </div>
           ) : isStreaming ? (
-            <div className="rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-panel)] px-3 py-2 backdrop-blur-[var(--glass-blur)]">
+            <div className="rounded-[var(--radius-xl)] bg-[var(--color-panel)] px-3 py-2 backdrop-blur-[var(--glass-blur)]">
               <LoadingIndicator
                 size="sm"
                 variant="lissajous"
@@ -195,14 +195,14 @@ function MessageBubbleComponent({
             <button
               type="button"
               onClick={() => setShowSave((current) => !current)}
-	              className="flex items-center gap-1 rounded-[var(--radius-md)] border border-transparent px-2 py-1 text-[11px] text-[var(--color-text-tertiary)] hover:border-[var(--color-border-light)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-accent)]"
+	              className="flex items-center gap-1 rounded-[var(--radius-md)] px-2 py-1 text-[11px] text-[var(--color-text-tertiary)] hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]"
               aria-expanded={showSave}
             >
               <Save size={12} />
               保存为成果
             </button>
             {showSave && (
-	              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-panel)] p-2 shadow-[var(--shadow-panel)] backdrop-blur-[var(--glass-blur)]">
+	              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[var(--radius-xl)] bg-[var(--color-panel)] p-2 backdrop-blur-[var(--glass-blur)]">
                 <Input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}

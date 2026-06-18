@@ -58,8 +58,8 @@ export function FileContentDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl">
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
+      <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-[var(--radius-lg)] bg-[var(--color-surface)] shadow-xl">
+        <div className="flex items-center justify-between px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold">{file.originalName}</h2>
             <p className="text-[11px] text-[var(--color-text-tertiary)]">
@@ -68,7 +68,7 @@ export function FileContentDialog({
           </div>
           <button onClick={onClose} aria-label="关闭"><X size={16} /></button>
         </div>
-        <div className="flex gap-2 border-b border-[var(--color-border-light)] px-4 py-2">
+        <div className="flex gap-2 bg-[var(--color-panel-muted)] px-4 py-2">
           <Button variant={tab === "ocr" ? "primary" : "ghost"} size="sm" onClick={() => setTab("ocr")}>OCR 原文</Button>
           <Button variant={tab === "enhanced" ? "primary" : "ghost"} size="sm" onClick={() => setTab("enhanced")}>增强结果</Button>
           {tab === "ocr" && detail?.textContent && (
@@ -84,7 +84,7 @@ export function FileContentDialog({
             <textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              className="min-h-[50vh] w-full resize-y rounded border border-[var(--color-border)] bg-transparent p-3 font-mono text-xs"
+              className="min-h-[50vh] w-full resize-y rounded-[var(--radius-md)] bg-[var(--color-panel)] p-3 font-mono text-xs outline-none focus:bg-[var(--color-interaction-hover)]"
             />
           ) : (
             <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
@@ -92,7 +92,7 @@ export function FileContentDialog({
             </pre>
           )}
         </div>
-        <div className="flex items-center justify-between border-t border-[var(--color-border)] px-4 py-3">
+        <div className="flex items-center justify-between bg-[var(--color-panel-muted)] px-4 py-3">
           <span className="text-xs text-[var(--color-text-secondary)]">{message}</span>
           {editing && <Button variant="primary" size="sm" onClick={save} disabled={!draft.trim()}>保存 OCR 原文</Button>}
         </div>

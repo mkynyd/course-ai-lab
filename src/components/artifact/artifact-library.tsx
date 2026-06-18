@@ -107,11 +107,11 @@ export function ArtifactLibrary({
       }}
     >
       <div
-	        className={`flex h-full w-full max-w-4xl flex-col border-l border-[var(--color-border-light)] bg-[var(--color-panel)] shadow-[var(--shadow-float)] backdrop-blur-[var(--glass-blur)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
+	        className={`flex h-full w-full max-w-4xl flex-col bg-[var(--color-panel)] shadow-[var(--shadow-float)] backdrop-blur-[var(--glass-blur)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
           visible ? "translate-x-0" : "translate-x-full"
         }`}
       >
-	        <div className="flex min-h-14 items-center justify-between border-b border-[var(--color-border-light)] px-4 py-3">
+	        <div className="flex min-h-14 items-center justify-between bg-[var(--color-panel)] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold">成果库</h2>
             <p className="text-xs text-[var(--color-text-tertiary)]">保存、阅读和导出 AI 生成成果</p>
@@ -133,7 +133,7 @@ export function ArtifactLibrary({
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[280px_1fr]">
           {/* ------ Left: artifact list ------ */}
-          <div className="overflow-y-auto border-b border-[var(--color-border)] p-2 md:border-b-0 md:border-r">
+          <div className="overflow-y-auto bg-[var(--color-panel)] p-2">
             {artifactsQuery.isPending ? (
               <div className="p-3">
                 <LoadingIndicator
@@ -256,7 +256,7 @@ export function ArtifactLibrary({
               </div>
             ) : selected ? (
               <>
-                <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-3">
+                <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[var(--radius-lg)] bg-[var(--color-panel)] p-2">
                   <h3 className="mr-auto text-base font-semibold">{selected.title}</h3>
                   <Button variant="ghost" size="sm" onClick={() => copy(selected.content)}><Copy size={14} />复制</Button>
                   {(["markdown", "docx", "pdf"] as const).map((format) => (
@@ -269,7 +269,7 @@ export function ArtifactLibrary({
                     </a>
                   ))}
                 </div>
-                <div className="workbench-readable markdown-body break-words rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-panel)] p-4">
+                <div className="workbench-readable markdown-body break-words rounded-[var(--radius-lg)] bg-[var(--color-panel)] p-4">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeKatex, rehypeHighlight]}
@@ -301,7 +301,7 @@ export function ArtifactLibrary({
           </div>
         </div>
         {message && (
-          <div className="border-t border-[var(--color-border)] px-4 py-2 text-xs text-[var(--color-success)]">
+          <div className="bg-[var(--color-success-muted)] px-4 py-2 text-xs text-[var(--color-success)]">
             {message}
           </div>
         )}

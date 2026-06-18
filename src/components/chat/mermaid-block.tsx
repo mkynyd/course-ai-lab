@@ -153,7 +153,7 @@ export function MermaidBlock({ code, isStreaming = false }: MermaidBlockProps) {
         <button
           type="button"
           onClick={downloadPNG}
-          className="flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs shadow-sm hover:bg-[var(--color-surface-hover)]"
+          className="flex items-center gap-1 rounded bg-[var(--color-surface)] px-2 py-1 text-xs hover:bg-[var(--color-surface-hover)]"
           title="下载 PNG（2x 分辨率）"
         >
           <Download size={12} />
@@ -162,7 +162,7 @@ export function MermaidBlock({ code, isStreaming = false }: MermaidBlockProps) {
         <button
           type="button"
           onClick={downloadSVG}
-          className="flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs shadow-sm hover:bg-[var(--color-surface-hover)]"
+          className="flex items-center gap-1 rounded bg-[var(--color-surface)] px-2 py-1 text-xs hover:bg-[var(--color-surface-hover)]"
           title="下载 SVG（矢量）"
         >
           <Download size={12} />

@@ -163,7 +163,7 @@ export function VirtualMessageList({
             setPinned(false);
             userAtBottomRef.current = true;
           }}
-          className="fixed bottom-24 right-8 z-20 flex size-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] shadow-[var(--shadow-panel)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+          className="fixed bottom-24 right-8 z-20 flex size-10 items-center justify-center rounded-full bg-[var(--color-surface)] text-[var(--color-text-secondary)] shadow-[var(--shadow-panel)] transition-colors hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]"
           aria-label="滚动到底部"
         >
           <ArrowDown size={16} strokeWidth={2} aria-hidden="true" />

@@ -93,7 +93,7 @@ export function ChatArea({
         <div
           className={cn(
             "flex items-center gap-2 px-4 py-2 mx-4 mt-2 rounded-[var(--radius-md)]",
-            "bg-[var(--color-error-muted)] border border-[var(--color-error)]/20",
+            "bg-[var(--color-error-muted)]",
             "text-sm text-[var(--color-error)]"
           )}
         >
@@ -116,7 +116,6 @@ export function ChatArea({
             <div
               className={cn(
 	                "mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]",
-	                "border border-[var(--color-border)]",
 	                "bg-[var(--color-panel)]"
 	              )}
             >
