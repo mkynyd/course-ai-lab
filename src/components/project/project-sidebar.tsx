@@ -39,7 +39,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarProvider,
 } from "@/components/ui/sidebar";
@@ -60,7 +59,6 @@ import {
   MoreHoriz,
 } from "iconoir-react";
 import { useProjectFiles } from "@/lib/hooks/use-project-files";
-import { LoadingIndicator } from "@/components/workbench/loading-indicator";
 import {
   Tooltip,
   TooltipContent,
@@ -154,8 +152,6 @@ export function ProjectSidebar({
   const filesQuery = useProjectFiles(project.id, project.files || []);
   const files = filesQuery.data || project.files || [];
   const failedCount = files.filter((file) => file.status === "failed").length;
-  const parsingCount = files.filter((file) => file.status === "parsing").length;
-  const enhancingCount = files.filter((file) => file.enhancementStatus === "enhancing").length;
   const categorizableCount = files.filter((file) =>
     ["parsed", "partial"].includes(file.status)
   ).length;
@@ -207,32 +203,6 @@ export function ProjectSidebar({
       {/* 文件区域 */}
       <SidebarContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3">
         <SidebarGroup className="flex min-h-0 shrink-0 flex-col px-0 py-1">
-          <div className="mb-2 flex items-center justify-between">
-            <div>
-              <SidebarGroupLabel className="h-auto px-0 text-xs uppercase tracking-wider">
-                资料索引
-              </SidebarGroupLabel>
-              <p className="mt-0.5 text-[10px] text-[var(--color-text-tertiary)]">
-                选择文件会显式参与下一轮回答
-              </p>
-            </div>
-            <span className="font-mono text-[10px] text-[var(--color-text-tertiary)]">
-              {selectedCount}/{files.length}
-            </span>
-          </div>
-          {(parsingCount > 0 || enhancingCount > 0) && (
-            <div className="mb-2 rounded-[var(--radius-lg)] bg-[var(--color-info-muted)] px-2 py-1.5">
-              <LoadingIndicator
-                size="sm"
-                variant="lissajous"
-                label={parsingCount > 0 ? "资料解析中" : "知识增强中"}
-                detail={[
-                  parsingCount > 0 ? `${parsingCount} 个解析队列` : null,
-                  enhancingCount > 0 ? `${enhancingCount} 个增强队列` : null,
-                ].filter(Boolean).join("，")}
-              />
-            </div>
-          )}
           <TooltipProvider>
             <ButtonGroup className="mb-2 grid w-full grid-cols-4 gap-1 [&>*]:rounded-[var(--radius-sm)]! [&>*]:border-0!">
               <ToolbarButton

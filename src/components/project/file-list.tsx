@@ -32,6 +32,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface ProjectFile {
   id: string;
@@ -110,6 +111,7 @@ export function FileList({
 
   function renderFile(file: ProjectFile, index: number) {
     const selected = selectedIds.has(file.id);
+    const parsing = file.status === "parsing";
 
     const row = (
       <button
@@ -132,10 +134,19 @@ export function FileList({
             : "text-[var(--color-text-secondary)] hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]"
         )}
       >
-        <Page width={14} height={14} strokeWidth={2} className="shrink-0 opacity-70" />
+        {parsing ? (
+          <Spinner className="shrink-0 text-[var(--color-text-tertiary)]" />
+        ) : (
+          <Page width={14} height={14} strokeWidth={2} className="shrink-0 opacity-70" />
+        )}
         <span className="min-w-0 flex-1 truncate text-xs font-medium">
           {file.originalName}
         </span>
+        {parsing && (
+          <span className="shrink-0 text-[10px] text-[var(--color-text-tertiary)]">
+            解析中
+          </span>
+        )}
       </button>
     );
 

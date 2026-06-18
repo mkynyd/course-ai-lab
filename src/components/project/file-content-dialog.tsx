@@ -7,7 +7,6 @@ import type { ProjectFile } from "@/components/project/file-list";
 
 interface FileDetail extends ProjectFile {
   textContent?: string | null;
-  enhancedContent?: string | null;
 }
 
 export function FileContentDialog({
@@ -20,7 +19,6 @@ export function FileContentDialog({
   onUpdated: () => void;
 }) {
   const [detail, setDetail] = useState<FileDetail | null>(null);
-  const [tab, setTab] = useState<"ocr" | "enhanced">("ocr");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -54,8 +52,6 @@ export function FileContentDialog({
     onUpdated();
   }
 
-  const content = tab === "ocr" ? detail?.textContent : detail?.enhancedContent;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-[var(--radius-lg)] bg-[var(--color-surface)] shadow-xl">
@@ -63,15 +59,13 @@ export function FileContentDialog({
           <div>
             <h2 className="text-sm font-semibold">{file.originalName}</h2>
             <p className="text-[11px] text-[var(--color-text-tertiary)]">
-              OCR 原文可编辑；修改后已有增强结果会标记为过期
+              OCR 原文可编辑，修改后会更新检索分块
             </p>
           </div>
           <button onClick={onClose} aria-label="关闭"><X size={16} /></button>
         </div>
         <div className="flex gap-2 bg-[var(--color-panel-muted)] px-4 py-2">
-          <Button variant={tab === "ocr" ? "primary" : "ghost"} size="sm" onClick={() => setTab("ocr")}>OCR 原文</Button>
-          <Button variant={tab === "enhanced" ? "primary" : "ghost"} size="sm" onClick={() => setTab("enhanced")}>增强结果</Button>
-          {tab === "ocr" && detail?.textContent && (
+          {detail?.textContent && (
             <Button variant="ghost" size="sm" onClick={() => setEditing((value) => !value)}>
               {editing ? "取消编辑" : "编辑原文"}
             </Button>
@@ -80,7 +74,7 @@ export function FileContentDialog({
         <div className="flex-1 overflow-auto p-4">
           {!detail ? (
             <p className="text-sm text-[var(--color-text-secondary)]">加载中...</p>
-          ) : editing && tab === "ocr" ? (
+          ) : editing ? (
             <textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -88,7 +82,7 @@ export function FileContentDialog({
             />
           ) : (
             <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
-              {content || (tab === "enhanced" ? "尚未生成知识增强结果" : "没有解析内容")}
+              {detail.textContent || "没有解析内容"}
             </pre>
           )}
         </div>
