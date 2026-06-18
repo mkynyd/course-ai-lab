@@ -50,3 +50,7 @@ dev.db
 
 .idea/
 REPOSITORY_INDEX.md
+
+Documents
+/docs
+.codegraph
