@@ -156,8 +156,8 @@ export function Sidebar({
           </button>
         </SidebarHeader>
 
-        <SidebarGroup className="m-2 shrink-0 rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1.5">
-          <SidebarMenu className="grid grid-cols-2 gap-1 lg:grid-cols-1">
+        <SidebarGroup className="mx-2 my-2 w-auto shrink-0 rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1.5">
+          <SidebarMenu className="grid min-w-0 grid-cols-2 gap-1 lg:grid-cols-1">
             <SidebarMenuItem>
               <SidebarMenuButton
                 type="button"
