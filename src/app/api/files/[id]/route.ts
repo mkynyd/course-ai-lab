@@ -9,6 +9,7 @@ import { FILE_CATEGORIES } from "@/lib/file-categories";
 import { refreshProjectIndex } from "@/lib/rag/project-index";
 import { z } from "zod";
 import { deleteStoredObject, type StorageProvider } from "@/lib/storage/object-storage";
+import { logger } from "@/lib/logger";
 
 const updateFileSchema = z
   .object({
@@ -136,7 +137,7 @@ export async function DELETE(
     provider: file.storageProvider as StorageProvider,
     key: file.storagePath,
   }).catch((error) => {
-    console.warn("File object deletion failed:", file.id, error);
+    logger.warn("文件对象删除失败", { fileId: file.id, error: String(error) });
   });
 
   await prisma.fileAsset.delete({ where: { id } });

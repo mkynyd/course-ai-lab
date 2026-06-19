@@ -118,4 +118,6 @@ export const RateLimits = {
   REGISTER: { max: 3, window: 60_000 },
   CHAT: { max: 30, window: 60_000 },
   API_KEY: { max: 10, window: 60_000 },
+  FILE_UPLOAD: { max: 20, window: 60_000 },
+  FILE_BATCH: { max: 10, window: 60_000 },
 } as const;

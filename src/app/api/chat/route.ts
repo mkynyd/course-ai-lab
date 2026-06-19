@@ -21,6 +21,7 @@ import { cacheExperiments } from "@/lib/cache/experiment-config";
 import { reorderMessagesForCache } from "@/lib/cache/prompt-reorder";
 import { getProviderApiKey } from "@/lib/data/provider-access";
 import { ProviderAccessError } from "@/lib/provider-access";
+import { logger } from "@/lib/logger";
 
 async function parseRequest(request: NextRequest): Promise<{
   body: SendMessageInput;
@@ -221,9 +222,7 @@ export async function POST(request: NextRequest) {
       retrievedContext = retrieval.context;
       contextNotice = retrieval.notice;
       retrievalUsedFileIds = retrieval.usedFileIds;
-      if (process.env.NODE_ENV !== "production") {
-        console.info("[project-context]", retrieval.debug);
-      }
+      logger.debug("project context retrieval", { debug: retrieval.debug });
     }
   }
 
@@ -451,7 +450,7 @@ export async function POST(request: NextRequest) {
     assistantMessage.id,
     streamResult.getUsage
   ).catch((err) => {
-    console.error("保存助手消息失败:", err);
+    logger.error("保存助手消息失败", { error: String(err) });
   });
 
   // 14. 首次对话更新标题

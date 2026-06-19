@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/logger";
 
 interface MermaidBlockProps {
   code: string;
@@ -163,7 +164,7 @@ export function MermaidBlock({ code, isStreaming = false }: MermaidBlockProps) {
 
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      console.error("Failed to load SVG for PNG export");
+      logger.error("SVG 加载失败", { context: "Mermaid PNG export" });
     };
 
     img.src = url;

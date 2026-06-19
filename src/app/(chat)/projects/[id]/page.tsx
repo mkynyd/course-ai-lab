@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { ProjectSidebar } from "@/components/project/project-sidebar";
 import { QuickTaskBar, type QuickTaskSendInput } from "@/components/chat/quick-task-bar";
 import { ChatInput } from "@/components/chat/chat-input";
@@ -403,10 +404,9 @@ export default function ProjectDetailPage() {
       setChatInputValue("");
       setChatAttachments([]);
     } catch (err) {
-      console.error(
-        "加载项目对话失败:",
-        err instanceof Error ? err.message : "未知错误"
-      );
+      logger.error("加载项目对话失败", {
+        error: err instanceof Error ? err.message : "未知错误",
+      });
     }
   }
 

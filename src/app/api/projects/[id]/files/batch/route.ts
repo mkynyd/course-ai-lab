@@ -8,6 +8,8 @@ import { refreshProjectIndex } from "@/lib/rag/project-index";
 import { startFileParseBatch } from "@/lib/files/parse-job";
 import { categorizeFiles } from "@/lib/files/categorize";
 import { deleteStoredObject, type StorageProvider } from "@/lib/storage/object-storage";
+import { logger } from "@/lib/logger";
+import { checkRateLimit, RateLimits } from "@/lib/rate-limit";
 
 const batchFileSchema = z.object({
   action: z.enum(["delete", "reparse", "categorize", "download"]),
@@ -31,6 +33,19 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "请先登录" }, { status: 401 });
   }
+
+  const { allowed } = await checkRateLimit(
+    `file-batch:${session.user.id}`,
+    RateLimits.FILE_UPLOAD.max,
+    RateLimits.FILE_UPLOAD.window
+  );
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "请求太频繁，请稍后重试" },
+      { status: 429 }
+    );
+  }
+
   const { id: projectId } = await params;
 
   const project = await prisma.project.findFirst({
@@ -95,7 +110,7 @@ export async function POST(
             provider: file.storageProvider as StorageProvider,
             key: file.storagePath,
           }).catch((error) => {
-            console.warn("File object deletion failed:", file.id, error);
+            logger.warn("文件对象删除失败", { fileId: file.id, error: String(error) });
           });
         }
       })

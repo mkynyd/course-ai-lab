@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { deleteStoredObject, type StorageProvider } from "@/lib/storage/object-storage";
+import { logger } from "@/lib/logger";
 
 const updateProjectSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -151,7 +152,7 @@ export async function DELETE(
         provider: file.storageProvider as StorageProvider,
         key: file.storagePath,
       }).catch((error) => {
-        console.warn("Project file object deletion failed:", id, error);
+        logger.warn("项目文件对象删除失败", { projectId: id, error: String(error) });
       })
     )
   );

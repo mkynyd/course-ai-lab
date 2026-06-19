@@ -11,5 +11,9 @@ export const config = {
     "/api/chat/:path*",
     "/api/projects/:path*",
     "/api/files/:path*",
+    "/api/artifacts/:path*",
+    "/api/conversations/:path*",
+    "/api/user/:path*",
+    "/api/metrics/:path*",
   ],
 };

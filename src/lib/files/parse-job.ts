@@ -8,6 +8,7 @@ import {
   refreshProjectIndex,
 } from "@/lib/rag/project-index";
 import { categorizeFiles } from "@/lib/files/categorize";
+import { logger } from "@/lib/logger";
 import { parseFileWithMinerU } from "@/lib/parse/mineru";
 import { embedChunksForFile } from "@/lib/rag/embedding";
 import { readStoredObject, type StorageProvider } from "@/lib/storage/object-storage";
@@ -257,11 +258,10 @@ export async function parseFileAsset(input: {
           fileAssetId: file.id,
           apiKey: bailianKey,
         }).catch((error) => {
-          console.error(
-            "Embedding failed for file:",
-            file.id,
-            error instanceof Error ? error.message : error
-          );
+          logger.error("嵌入向量生成失败", {
+            fileId: file.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
         });
       }
     }
@@ -318,10 +318,9 @@ export async function parseFileBatch(input: {
         ]);
       }
     } catch (error) {
-      console.error(
-        "File parse job failed:",
-        error instanceof Error ? error.message : error
-      );
+      logger.error("文件解析任务失败", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -331,10 +330,9 @@ export async function parseFileBatch(input: {
       projectId,
       fileIds,
     }).catch((error) => {
-      console.error(
-        "File categorization failed:",
-        error instanceof Error ? error.message : error
-      );
+      logger.error("文件分类失败", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
   }
 }

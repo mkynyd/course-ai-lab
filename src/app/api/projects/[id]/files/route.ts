@@ -5,6 +5,8 @@ import path from "path";
 import crypto from "crypto";
 import { startFileParseBatch } from "@/lib/files/parse-job";
 import { uploadFileBuffer } from "@/lib/storage/object-storage";
+import { logger } from "@/lib/logger";
+import { checkRateLimit, RateLimits } from "@/lib/rate-limit";
 
 const CODE_EXTENSIONS: Record<string, string> = {
   "txt": "text/plain",
@@ -111,6 +113,19 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "请先登录" }, { status: 401 });
   }
+
+  const { allowed } = await checkRateLimit(
+    `file-upload:${session.user.id}`,
+    RateLimits.FILE_UPLOAD.max,
+    RateLimits.FILE_UPLOAD.window
+  );
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "上传请求太频繁，请稍后重试" },
+      { status: 429 }
+    );
+  }
+
   const { id: projectId } = await params;
 
   // Verify project ownership
@@ -235,7 +250,7 @@ export async function POST(
           note: "文件已进入解析队列",
         });
       } catch (fileErr) {
-        console.error("File upload error:", fileErr);
+        logger.error("文件上传失败", { error: String(fileErr) });
         results.push({
           success: false,
           originalName: (file as File)?.name || "未知文件",
@@ -269,7 +284,7 @@ export async function POST(
       { status: succeeded.length > 0 ? 201 : 400 }
     );
   } catch (err) {
-    console.error("File upload error:", err);
+    logger.error("文件上传失败", { error: String(err) });
     return NextResponse.json(
       { error: "文件上传失败，请稍后重试" },
       { status: 500 }
