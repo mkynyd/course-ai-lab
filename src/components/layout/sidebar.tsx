@@ -7,6 +7,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import {
   AlertDialog,
@@ -53,6 +54,7 @@ import {
 import {
   ChatLines,
   Folder,
+  PageEdit,
   Plus,
   Trash,
   Xmark,
@@ -63,6 +65,10 @@ import {
   useDeleteConversation,
 } from "@/lib/hooks/use-conversations";
 import { useDeleteProject, useProjects } from "@/lib/hooks/use-projects";
+import {
+  useConversions,
+  useDeleteConversion,
+} from "@/lib/hooks/use-conversions";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -80,11 +86,17 @@ export function Sidebar({
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
-  const activeSection = pathname.startsWith("/projects") ? "projects" : "chat";
+  const activeSection = pathname.startsWith("/projects")
+    ? "projects"
+    : pathname.startsWith("/tools")
+      ? "tools"
+      : "chat";
   const conversationsQuery = useConversations();
   const projectsQuery = useProjects();
+  const conversionsQuery = useConversions();
   const deleteConversationMutation = useDeleteConversation();
   const deleteProjectMutation = useDeleteProject();
+  const deleteConversionMutation = useDeleteConversion();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [conversationDeleteTarget, setConversationDeleteTarget] = useState<{
     id: string;
@@ -94,10 +106,19 @@ export function Sidebar({
     id: string;
     name: string;
   } | null>(null);
+  const [conversionDeleteTarget, setConversionDeleteTarget] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const conversations = conversationsQuery.data || [];
   const projects = projectsQuery.data || [];
+  const conversions = conversionsQuery.data || [];
   const isLoading =
-    conversationsQuery.isPending || projectsQuery.isPending;
+    activeSection === "chat"
+      ? conversationsQuery.isPending
+      : activeSection === "projects"
+        ? projectsQuery.isPending
+        : conversionsQuery.isPending;
 
   async function deleteConversation(id: string) {
     await deleteConversationMutation.mutateAsync(id);
@@ -109,14 +130,35 @@ export function Sidebar({
     if (pathname === `/projects/${id}`) router.push("/projects");
   }
 
-  function openSection(section: "chat" | "projects") {
+  async function deleteConversion(id: string) {
+    try {
+      await deleteConversionMutation.mutateAsync(id);
+      if (pathname === `/tools/${id}`) router.push("/tools");
+      setConversionDeleteTarget(null);
+    } catch {
+      // Mutation state keeps the confirmation dialog open with a retry message.
+    }
+  }
+
+  function requestDeleteConversion(conversion: { id: string; title: string }) {
+    deleteConversionMutation.reset();
+    setConversionDeleteTarget(conversion);
+  }
+
+  function openSection(section: "chat" | "projects" | "tools") {
     onExpand();
     onClose();
-    router.push(section === "chat" ? "/chat" : "/projects");
+    if (section === "chat") router.push("/chat");
+    else if (section === "projects") router.push("/projects");
+    else router.push("/tools");
   }
 
   function createItem() {
     onClose();
+    if (activeSection === "tools") {
+      router.push("/tools");
+      return;
+    }
     router.push(activeSection === "chat" ? "/chat" : "/projects/new");
   }
 
@@ -124,6 +166,9 @@ export function Sidebar({
     ? pathname.split("/").pop()
     : null;
   const activeProjectId = pathname.startsWith("/projects/")
+    ? pathname.split("/")[2]
+    : null;
+  const activeConversionId = pathname.startsWith("/tools/")
     ? pathname.split("/")[2]
     : null;
   const accountName =
@@ -186,13 +231,18 @@ export function Sidebar({
         </SidebarHeader>
 
         <SidebarGroup className="mx-2 my-2 w-auto shrink-0 rounded-[var(--radius-xl)] bg-[var(--color-surface)] p-1.5">
-          <SidebarMenu className="grid min-w-0 grid-cols-2 gap-1 lg:grid-cols-1">
+          <SidebarMenu
+            className={cn(
+              "grid min-w-0 grid-cols-3 gap-1",
+              collapsed && "lg:grid-cols-1"
+            )}
+          >
             <SidebarMenuItem>
               <SidebarMenuButton
                 type="button"
                 onClick={() => openSection("chat")}
                 isActive={activeSection === "chat"}
-                className={cn("h-10", collapsed && "lg:justify-center lg:px-0")}
+                className={cn("h-11 lg:h-10", collapsed && "lg:justify-center lg:px-0")}
                 aria-current={activeSection === "chat" ? "page" : undefined}
                 title={collapsed ? "展开聊天" : undefined}
               >
@@ -207,13 +257,28 @@ export function Sidebar({
                 type="button"
                 onClick={() => openSection("projects")}
                 isActive={activeSection === "projects"}
-                className={cn("h-10", collapsed && "lg:justify-center lg:px-0")}
+                className={cn("h-11 lg:h-10", collapsed && "lg:justify-center lg:px-0")}
                 aria-current={activeSection === "projects" ? "page" : undefined}
                 title={collapsed ? "展开项目" : undefined}
               >
                 <Folder strokeWidth={1.8} />
                 <span className={cn("whitespace-nowrap", collapsed && "lg:hidden")}>
                   项目
+                </span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                type="button"
+                onClick={() => openSection("tools")}
+                isActive={activeSection === "tools"}
+                className={cn("h-11 lg:h-10", collapsed && "lg:justify-center lg:px-0")}
+                aria-current={activeSection === "tools" ? "page" : undefined}
+                title={collapsed ? "展开文档" : undefined}
+              >
+                <PageEdit strokeWidth={1.8} />
+                <span className={cn("whitespace-nowrap", collapsed && "lg:hidden")}>
+                  文档
                 </span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -240,12 +305,20 @@ export function Sidebar({
               className="w-full"
             >
               <Plus data-icon="inline-start" strokeWidth={2} />
-              {activeSection === "chat" ? "新对话" : "新建项目"}
+              {activeSection === "chat"
+                ? "新对话"
+                : activeSection === "tools"
+                  ? "新转换"
+                  : "新建项目"}
             </Button>
           </SidebarGroup>
 
           <SidebarGroupLabel className="px-4 pb-2 text-[11px] uppercase tracking-wider">
-            {activeSection === "chat" ? "对话列表" : "项目列表"}
+            {activeSection === "chat"
+              ? "对话列表"
+              : activeSection === "tools"
+                ? "转换记录"
+                : "项目列表"}
           </SidebarGroupLabel>
 
           <SidebarContent className="flex-1 px-2 pb-2">
@@ -311,6 +384,65 @@ export function Sidebar({
                   暂无对话记录
                   <br />
                   点击「新对话」开始聊天
+                </p>
+              )
+            ) : activeSection === "tools" ? (
+              conversions.length > 0 ? (
+                <SidebarMenu className="gap-1">
+                  {conversions.map((conversion) => (
+                    <ContextMenu key={conversion.id}>
+                      <ContextMenuTrigger asChild>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={activeConversionId === conversion.id}
+                            className="min-h-10"
+                          >
+                            <Link href={`/tools/${conversion.id}`} onClick={onClose}>
+                              <PageEdit strokeWidth={2} />
+                              <span>{conversion.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                          <SidebarMenuAction
+                            type="button"
+                            showOnHover
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              requestDeleteConversion(conversion);
+                            }}
+                            className="hover:text-destructive"
+                            aria-label={`删除「${conversion.title}」`}
+                          >
+                            <Trash strokeWidth={2} />
+                          </SidebarMenuAction>
+                        </SidebarMenuItem>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent className="min-w-36">
+                        <ContextMenuItem
+                          onSelect={() => {
+                            onClose();
+                            router.push(`/tools/${conversion.id}`);
+                          }}
+                        >
+                          <PageEdit strokeWidth={2} />
+                          查看内容
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          variant="destructive"
+                          onSelect={() => requestDeleteConversion(conversion)}
+                        >
+                          <Trash strokeWidth={2} />
+                          删除
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  ))}
+                </SidebarMenu>
+              ) : (
+                <p className="px-2 py-8 text-center text-xs leading-5 text-[var(--color-text-tertiary)]">
+                  暂无转换记录
+                  <br />
+                  上传 PDF 开始转换
                 </p>
               )
             ) : projects.length > 0 ? (
@@ -473,6 +605,48 @@ export function Sidebar({
                 }}
               >
                 删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog
+          open={conversionDeleteTarget !== null}
+          onOpenChange={(open) => {
+            if (!open && !deleteConversionMutation.isPending) {
+              setConversionDeleteTarget(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>删除转换记录</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除「{conversionDeleteTarget?.title}」吗？已保存到项目的文件不会受到影响。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deleteConversionMutation.isError && (
+              <p className="text-sm text-[var(--color-error)]" role="alert">
+                删除失败，请稍后重试。
+              </p>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteConversionMutation.isPending}>
+                取消
+              </AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={deleteConversionMutation.isPending}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (conversionDeleteTarget) {
+                    void deleteConversion(conversionDeleteTarget.id);
+                  }
+                }}
+              >
+                {deleteConversionMutation.isPending && (
+                  <Spinner data-icon="inline-start" />
+                )}
+                {deleteConversionMutation.isPending ? "正在删除" : "删除"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

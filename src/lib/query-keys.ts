@@ -17,6 +17,10 @@ export const queryKeys = {
   artifacts: {
     detail: (id: string) => ["artifacts", id] as const,
   },
+  conversions: {
+    all: ["conversions"] as const,
+    detail: (id: string) => ["conversions", id] as const,
+  },
   keys: ["api-keys"] as const,
   cacheMetrics: (days: number) => ["cache-metrics", days] as const,
 } as const;

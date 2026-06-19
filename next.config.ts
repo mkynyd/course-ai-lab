@@ -3,9 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
 
-  // Allow multimodal chat attachments through the proxy.
+  // Allow the 200MB PDF conversion limit plus multipart overhead through the proxy.
   experimental: {
-    proxyClientMaxBodySize: "120mb",
+    proxyClientMaxBodySize: "210mb",
   },
   serverExternalPackages: [
     "pdfjs-dist",

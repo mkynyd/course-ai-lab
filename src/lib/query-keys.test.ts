@@ -17,5 +17,10 @@ describe("queryKeys", () => {
       "project-1",
       "artifacts",
     ]);
+    expect(queryKeys.conversions.all).toEqual(["conversions"]);
+    expect(queryKeys.conversions.detail("conversion-1")).toEqual([
+      "conversions",
+      "conversion-1",
+    ]);
   });
 });

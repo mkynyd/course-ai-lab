@@ -78,3 +78,19 @@ export interface ArtifactSummary {
 export interface ArtifactDetail extends ArtifactSummary {
   content: string;
 }
+
+export interface ConversionSummary {
+  id: string;
+  title: string;
+  originalName: string;
+  status: string;
+  pageCount: number | null;
+  createdAt: string;
+}
+
+export interface ConversionDetail extends ConversionSummary {
+  markdownContent: string;
+  fileSize: number | null;
+  metadata: Record<string, unknown> | null;
+  updatedAt: string;
+}

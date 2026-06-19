@@ -1,0 +1,535 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Check,
+  Copy,
+  Download,
+  Folder,
+  PageEdit,
+  Refresh,
+} from "iconoir-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
+import { SaveToProjectDialog } from "@/components/tools/save-to-project-dialog";
+import type { ConversionSummary } from "@/lib/api/types";
+import { copyText } from "@/lib/browser/copy-text";
+import { downloadTextFile } from "@/lib/browser/download-text-file";
+import { useConversions } from "@/lib/hooks/use-conversions";
+import { queryKeys } from "@/lib/query-keys";
+import { cn } from "@/lib/utils";
+
+const MAX_PDF_SIZE = 200 * 1024 * 1024;
+
+const STAGES = [
+  { key: "uploading", label: "上传" },
+  { key: "pending", label: "排队" },
+  { key: "model", label: "解析" },
+  { key: "done", label: "完成" },
+] as const;
+
+type Stage = "idle" | (typeof STAGES)[number]["key"];
+
+interface ConversionResult {
+  content: string;
+  conversionId: string;
+  fileName: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface PdfConvertClientProps {
+  conversions: ConversionSummary[];
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function parseEvent(line: string): Record<string, unknown> | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("data: ")) return null;
+  try {
+    return JSON.parse(trimmed.slice(6)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
+  useConversions(conversions);
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [stage, setStage] = useState<Stage>("idle");
+  const [progress, setProgress] = useState<{
+    extractedPages: number;
+    totalPages: number;
+  } | null>(null);
+  const [result, setResult] = useState<ConversionResult | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileSize, setFileSize] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{
+    message: string;
+    tone: "info" | "success";
+  } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [mineruToken, setMineruToken] = useState("");
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+
+  const isConverting = stage !== "idle" && stage !== "done";
+  const stageIndex = STAGES.findIndex((item) => item.key === stage);
+
+  function validateFile(file: File) {
+    if (
+      !file.name.toLowerCase().endsWith(".pdf") ||
+      (file.type && file.type !== "application/pdf")
+    ) {
+      return "请选择有效的 PDF 文件";
+    }
+    if (file.size > MAX_PDF_SIZE) {
+      return "文件大小超过 200MB 限制，请压缩或拆分后重试";
+    }
+    return null;
+  }
+
+  async function startConversion(file: File, oneTimeToken?: string) {
+    const validationError = validateFile(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setSelectedFile(file);
+    setFileSize(file.size);
+    setStage("uploading");
+    setProgress(null);
+    setResult(null);
+    setError(null);
+    setFeedback(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    if (oneTimeToken?.trim()) {
+      formData.append("mineruToken", oneTimeToken.trim());
+    }
+
+    try {
+      const response = await fetch("/api/tools/pdf-to-markdown", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as {
+          error?: string;
+          needToken?: boolean;
+        } | null;
+        if (response.status === 403 && body?.needToken) {
+          setShowTokenInput(true);
+          setStage("idle");
+          setFeedback({
+            message: body.error || "请输入 MinerU Token 后继续",
+            tone: "info",
+          });
+          return;
+        }
+        throw new Error(body?.error || "转换失败，请稍后重试");
+      }
+      if (!response.body) {
+        throw new Error("转换服务未返回进度流，请重试");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let receivedTerminalEvent = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const event = parseEvent(line);
+          if (!event || typeof event.stage !== "string") continue;
+
+          if (event.stage === "uploading" || event.stage === "pending") {
+            setStage(event.stage);
+          } else if (event.stage === "model") {
+            setStage("model");
+            setProgress({
+              extractedPages: Number(event.extractedPages) || 0,
+              totalPages: Number(event.totalPages) || 0,
+            });
+          } else if (event.stage === "done") {
+            receivedTerminalEvent = true;
+            setStage("done");
+            setShowTokenInput(false);
+            setResult({
+              content: String(event.content || ""),
+              conversionId: String(event.conversionId || ""),
+              fileName: String(event.fileName || file.name.replace(/\.pdf$/i, ".md")),
+              metadata:
+                event.metadata && typeof event.metadata === "object"
+                  ? (event.metadata as Record<string, unknown>)
+                  : undefined,
+            });
+            await queryClient.invalidateQueries({
+              queryKey: queryKeys.conversions.all,
+            });
+          } else if (event.stage === "failed") {
+            receivedTerminalEvent = true;
+            setStage("idle");
+            setError(String(event.error || "转换失败，请稍后重试"));
+          }
+        }
+      }
+
+      if (!receivedTerminalEvent) {
+        throw new Error("转换进度流意外中断，请重试");
+      }
+    } catch (conversionError) {
+      setStage("idle");
+      setError(
+        conversionError instanceof Error
+          ? conversionError.message
+          : "转换失败，请稍后重试"
+      );
+    }
+  }
+
+  function handleFile(file: File | undefined) {
+    if (!file || isConverting) return;
+    void startConversion(file);
+  }
+
+  async function copyContent() {
+    if (!result) return;
+    try {
+      await copyText(result.content);
+      setFeedback({ message: "Markdown 内容已复制", tone: "success" });
+    } catch {
+      setError("复制失败，请手动选择内容复制");
+    }
+  }
+
+  function downloadContent() {
+    if (!result) return;
+    downloadTextFile(result.content, result.fileName);
+    setFeedback({ message: "Markdown 文件已开始下载", tone: "success" });
+  }
+
+  function reset() {
+    setStage("idle");
+    setProgress(null);
+    setResult(null);
+    setSelectedFile(null);
+    setFileSize(0);
+    setError(null);
+    setFeedback(null);
+    setShowTokenInput(false);
+    setMineruToken("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  const pageCount = Number(result?.metadata?.pageCount) || 0;
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+        <header className="max-w-2xl">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
+            文档工具
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
+            PDF 转 Markdown
+          </h1>
+          <p className="mt-2 max-w-[65ch] text-sm leading-6 text-[var(--color-text-secondary)]">
+            转换课程讲义、论文和实验资料，保留表格、公式与图片引用。
+          </p>
+        </header>
+
+        <section
+          aria-labelledby="upload-heading"
+          className="mt-8 rounded-[var(--radius-xl)] bg-[var(--color-surface)] p-4 sm:p-6"
+        >
+          <h2 id="upload-heading" className="sr-only">
+            上传 PDF
+          </h2>
+          <div
+            className={cn(
+              "flex min-h-64 flex-col items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)] px-6 py-10 text-center transition-colors duration-200 motion-reduce:transition-none",
+              isDragOver && "bg-[var(--color-accent-muted)]"
+            )}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              if (!isConverting) setIsDragOver(true);
+            }}
+            onDragOver={(event) => event.preventDefault()}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragOver(false);
+              handleFile(event.dataTransfer.files[0]);
+            }}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              hidden
+              disabled={isConverting}
+              onChange={(event) => handleFile(event.target.files?.[0])}
+            />
+            <span className="flex size-14 items-center justify-center rounded-full bg-[var(--color-surface)] text-[var(--color-text-tertiary)]">
+              {isConverting ? (
+                <Spinner className="size-6" />
+              ) : (
+                <PageEdit width={30} height={30} strokeWidth={1.35} />
+              )}
+            </span>
+            <p className="mt-5 text-sm font-medium text-[var(--color-text-primary)]">
+              {isConverting ? "正在转换，请保持页面打开" : "拖拽 PDF 到此处"}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-[var(--color-text-tertiary)]">
+              最大 200MB，最多 200 页
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              className="mt-5 min-h-11 sm:min-h-0"
+              disabled={isConverting}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              选择 PDF
+            </Button>
+          </div>
+
+          {showTokenInput && selectedFile && (
+            <div className="mt-5 flex flex-col gap-3 rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)] p-4">
+              <label className="flex flex-col gap-2 text-xs font-medium text-[var(--color-text-secondary)]">
+                MinerU Token
+                <Input
+                  type="password"
+                  value={mineruToken}
+                  autoComplete="off"
+                  aria-describedby="mineru-token-help"
+                  placeholder="输入仅用于本次转换的 Token"
+                  className="h-11 font-mono sm:h-8"
+                  onChange={(event) => setMineruToken(event.target.value)}
+                />
+              </label>
+              <p
+                id="mineru-token-help"
+                className="text-xs leading-5 text-[var(--color-text-tertiary)]"
+              >
+                Token 仅用于本次转换，不会存储到服务器。
+              </p>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  className="min-h-11 sm:min-h-0"
+                  disabled={!mineruToken.trim()}
+                  onClick={() => void startConversion(selectedFile, mineruToken)}
+                >
+                  开始转换
+                </Button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {stage !== "idle" && (
+          <section
+            aria-label="转换进度"
+            aria-live="polite"
+            className="mt-6 rounded-[var(--radius-xl)] bg-[var(--color-surface)] p-4 sm:p-6"
+          >
+            <ol className="grid grid-cols-4 gap-1">
+              {STAGES.map((item, index) => {
+                const complete = stageIndex > index;
+                const current = stageIndex === index;
+                return (
+                  <li key={item.key} className="flex min-w-0 items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+                        complete
+                          ? "bg-[var(--color-success-muted)] text-[var(--color-success)]"
+                          : current
+                            ? "bg-[var(--color-accent-muted)] text-[var(--color-accent)]"
+                            : "bg-[var(--color-panel-muted)] text-[var(--color-text-tertiary)]"
+                      )}
+                    >
+                      {complete ? <Check width={13} height={13} /> : index + 1}
+                    </span>
+                    <span
+                      className={cn(
+                        "truncate text-[11px] sm:text-xs",
+                        stageIndex >= index
+                          ? "text-[var(--color-text-primary)]"
+                          : "text-[var(--color-text-tertiary)]"
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                    {index < STAGES.length - 1 && (
+                      <Separator className="min-w-2 flex-1" />
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+
+            {stage === "model" && progress && (
+              <div className="mt-5">
+                <Progress
+                  value={
+                    progress.totalPages > 0
+                      ? (progress.extractedPages / progress.totalPages) * 100
+                      : 0
+                  }
+                  size="sm"
+                  color="accent"
+                  label={`已解析 ${progress.extractedPages} / ${progress.totalPages} 页`}
+                />
+                <p className="mt-2 text-xs tabular-nums text-[var(--color-text-tertiary)]">
+                  已解析 {progress.extractedPages} / {progress.totalPages} 页
+                </p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {error && (
+          <section
+            role="alert"
+            className="mt-6 rounded-[var(--radius-xl)] bg-[var(--color-error-muted)] p-4"
+          >
+            <p className="text-sm leading-6 text-[var(--color-error)]">{error}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedFile && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="min-h-11 sm:min-h-0"
+                  onClick={() => void startConversion(selectedFile, mineruToken)}
+                >
+                  <Refresh data-icon="inline-start" strokeWidth={1.8} />
+                  重新转换
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="min-h-11 sm:min-h-0"
+                onClick={reset}
+              >
+                选择其他文件
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {feedback && (
+          <p
+            role="status"
+            className={cn(
+              "mt-4 rounded-[var(--radius-lg)] px-4 py-3 text-sm",
+              feedback.tone === "success"
+                ? "bg-[var(--color-success-muted)] text-[var(--color-success)]"
+                : "bg-[var(--color-panel-muted)] text-[var(--color-text-secondary)]"
+            )}
+          >
+            {feedback.message}
+          </p>
+        )}
+
+        {result && (
+          <section className="mt-6 rounded-[var(--radius-xl)] bg-[var(--color-surface)] p-4 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold">转换结果</h2>
+                <p className="mt-1 truncate text-xs text-[var(--color-text-tertiary)]">
+                  {result.fileName}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="min-h-11 sm:min-h-0"
+                  onClick={() => void copyContent()}
+                >
+                  <Copy data-icon="inline-start" strokeWidth={1.8} />
+                  复制
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="min-h-11 sm:min-h-0"
+                  onClick={downloadContent}
+                >
+                  <Download data-icon="inline-start" strokeWidth={1.8} />
+                  下载 .md
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="min-h-11 sm:min-h-0"
+                  onClick={() => setShowProjectPicker(true)}
+                >
+                  <Folder data-icon="inline-start" strokeWidth={1.8} />
+                  保存到项目
+                </Button>
+              </div>
+            </div>
+
+            <ScrollArea className="mt-4 h-96 rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)]">
+              <pre className="min-w-full whitespace-pre-wrap break-words p-4 font-mono text-xs leading-6 text-[var(--color-text-primary)]">
+                {result.content.slice(0, 10000)}
+                {result.content.length > 10000
+                  ? "\n\n内容较长，预览已截断，请下载查看完整文件。"
+                  : null}
+              </pre>
+            </ScrollArea>
+            <p className="mt-3 text-xs text-[var(--color-text-tertiary)]">
+              {pageCount > 0 ? `${pageCount} 页，` : ""}
+              {formatBytes(fileSize)}
+            </p>
+          </section>
+        )}
+      </div>
+
+      {result && (
+        <SaveToProjectDialog
+          conversionId={result.conversionId}
+          open={showProjectPicker}
+          onOpenChange={setShowProjectPicker}
+          onSaved={(projectName) =>
+            setFeedback({
+              message: `已保存到「${projectName}」`,
+              tone: "success",
+            })
+          }
+        />
+      )}
+    </div>
+  );
+}
