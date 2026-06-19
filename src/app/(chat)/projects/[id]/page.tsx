@@ -19,7 +19,6 @@ import { AmbientField } from "@/components/workbench/ambient-field";
 import { LoadingIndicator } from "@/components/workbench/loading-indicator";
 import {
   useChat,
-  type ChatMessage,
   type SendMessageInput,
 } from "@/lib/hooks/use-chat";
 import type { FileAttachment } from "@/lib/chat/router";
@@ -38,40 +37,7 @@ import {
 } from "@/lib/hooks/use-conversations";
 import { useSaveArtifact } from "@/lib/hooks/use-artifacts";
 import { queryKeys } from "@/lib/query-keys";
-
-type PersistedConversationMessage = {
-  id: string;
-  role: string;
-  content: string;
-  reasoningContent?: string | null;
-  tokenCount?: number | null;
-  cacheHitTokens?: number | null;
-  cacheMissTokens?: number | null;
-};
-
-function isEmptyAssistantPlaceholder(message: PersistedConversationMessage) {
-  return (
-    message.role === "assistant" &&
-    !message.content.trim() &&
-    !message.reasoningContent?.trim() &&
-    message.tokenCount == null
-  );
-}
-
-function toChatMessages(messages: PersistedConversationMessage[]): ChatMessage[] {
-  const pendingIndex = messages.reduce(
-    (foundIndex, message, index) =>
-      isEmptyAssistantPlaceholder(message) ? index : foundIndex,
-    -1
-  );
-
-  return messages.map((message, index) => ({
-    ...message,
-    role: message.role as "user" | "assistant" | "system",
-    isStreaming: index === pendingIndex || undefined,
-    streamingSource: index === pendingIndex ? "background" : undefined,
-  }));
-}
+import { toChatMessages } from "@/lib/chat/project-conversation-state";
 
 export default function ProjectDetailPage() {
   const params = useParams();
