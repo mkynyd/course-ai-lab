@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 type Provider = "deepseek" | "minimax";
-type Strength = "fast" | "balanced" | "advanced";
+type Strength = "fast" | "advanced";
 type ReasoningEffort = "high" | "max";
 
 interface ModelSelectorProps {
@@ -34,8 +34,7 @@ interface ModelSelectorProps {
 }
 
 const STRENGTHS: Array<{ value: Strength; label: string; effort: ReasoningEffort }> = [
-  { value: "fast", label: "极速", effort: "high" },
-  { value: "balanced", label: "均衡", effort: "high" },
+  { value: "fast", label: "快速", effort: "high" },
   { value: "advanced", label: "高级", effort: "max" },
 ];
 
@@ -51,7 +50,7 @@ function providerFor(model: string): Provider {
 function strengthFor(model: string, effort: ReasoningEffort): Strength {
   if (model === "deepseek-v4-flash") return "fast";
   if (effort === "max") return "advanced";
-  return "balanced";
+  return "fast";
 }
 
 function modelFor(provider: Provider, strength: Strength) {
