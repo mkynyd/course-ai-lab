@@ -92,6 +92,19 @@ function resolveLocalPath(key: string) {
   return resolvedPath;
 }
 
+function normalizeObjectKey(key: string) {
+  const normalized = key.trim().replace(/\\/g, "/");
+  const segments = normalized.split("/");
+  if (
+    !normalized ||
+    normalized.startsWith("/") ||
+    segments.some((segment) => !segment || segment === "." || segment === "..")
+  ) {
+    throw new Error("对象路径无效");
+  }
+  return normalized;
+}
+
 function createQiniuClients() {
   const config = qiniuConfig();
   if (!config) {
@@ -165,6 +178,42 @@ export async function uploadFileBuffer(input: UploadFileBufferInput): Promise<St
   }
 
   return { provider, key, filename };
+}
+
+export async function uploadObjectBuffer(input: {
+  key: string;
+  mimeType: string;
+  buffer: Buffer;
+}): Promise<StoredObjectRef> {
+  const key = normalizeObjectKey(input.key);
+  const provider = activeStorageProvider();
+
+  if (provider === "local") {
+    const target = resolveLocalPath(key);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, input.buffer);
+    return { provider, key };
+  }
+
+  const { config, mac, formUploader } = createQiniuClients();
+  const putPolicy = new qiniu.rs.PutPolicy({
+    scope: `${config.bucket}:${key}`,
+    insertOnly: 1,
+    expires: 600,
+  });
+  const uploadToken = putPolicy.uploadToken(mac);
+  const putExtra = new qiniu.form_up.PutExtra(
+    path.posix.basename(key),
+    {},
+    input.mimeType
+  );
+  const result = await formUploader.put(uploadToken, key, input.buffer, putExtra);
+  const statusCode = result.resp.statusCode ?? 0;
+  if (statusCode < 200 || statusCode >= 300) {
+    throw new Error(`七牛上传失败：${statusCode}`);
+  }
+
+  return { provider, key };
 }
 
 export async function readStoredObject(input: StoredObjectRef): Promise<Buffer> {

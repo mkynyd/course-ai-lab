@@ -5,6 +5,7 @@ import {
   deleteStoredObject,
   readStoredObject,
   uploadFileBuffer,
+  uploadObjectBuffer,
 } from "@/lib/storage/object-storage";
 
 const ENV_KEYS = [
@@ -65,6 +66,33 @@ describe("object storage adapter", () => {
     setEnv("NODE_ENV", "production");
 
     expect(() => activeStorageProvider()).toThrow("生产环境缺少七牛对象存储配置");
+  });
+
+  it("stores nested server-generated object keys locally", async () => {
+    const stored = await uploadObjectBuffer({
+      key: "users/user-1/conversions/conversion-1/assets/asset-1/circuit.png",
+      mimeType: "image/png",
+      buffer: Buffer.from([1, 2, 3]),
+    });
+
+    expect(stored).toEqual({
+      provider: "local",
+      key: "users/user-1/conversions/conversion-1/assets/asset-1/circuit.png",
+    });
+    await expect(readStoredObject(stored)).resolves.toEqual(
+      Buffer.from([1, 2, 3])
+    );
+    await expect(deleteStoredObject(stored)).resolves.toBeUndefined();
+  });
+
+  it("rejects object keys that escape the upload root", async () => {
+    await expect(
+      uploadObjectBuffer({
+        key: "../escape.png",
+        mimeType: "image/png",
+        buffer: Buffer.from([1]),
+      })
+    ).rejects.toThrow("对象路径无效");
   });
 
   it("creates a short-lived private Qiniu download URL", () => {
