@@ -1,4 +1,7 @@
-import AdmZip from "adm-zip";
+import {
+  extractMinerUResult,
+  type ParsedImageAsset,
+} from "@/lib/parse/mineru-result";
 
 const MINERU_BASE_URL = "https://mineru.net";
 
@@ -194,28 +197,9 @@ const MIN_MEANINGFUL_IMAGE_BYTES = 10240; // 10 KB
 /** zip 中有效图片数量达到此阈值才标记 requiresVisionModel */
 const MEANINGFUL_IMAGE_COUNT_THRESHOLD = 3;
 
-const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif", "bmp"]);
-
-function imageExtensionOf(filename: string) {
-  const index = filename.lastIndexOf(".");
-  return index >= 0 ? filename.slice(index + 1).toLowerCase() : "";
-}
-
-/** 遍历 zip 中的图片文件，返回文件体积 >= minBytes 的图片数量 */
-function countMeaningfulZipImages(zip: AdmZip, minBytes: number): number {
-  let count = 0;
-  for (const entry of zip.getEntries()) {
-    if (entry.isDirectory) continue;
-    if (!IMAGE_EXTENSIONS.has(imageExtensionOf(entry.entryName))) continue;
-    if (entry.getData().length >= minBytes) {
-      count += 1;
-    }
-  }
-  return count;
-}
-
 interface MarkdownResult {
   content: string;
+  assets: ParsedImageAsset[];
   meaningfulImageCount: number;
 }
 
@@ -227,31 +211,20 @@ async function downloadAndExtractResult(zipUrl: string): Promise<MarkdownResult>
   }
 
   const buffer = Buffer.from(await resp.arrayBuffer());
-  const zip = new AdmZip(buffer);
-  const entries = zip.getEntries();
-  const markdownEntry =
-    entries.find((entry) => entry.entryName.endsWith("/full.md")) ||
-    entries.find((entry) => entry.entryName === "full.md") ||
-    entries.find((entry) => entry.entryName.toLowerCase().endsWith(".md"));
-
-  if (!markdownEntry) {
-    throw new MinerUError("missing-full-md", "MinerU 结果中未找到 Markdown 内容");
+  try {
+    const parsed = extractMinerUResult(buffer);
+    return {
+      ...parsed,
+      meaningfulImageCount: parsed.assets.filter(
+        (asset) => asset.buffer.length >= MIN_MEANINGFUL_IMAGE_BYTES
+      ).length,
+    };
+  } catch (error) {
+    throw new MinerUError(
+      "invalid-result-zip",
+      error instanceof Error ? error.message : "MinerU 结果解析失败"
+    );
   }
-
-  const content = markdownEntry.getData().toString("utf-8").trim();
-  const meaningfulImageCount = countMeaningfulZipImages(
-    zip,
-    MIN_MEANINGFUL_IMAGE_BYTES
-  );
-
-  return { content, meaningfulImageCount };
-}
-
-/** 统计 markdown 内容中的图片引用数量（含 ![]() 和 <img> 两种格式） */
-function countMarkdownImages(content: string) {
-  const markdownImages = content.match(/!\[[^\]]*]\([^)]*\)/g) || [];
-  const htmlImages = content.match(/<img\b[^>]*>/gi) || [];
-  return markdownImages.length + htmlImages.length;
 }
 
 export async function parseFileWithMinerU(options: {
@@ -261,6 +234,7 @@ export async function parseFileWithMinerU(options: {
   onProgress?: (stage: string, progress?: { current: number; total: number }) => void;
 }): Promise<{
   content: string;
+  assets: ParsedImageAsset[];
   metadata: {
     parser: "mineru-pipeline" | "mineru-vlm";
     taskId: string;
@@ -296,15 +270,16 @@ export async function parseFileWithMinerU(options: {
     throw new MinerUError("missing-zip-url", "MinerU 未返回解析结果下载地址");
   }
 
-  const { content, meaningfulImageCount } = await downloadAndExtractResult(
+  const { content, assets, meaningfulImageCount } = await downloadAndExtractResult(
     result.fullZipUrl
   );
-  const retainedImageCount = countMarkdownImages(content);
+  const retainedImageCount = assets.length;
   const requiresVisionModel =
     meaningfulImageCount >= MEANINGFUL_IMAGE_COUNT_THRESHOLD;
 
   return {
     content,
+    assets,
     metadata: {
       parser: "mineru-pipeline",
       taskId: submitted.taskId,
