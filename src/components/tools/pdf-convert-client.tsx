@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Check,
-  Copy,
   Download,
   Folder,
   PageEdit,
@@ -13,12 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { SaveToProjectDialog } from "@/components/tools/save-to-project-dialog";
+import { MarkdownContent } from "@/components/markdown/markdown-content";
 import type { ConversionSummary } from "@/lib/api/types";
-import { copyText } from "@/lib/browser/copy-text";
 import { downloadTextFile } from "@/lib/browser/download-text-file";
 import { useConversions } from "@/lib/hooks/use-conversions";
 import { queryKeys } from "@/lib/query-keys";
@@ -39,6 +37,7 @@ interface ConversionResult {
   content: string;
   conversionId: string;
   fileName: string;
+  assets: Array<{ id: string; relativePath: string }>;
   metadata?: Record<string, unknown>;
 }
 
@@ -179,6 +178,16 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
               content: String(event.content || ""),
               conversionId: String(event.conversionId || ""),
               fileName: String(event.fileName || file.name.replace(/\.pdf$/i, ".md")),
+              assets: Array.isArray(event.assets)
+                ? event.assets.flatMap((asset) => {
+                    if (!asset || typeof asset !== "object") return [];
+                    const value = asset as Record<string, unknown>;
+                    return typeof value.id === "string" &&
+                      typeof value.relativePath === "string"
+                      ? [{ id: value.id, relativePath: value.relativePath }]
+                      : [];
+                  })
+                : [],
               metadata:
                 event.metadata && typeof event.metadata === "object"
                   ? (event.metadata as Record<string, unknown>)
@@ -213,16 +222,6 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
     void startConversion(file);
   }
 
-  async function copyContent() {
-    if (!result) return;
-    try {
-      await copyText(result.content);
-      setFeedback({ message: "Markdown 内容已复制", tone: "success" });
-    } catch {
-      setError("复制失败，请手动选择内容复制");
-    }
-  }
-
   function downloadContent() {
     if (!result) return;
     downloadTextFile(result.content, result.fileName);
@@ -243,6 +242,17 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
   }
 
   const pageCount = Number(result?.metadata?.pageCount) || 0;
+  const resultAssetsByPath = new Map(
+    (result?.assets || []).map((asset) => [asset.relativePath, asset.id])
+  );
+
+  function resolveResultImageUrl(src: string) {
+    if (!result) return src;
+    const assetId = resultAssetsByPath.get(src.replace(/^\.\//, ""));
+    return assetId
+      ? `/api/tools/conversions/${result.conversionId}/assets/${assetId}`
+      : src;
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -469,14 +479,15 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
-                  type="button"
+                  asChild
                   variant="secondary"
                   size="sm"
                   className="min-h-11 sm:min-h-0"
-                  onClick={() => void copyContent()}
                 >
-                  <Copy data-icon="inline-start" strokeWidth={1.8} />
-                  复制
+                  <a href={`/api/tools/conversions/${result.conversionId}/download`}>
+                    <Download data-icon="inline-start" strokeWidth={1.8} />
+                    下载完整包
+                  </a>
                 </Button>
                 <Button
                   type="button"
@@ -501,14 +512,12 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
               </div>
             </div>
 
-            <ScrollArea className="mt-4 h-96 rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)]">
-              <pre className="min-w-full whitespace-pre-wrap break-words p-4 font-mono text-xs leading-6 text-[var(--color-text-primary)]">
-                {result.content.slice(0, 10000)}
-                {result.content.length > 10000
-                  ? "\n\n内容较长，预览已截断，请下载查看完整文件。"
-                  : null}
-              </pre>
-            </ScrollArea>
+            <div className="mt-4 max-h-[36rem] overflow-auto rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)] p-4 sm:p-6">
+              <MarkdownContent
+                content={result.content}
+                resolveImageUrl={resolveResultImageUrl}
+              />
+            </div>
             <p className="mt-3 text-xs text-[var(--color-text-tertiary)]">
               {pageCount > 0 ? `${pageCount} 页，` : ""}
               {formatBytes(fileSize)}

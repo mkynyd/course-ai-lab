@@ -1,13 +1,8 @@
 "use client";
 
 import { memo, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import rehypeHighlight from "rehype-highlight";
 import { ChevronDown, ChevronRight, User, Bot, Save } from "lucide-react";
-import { MermaidBlock } from "@/components/chat/mermaid-block";
+import { MarkdownContent } from "@/components/markdown/markdown-content";
 import { LoadingIndicator } from "@/components/workbench/loading-indicator";
 import { Button } from "@/components/ui/button";
 import {
@@ -149,34 +144,7 @@ function MessageBubbleComponent({
           )}
         >
           {content ? (
-            <div className="markdown-body break-words">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex, rehypeHighlight]}
-                components={{
-                  code(props) {
-                    const { className, children, ...rest } = props;
-                    const match = /language-(\w+)/.exec(className || "");
-                    const code = String(children).replace(/\n$/, "");
-                    if (match?.[1] === "mermaid") {
-                      return (
-                        <MermaidBlock
-                          code={code}
-                          isStreaming={isStreaming}
-                        />
-                      );
-                    }
-                    return (
-                      <code className={className} {...rest}>
-                        {children}
-                      </code>
-                    );
-                  },
-                }}
-              >
-                {content}
-              </ReactMarkdown>
-            </div>
+            <MarkdownContent content={content} isStreaming={isStreaming} />
           ) : isStreaming ? (
             <div className="rounded-[var(--radius-xl)] bg-[var(--color-panel)] px-3 py-2 backdrop-blur-[var(--glass-blur)]">
               <LoadingIndicator

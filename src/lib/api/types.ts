@@ -90,6 +90,7 @@ export interface ConversionSummary {
 
 export interface ConversionDetail extends ConversionSummary {
   markdownContent: string;
+  assets: Array<{ id: string; relativePath: string }>;
   fileSize: number | null;
   metadata: Record<string, unknown> | null;
   updatedAt: string;

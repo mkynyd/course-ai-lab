@@ -2,23 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
-import rehypeKatex from "rehype-katex";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import {
-  Copy,
-  Download,
-  Folder,
-  NavArrowLeft,
-} from "iconoir-react";
-import { MermaidBlock } from "@/components/chat/mermaid-block";
+import { Download, Folder, NavArrowLeft } from "iconoir-react";
+import { MarkdownContent } from "@/components/markdown/markdown-content";
 import { SaveToProjectDialog } from "@/components/tools/save-to-project-dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ConversionDetail } from "@/lib/api/types";
-import { copyText } from "@/lib/browser/copy-text";
 import { downloadTextFile } from "@/lib/browser/download-text-file";
 import { cn } from "@/lib/utils";
 
@@ -40,18 +29,6 @@ export function ConversionViewer({ conversion }: ConversionViewerProps) {
     tone: "error" | "success";
   } | null>(null);
 
-  async function copyContent() {
-    try {
-      await copyText(conversion.markdownContent);
-      setFeedback({ message: "Markdown 内容已复制", tone: "success" });
-    } catch {
-      setFeedback({
-        message: "复制失败，请手动选择内容复制",
-        tone: "error",
-      });
-    }
-  }
-
   function downloadContent() {
     downloadTextFile(
       conversion.markdownContent,
@@ -71,6 +48,20 @@ export function ConversionViewer({ conversion }: ConversionViewerProps) {
       minute: "2-digit",
     }).format(new Date(conversion.createdAt)),
   ].filter(Boolean);
+  const assetsByPath = new Map(
+    conversion.assets.map((asset) => [asset.relativePath, asset.id])
+  );
+  const hasLegacyMissingAssets =
+    conversion.assets.length === 0 &&
+    /!\[[^\]]*]\([^)]*\)|<img\b[^>]*>/i.test(conversion.markdownContent);
+
+  function resolveImageUrl(src: string) {
+    const normalized = src.replace(/^\.\//, "");
+    const assetId = assetsByPath.get(normalized);
+    return assetId
+      ? `/api/tools/conversions/${conversion.id}/assets/${assetId}`
+      : src;
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -98,14 +89,15 @@ export function ConversionViewer({ conversion }: ConversionViewerProps) {
 
           <div className="flex flex-wrap gap-2 lg:ml-auto">
             <Button
-              type="button"
+              asChild
               variant="secondary"
               size="sm"
               className="min-h-11 sm:min-h-0"
-              onClick={() => void copyContent()}
             >
-              <Copy data-icon="inline-start" strokeWidth={1.8} />
-              复制
+              <a href={`/api/tools/conversions/${conversion.id}/download`}>
+                <Download data-icon="inline-start" strokeWidth={1.8} />
+                下载完整包
+              </a>
             </Button>
             <Button
               type="button"
@@ -153,29 +145,18 @@ export function ConversionViewer({ conversion }: ConversionViewerProps) {
         </div>
       </header>
 
+      {hasLegacyMissingAssets && (
+        <p className="mx-auto mt-3 w-[calc(100%-2rem)] max-w-6xl rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)] px-4 py-3 text-xs text-[var(--color-text-secondary)]">
+          该记录创建于图片归档功能上线前，原图片无法恢复。
+        </p>
+      )}
+
       <ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0">
-        <article className="workbench-readable markdown-body mx-auto w-full min-w-0 max-w-4xl break-words px-4 py-8 sm:px-8 sm:py-10">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeKatex, rehypeHighlight]}
-            components={{
-              code(props) {
-                const { className, children, ...rest } = props;
-                const match = /language-(\w+)/.exec(className || "");
-                const code = String(children).replace(/\n$/, "");
-                if (match?.[1] === "mermaid") {
-                  return <MermaidBlock code={code} />;
-                }
-                return (
-                  <code className={className} {...rest}>
-                    {children}
-                  </code>
-                );
-              },
-            }}
-          >
-            {conversion.markdownContent}
-          </ReactMarkdown>
+        <article className="mx-auto w-full min-w-0 max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
+          <MarkdownContent
+            content={conversion.markdownContent}
+            resolveImageUrl={resolveImageUrl}
+          />
         </article>
       </ScrollArea>
 

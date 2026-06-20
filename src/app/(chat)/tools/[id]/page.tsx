@@ -17,6 +17,9 @@ export default async function ConversionDetailPage({
   const { id } = await params;
   const conversion = await prisma.documentConversion.findFirst({
     where: { id, userId: session.user.id },
+    include: {
+      assets: { select: { id: true, relativePath: true } },
+    },
   });
 
   if (!conversion) {
@@ -56,6 +59,7 @@ export default async function ConversionDetailPage({
         originalName: conversion.originalName,
         status: conversion.status,
         markdownContent: conversion.markdownContent,
+        assets: conversion.assets,
         fileSize: conversion.fileSize,
         pageCount: conversion.pageCount,
         metadata,
