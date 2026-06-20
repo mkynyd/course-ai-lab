@@ -62,6 +62,8 @@ export function VirtualMessageList({
   const prevMsgCountRef = useRef(messages.length);
   const [pinned, setPinned] = useState(false);
 
+  // TanStack Virtual intentionally exposes imperative functions that the React Compiler cannot memoize.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: completed.length,
     getScrollElement: () => parentRef.current,

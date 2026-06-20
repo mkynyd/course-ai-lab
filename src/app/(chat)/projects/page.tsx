@@ -109,7 +109,7 @@ export default function ProjectsPage() {
 	                  <div className="flex items-start justify-between mb-3">
 	                    <Link
 	                      href={`/projects/${project.id}`}
-	                      className="min-w-0 flex-1 focus:outline-none"
+	                      className="flex min-h-11 min-w-0 flex-1 flex-col justify-center focus:outline-none"
 	                    >
 	                      <h3 className="truncate text-base font-semibold text-[var(--color-text-primary)]">
 	                        {project.name}
@@ -120,17 +120,20 @@ export default function ProjectsPage() {
 	                    </Link>
 	                    <AlertDialog>
 	                      <AlertDialogTrigger asChild>
-	                        <button
+	                        <Button
+	                          type="button"
+	                          variant="ghost"
+	                          size="icon-sm"
 	                          className={cn(
-	                            "shrink-0 rounded-[var(--radius-sm)] p-1.5",
-	                            "opacity-0 group-hover:opacity-100",
+	                            "size-11 shrink-0 rounded-[var(--radius-sm)] sm:size-7",
+	                            "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
 	                            "text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-muted)]",
 	                            "transition-all duration-100"
 	                          )}
 	                          aria-label={`删除 ${project.name}`}
 	                        >
 		                          <Trash width={14} height={14} strokeWidth={2} />
-	                        </button>
+	                        </Button>
 	                      </AlertDialogTrigger>
 	                      <AlertDialogContent>
 	                        <AlertDialogHeader>
@@ -153,7 +156,7 @@ export default function ProjectsPage() {
 	                  </div>
 	                  <Link
 	                    href={`/projects/${project.id}`}
-	                    className="block focus:outline-none"
+	                    className="block min-h-11 focus:outline-none"
 	                  >
 	                    {project.description && (
 	                      <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-[var(--color-text-secondary)]">

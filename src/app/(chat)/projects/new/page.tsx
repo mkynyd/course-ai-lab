@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { FolderOpen } from "lucide-react";
 import { useCreateProject } from "@/lib/hooks/use-projects";
@@ -83,10 +84,13 @@ export default function NewProjectPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 项目名称 */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+            <label htmlFor="project-name" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
               项目名称
             </label>
             <Input
+              id="project-name"
+              required
+              maxLength={120}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例如：密码学复习"
@@ -95,36 +99,34 @@ export default function NewProjectPage() {
 
           {/* 项目描述 */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+            <label htmlFor="project-description" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
               项目描述（选填）
             </label>
-            <textarea
+            <Textarea
+              id="project-description"
+              maxLength={1000}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className={cn(
-                "w-full h-20 px-3 py-2 text-sm rounded-[var(--radius-md)] resize-none",
-                "bg-[var(--color-bg)] text-[var(--color-text-primary)]",
-                "placeholder:text-[var(--color-text-tertiary)]",
-                "focus:outline-none focus:bg-[var(--color-interaction-active)]",
-                "transition-colors duration-150"
-              )}
+              className="h-20 resize-none bg-[var(--color-bg)]"
               placeholder="简要描述这个项目的目标或内容"
             />
           </div>
 
           {/* 项目类型 */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+            <span id="project-type-label" className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
               项目类型
-            </label>
-            <div className="grid grid-cols-2 gap-2">
+            </span>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-labelledby="project-type-label">
               {PROJECT_TYPES.map((pt) => (
                 <button
                   key={pt.value}
                   type="button"
+                  role="radio"
+                  aria-checked={type === pt.value}
                   onClick={() => setType(pt.value)}
                   className={cn(
-                    "text-left p-3 rounded-[var(--radius-md)] transition-colors duration-150",
+                    "min-h-11 text-left p-3 rounded-[var(--radius-md)] transition-colors duration-150",
                     type === pt.value
                       ? "bg-[var(--color-interaction-active)]"
                       : "bg-[var(--color-surface)] hover:bg-[var(--color-interaction-hover)]"
@@ -149,17 +151,19 @@ export default function NewProjectPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+            <label htmlFor="quick-action-description" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
               自定义快捷操作（选填）
             </label>
             <div className="flex gap-2">
               <Input
+                id="quick-action-description"
+                maxLength={500}
                 value={quickActionDescription}
                 onChange={(e) => setQuickActionDescription(e.target.value)}
                 placeholder="例如：把选中课件整理成考前速记表"
               />
               <Button type="button" onClick={addCustomQuickAction}>
-                新增
+                添加操作
               </Button>
             </div>
             {customQuickActions.length > 0 && (
@@ -192,6 +196,7 @@ export default function NewProjectPage() {
                           )
                         }
                         className="ml-auto text-[var(--color-text-tertiary)] hover:text-[var(--color-error)]"
+                        aria-label={`删除快捷操作 ${action.title}`}
                       >
                         删除
                       </button>
@@ -238,7 +243,7 @@ export default function NewProjectPage() {
               size="lg"
               onClick={() => router.back()}
             >
-              取消
+              取消创建
             </Button>
           </div>
         </form>

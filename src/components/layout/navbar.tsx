@@ -11,9 +11,14 @@ import {
 interface NavbarProps {
   onMenuToggle?: () => void;
   sidebarCollapsed?: boolean;
+  mobileSidebarOpen?: boolean;
 }
 
-export function Navbar({ onMenuToggle, sidebarCollapsed = false }: NavbarProps) {
+export function Navbar({
+  onMenuToggle,
+  sidebarCollapsed = false,
+  mobileSidebarOpen = false,
+}: NavbarProps) {
   return (
     <header
       className={cn(
@@ -27,7 +32,24 @@ export function Navbar({ onMenuToggle, sidebarCollapsed = false }: NavbarProps) 
         <button
           onClick={onMenuToggle}
           className={cn(
-            "inline-flex h-9 w-9 -ml-1 items-center justify-center rounded-[var(--radius-md)]",
+            "-ml-1 inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] lg:hidden",
+            "bg-[var(--color-surface)]",
+            "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
+            "transition-colors duration-150"
+          )}
+          aria-label={mobileSidebarOpen ? "关闭导航" : "打开导航"}
+          aria-expanded={mobileSidebarOpen}
+        >
+          {mobileSidebarOpen ? (
+            <PanelLeftClose size={17} strokeWidth={1.8} />
+          ) : (
+            <PanelLeftOpen size={17} strokeWidth={1.8} />
+          )}
+        </button>
+        <button
+          onClick={onMenuToggle}
+          className={cn(
+            "-ml-1 hidden h-9 w-9 items-center justify-center rounded-[var(--radius-md)] lg:inline-flex",
             "bg-[var(--color-surface)]",
             "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
             "transition-colors duration-150"
@@ -43,7 +65,7 @@ export function Navbar({ onMenuToggle, sidebarCollapsed = false }: NavbarProps) 
         </button>
         <Link
           href="/chat"
-          className="truncate rounded-[var(--radius-sm)] px-1 text-sm font-semibold tracking-tight text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent)]"
+          className="inline-flex min-h-11 items-center truncate rounded-[var(--radius-sm)] px-1 text-sm font-semibold tracking-tight text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent)]"
         >
           course-ai-lab
         </Link>

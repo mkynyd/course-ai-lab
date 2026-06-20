@@ -193,7 +193,6 @@ export async function POST(request: NextRequest) {
   let systemPrompt = GLOBAL_SYSTEM_PROMPT;
   let retrievedContext = "";
   let contextNotice: string | null = null;
-  let retrievalUsedFileIds: string[] = [];
 
   if (project) {
     const projectMode = mode || project.type || "general";
@@ -221,7 +220,6 @@ export async function POST(request: NextRequest) {
       });
       retrievedContext = retrieval.context;
       contextNotice = retrieval.notice;
-      retrievalUsedFileIds = retrieval.usedFileIds;
       logger.debug("project context retrieval", { debug: retrieval.debug });
     }
   }

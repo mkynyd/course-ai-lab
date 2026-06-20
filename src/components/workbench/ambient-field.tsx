@@ -3,6 +3,14 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
+export function shouldContinueAmbientFrame(
+  pulseStartedAt: number,
+  now: number,
+  reducedMotion: boolean
+) {
+  return !reducedMotion && pulseStartedAt > 0 && now - pulseStartedAt < 640;
+}
+
 interface AmbientFieldProps {
   intensity?: "low" | "medium";
   density?: "auto" | "compact" | "wide";
@@ -112,7 +120,7 @@ export function AmbientField({
         ctx.fill();
       }
       ctx.globalAlpha = 1;
-      if (!reducedMotion.matches) {
+      if (shouldContinueAmbientFrame(pointer.pulseStartedAt, now, reducedMotion.matches)) {
         rafId = window.requestAnimationFrame(draw);
       }
     }
@@ -121,6 +129,8 @@ export function AmbientField({
       const rect = canvasEl.getBoundingClientRect();
       pointer.x = event.clientX - rect.left;
       pointer.y = event.clientY - rect.top;
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(draw);
     }
 
     function handlePointerDown(event: PointerEvent) {
@@ -128,21 +138,31 @@ export function AmbientField({
       pointer.pulseX = event.clientX - rect.left;
       pointer.pulseY = event.clientY - rect.top;
       pointer.pulseStartedAt = performance.now();
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(draw);
     }
 
     buildGrid();
     draw();
     const observer = new ResizeObserver(() => {
       buildGrid();
-      if (reducedMotion.matches) draw();
+      draw();
     });
+    const themeObserver = new MutationObserver(draw);
     observer.observe(wrapperEl);
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    reducedMotion.addEventListener("change", draw);
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerdown", handlePointerDown, { passive: true });
 
     return () => {
       observer.disconnect();
+      themeObserver.disconnect();
       window.cancelAnimationFrame(rafId);
+      reducedMotion.removeEventListener("change", draw);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerdown", handlePointerDown);
     };

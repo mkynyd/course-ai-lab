@@ -42,6 +42,7 @@ export default function ChatLayout({
         <div className="h-screen flex flex-col bg-[var(--color-bg)]">
           <Navbar
             sidebarCollapsed={sidebarCollapsed}
+            mobileSidebarOpen={mobileSidebarOpen}
             onMenuToggle={toggleSidebar}
           />
           <div className="flex-1 flex overflow-hidden">

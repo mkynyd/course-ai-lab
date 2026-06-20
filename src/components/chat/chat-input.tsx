@@ -157,6 +157,7 @@ export function ChatInput({
           onChange={(event) => addFiles(event.target.files)}
         />
         <Textarea
+          aria-label="消息内容"
           value={currentValue}
           onChange={(e) => updateValue(e.target.value)}
           onKeyDown={handleKeyDown}

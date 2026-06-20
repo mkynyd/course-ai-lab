@@ -157,7 +157,7 @@ export default function RegisterPage() {
             type="submit"
             disabled={isLoading}
             className={cn(
-              "w-full h-10 rounded-[var(--radius-md)] text-sm font-medium",
+              "w-full min-h-11 rounded-[var(--radius-md)] text-sm font-medium",
               "bg-[var(--color-accent)] text-white",
               "hover:bg-[var(--color-accent-hover)]",
               "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -182,7 +182,7 @@ export default function RegisterPage() {
         已有账户？{" "}
         <Link
           href="/login"
-          className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center px-1 text-[var(--color-accent)] transition-colors hover:text-[var(--color-accent-hover)]"
         >
           登录
         </Link>

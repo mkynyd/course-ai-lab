@@ -22,4 +22,10 @@ describe("ChatInput", () => {
     await user.type(input, "，并标注缺失项");
     expect(onValueChange).toHaveBeenCalled();
   });
+
+  it("gives the message editor an accessible name", () => {
+    render(<ChatInput onSend={vi.fn()} />);
+
+    expect(screen.getByRole("textbox", { name: "消息内容" })).toBeInTheDocument();
+  });
 });

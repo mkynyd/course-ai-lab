@@ -98,7 +98,11 @@ export function SettingsPanel({ compact = false }: SettingsPanelProps) {
             输入新的注册码以切换到不同的服务配置。更换后立即生效，下次对话即可使用新模型。
           </p>
           <div className="flex gap-2">
+            <label htmlFor="switch-registration-code" className="sr-only">
+              新的注册码
+            </label>
             <Input
+              id="switch-registration-code"
               type="text"
               value={switchCodeValue}
               onChange={(e) => setSwitchCodeValue(e.target.value)}
@@ -121,6 +125,8 @@ export function SettingsPanel({ compact = false }: SettingsPanelProps) {
                 "mt-2 text-xs",
                 switchError ? "text-[var(--color-error)]" : "text-[var(--color-success)]"
               )}
+              role={switchError ? "alert" : "status"}
+              aria-live="polite"
             >
               {switchMessage}
             </p>
