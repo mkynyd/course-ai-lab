@@ -1,9 +1,15 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getProviderApiKey } from "@/lib/data/provider-access";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { parseFileWithMinerU } from "@/lib/parse/mineru";
+import {
+  deleteStoredObjects,
+  storeConversionAssets,
+  type StoredConversionAsset,
+} from "@/lib/conversions/assets";
 
 const MAX_PDF_SIZE = 200 * 1024 * 1024;
 const NEED_TOKEN_MESSAGE =
@@ -88,6 +94,7 @@ export async function POST(request: Request) {
 
       void (async () => {
         let pageCount: number | null = null;
+        let storedAssets: StoredConversionAsset[] = [];
         try {
           const parsed = await parseFileWithMinerU({
             token,
@@ -114,8 +121,16 @@ export async function POST(request: Request) {
             },
           });
 
+          const conversionId = crypto.randomUUID();
+          storedAssets = await storeConversionAssets({
+            userId,
+            conversionId,
+            assets: parsed.assets,
+          });
+
           const conversion = await prisma.documentConversion.create({
             data: {
+              id: conversionId,
               userId,
               title: conversionTitle(file.name),
               originalName: file.name,
@@ -124,8 +139,21 @@ export async function POST(request: Request) {
               fileSize: file.size,
               pageCount,
               metadata: parsed.metadata,
+              assets: {
+                create: storedAssets.map((asset) => ({
+                  id: asset.id,
+                  relativePath: asset.relativePath,
+                  mimeType: asset.mimeType,
+                  size: asset.size,
+                  storageProvider: asset.storageProvider,
+                  storagePath: asset.storagePath,
+                })),
+              },
             },
-            select: { id: true },
+            select: {
+              id: true,
+              assets: { select: { id: true, relativePath: true } },
+            },
           });
 
           send({
@@ -134,8 +162,24 @@ export async function POST(request: Request) {
             content: parsed.content,
             fileName: file.name.replace(/\.pdf$/i, ".md"),
             metadata: { ...parsed.metadata, pageCount },
+            assetCount: conversion.assets.length,
+            assets: conversion.assets,
           });
         } catch (error) {
+          if (storedAssets.length > 0) {
+            await deleteStoredObjects(
+              storedAssets.map((asset) => ({
+                provider: asset.storageProvider,
+                key: asset.storagePath,
+              }))
+            ).catch((cleanupError) => {
+              logger.warn("PDF 转换图片补偿清理失败", {
+                userId,
+                filename: file.name,
+                error: String(cleanupError),
+              });
+            });
+          }
           const message =
             error instanceof Error ? error.message : "转换失败，请稍后重试";
           logger.error("PDF 转 Markdown 失败", {

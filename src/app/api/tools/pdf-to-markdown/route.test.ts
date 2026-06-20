@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   getProviderApiKey: vi.fn(),
   parseFileWithMinerU: vi.fn(),
   conversionCreate: vi.fn(),
+  storeConversionAssets: vi.fn(),
+  deleteStoredObjects: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ auth: mocks.auth }));
@@ -14,6 +16,10 @@ vi.mock("@/lib/data/provider-access", () => ({
 vi.mock("@/lib/parse/mineru", () => ({
   parseFileWithMinerU: mocks.parseFileWithMinerU,
   MinerUError: class MinerUError extends Error {},
+}));
+vi.mock("@/lib/conversions/assets", () => ({
+  storeConversionAssets: mocks.storeConversionAssets,
+  deleteStoredObjects: mocks.deleteStoredObjects,
 }));
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -48,6 +54,13 @@ describe("POST /api/tools/pdf-to-markdown", () => {
         onProgress?.("model", { current: 3, total: 10 });
         return {
           content: "# Lecture",
+          assets: [
+            {
+              relativePath: "pics/circuit.png",
+              mimeType: "image/png",
+              buffer: Buffer.from([1, 2, 3]),
+            },
+          ],
           metadata: {
             parser: "mineru-pipeline",
             taskId: "task-1",
@@ -56,7 +69,21 @@ describe("POST /api/tools/pdf-to-markdown", () => {
         };
       }
     );
-    mocks.conversionCreate.mockResolvedValue({ id: "conversion-1" });
+    mocks.storeConversionAssets.mockResolvedValue([
+      {
+        id: "asset-1",
+        relativePath: "pics/circuit.png",
+        mimeType: "image/png",
+        size: 3,
+        storageProvider: "local",
+        storagePath: "users/user-1/conversions/conversion-1/assets/asset-1/circuit.png",
+      },
+    ]);
+    mocks.deleteStoredObjects.mockResolvedValue(undefined);
+    mocks.conversionCreate.mockResolvedValue({
+      id: "conversion-1",
+      assets: [{ id: "asset-1", relativePath: "pics/circuit.png" }],
+    });
   });
 
   it("rejects unauthenticated requests", async () => {
@@ -103,8 +130,17 @@ describe("POST /api/tools/pdf-to-markdown", () => {
     expect(stream).toContain('"stage":"pending"');
     expect(stream).toContain('"stage":"model","extractedPages":3,"totalPages":10');
     expect(stream).toContain('"stage":"done","conversionId":"conversion-1"');
+    expect(stream).toContain('"assetCount":1');
+    expect(mocks.storeConversionAssets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        conversionId: expect.any(String),
+        assets: [expect.objectContaining({ relativePath: "pics/circuit.png" })],
+      })
+    );
     expect(mocks.conversionCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        id: expect.any(String),
         userId: "user-1",
         title: "lecture",
         originalName: "lecture.pdf",
@@ -112,8 +148,19 @@ describe("POST /api/tools/pdf-to-markdown", () => {
         status: "completed",
         fileSize: 3,
         pageCount: 10,
+        assets: {
+          create: [
+            expect.objectContaining({
+              id: "asset-1",
+              relativePath: "pics/circuit.png",
+            }),
+          ],
+        },
       }),
-      select: { id: true },
+      select: {
+        id: true,
+        assets: { select: { id: true, relativePath: true } },
+      },
     });
   });
 
@@ -138,5 +185,20 @@ describe("POST /api/tools/pdf-to-markdown", () => {
     expect(response.status).toBe(200);
     expect(stream).toContain('"stage":"failed","error":"队列已满，请稍后重试"');
     expect(mocks.conversionCreate).not.toHaveBeenCalled();
+  });
+
+  it("removes uploaded images when the conversion database write fails", async () => {
+    mocks.conversionCreate.mockRejectedValue(new Error("database unavailable"));
+
+    const response = await POST(pdfRequest());
+    const stream = await response.text();
+
+    expect(stream).toContain('"stage":"failed"');
+    expect(mocks.deleteStoredObjects).toHaveBeenCalledWith([
+      {
+        provider: "local",
+        key: "users/user-1/conversions/conversion-1/assets/asset-1/circuit.png",
+      },
+    ]);
   });
 });
