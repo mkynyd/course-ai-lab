@@ -2,46 +2,108 @@ import {
   BorderStyle,
   Document,
   HeadingLevel,
+  ImageRun,
   Packer,
   Paragraph,
+  type ParagraphChild,
   Table,
   TableCell,
   TableRow,
   TextRun,
 } from "docx";
 import type { Content, PhrasingContent, Root } from "mdast";
+import sharp from "sharp";
 import { markdownNodeText, parseMarkdown } from "@/lib/export/markdown-ast";
 
-function inlineRuns(nodes: PhrasingContent[]): TextRun[] {
-  return nodes.flatMap((node) => {
-    if (node.type === "text") return [new TextRun(node.value)];
-    if (node.type === "inlineCode") {
-      return [new TextRun({ text: node.value, font: "Courier New" })];
-    }
-    if (node.type === "strong") {
-      return [new TextRun({ text: markdownNodeText(node), bold: true })];
-    }
-    if (node.type === "emphasis") {
-      return [new TextRun({ text: markdownNodeText(node), italics: true })];
-    }
-    if (node.type === "break") return [new TextRun({ text: "", break: 1 })];
-    if ("children" in node) {
-      return inlineRuns(node.children as PhrasingContent[]);
-    }
-    return [new TextRun(markdownNodeText(node as unknown))];
+type ResolveImage = (
+  src: string
+) => Promise<{ buffer: Buffer; mimeType: string } | null>;
+
+async function imageRun(
+  src: string,
+  alt: string,
+  resolveImage?: ResolveImage
+): Promise<ImageRun | TextRun> {
+  const resolved = await resolveImage?.(src);
+  if (!resolved) return new TextRun(alt || src);
+
+  const image = sharp(resolved.buffer, { animated: false });
+  const metadata = await image.metadata();
+  const png = await image.png().toBuffer();
+  const sourceWidth = metadata.width || 640;
+  const sourceHeight = metadata.height || 480;
+  const scale = Math.min(1, 560 / sourceWidth);
+  return new ImageRun({
+    type: "png",
+    data: png,
+    transformation: {
+      width: Math.max(1, Math.round(sourceWidth * scale)),
+      height: Math.max(1, Math.round(sourceHeight * scale)),
+    },
+    altText: {
+      title: alt || "图片",
+      description: alt || "图片",
+      name: alt || "图片",
+    },
   });
 }
 
-function paragraphFromNode(node: Content, prefix = ""): Paragraph {
+async function inlineRuns(
+  nodes: PhrasingContent[],
+  resolveImage?: ResolveImage
+): Promise<ParagraphChild[]> {
+  const runs: ParagraphChild[] = [];
+  for (const node of nodes) {
+    if (node.type === "text") {
+      runs.push(new TextRun(node.value));
+      continue;
+    }
+    if (node.type === "inlineCode") {
+      runs.push(new TextRun({ text: node.value, font: "Courier New" }));
+      continue;
+    }
+    if (node.type === "strong") {
+      runs.push(new TextRun({ text: markdownNodeText(node), bold: true }));
+      continue;
+    }
+    if (node.type === "emphasis") {
+      runs.push(new TextRun({ text: markdownNodeText(node), italics: true }));
+      continue;
+    }
+    if (node.type === "image") {
+      runs.push(await imageRun(node.url, node.alt || "", resolveImage));
+      continue;
+    }
+    if (node.type === "break") {
+      runs.push(new TextRun({ text: "", break: 1 }));
+      continue;
+    }
+    if ("children" in node) {
+      runs.push(...(await inlineRuns(node.children as PhrasingContent[], resolveImage)));
+      continue;
+    }
+    runs.push(new TextRun(markdownNodeText(node as unknown)));
+  }
+  return runs;
+}
+
+async function paragraphFromNode(
+  node: Content,
+  prefix = "",
+  resolveImage?: ResolveImage
+): Promise<Paragraph> {
   const children =
     "children" in node
-      ? inlineRuns(node.children as PhrasingContent[])
+      ? await inlineRuns(node.children as PhrasingContent[], resolveImage)
       : [new TextRun(markdownNodeText(node))];
   if (prefix) children.unshift(new TextRun(prefix));
   return new Paragraph({ children });
 }
 
-function blocks(root: Root): Array<Paragraph | Table> {
+async function blocks(
+  root: Root,
+  resolveImage?: ResolveImage
+): Promise<Array<Paragraph | Table>> {
   const output: Array<Paragraph | Table> = [];
 
   for (const node of root.children) {
@@ -57,11 +119,11 @@ function blocks(root: Root): Array<Paragraph | Table> {
       output.push(
         new Paragraph({
           heading: levels[node.depth],
-          children: inlineRuns(node.children),
+          children: await inlineRuns(node.children, resolveImage),
         })
       );
     } else if (node.type === "paragraph") {
-      output.push(paragraphFromNode(node));
+      output.push(await paragraphFromNode(node, "", resolveImage));
     } else if (node.type === "code") {
       output.push(
         new Paragraph({
@@ -79,16 +141,19 @@ function blocks(root: Root): Array<Paragraph | Table> {
       );
     } else if (node.type === "blockquote") {
       for (const child of node.children) {
-        output.push(paragraphFromNode(child, "引用："));
+        output.push(await paragraphFromNode(child, "引用：", resolveImage));
       }
     } else if (node.type === "list") {
-      node.children.forEach((item) => {
-        item.children.forEach((child) => {
+      for (const item of node.children) {
+        for (const child of item.children) {
           output.push(
             new Paragraph({
               children:
                 "children" in child
-                  ? inlineRuns(child.children as PhrasingContent[])
+                  ? await inlineRuns(
+                      child.children as PhrasingContent[],
+                      resolveImage
+                    )
                   : [new TextRun(markdownNodeText(child))],
               bullet: node.ordered ? undefined : { level: 0 },
               numbering: node.ordered
@@ -96,24 +161,22 @@ function blocks(root: Root): Array<Paragraph | Table> {
                 : undefined,
             })
           );
-        });
-      });
+        }
+      }
     } else if (node.type === "table") {
-      output.push(
-        new Table({
-          rows: node.children.map(
-            (row) =>
-              new TableRow({
-                children: row.children.map(
-                  (cell) =>
-                    new TableCell({
-                      children: [paragraphFromNode(cell)],
-                    })
-                ),
-              })
-          ),
-        })
-      );
+      const rows = [];
+      for (const row of node.children) {
+        const cells = [];
+        for (const cell of row.children) {
+          cells.push(
+            new TableCell({
+              children: [await paragraphFromNode(cell, "", resolveImage)],
+            })
+          );
+        }
+        rows.push(new TableRow({ children: cells }));
+      }
+      output.push(new Table({ rows }));
     } else if (node.type === "thematicBreak") {
       output.push(
         new Paragraph({
@@ -133,7 +196,10 @@ function blocks(root: Root): Array<Paragraph | Table> {
   return output;
 }
 
-export async function markdownToDocx(content: string): Promise<Buffer> {
+export async function markdownToDocx(
+  content: string,
+  options: { resolveImage?: ResolveImage } = {}
+): Promise<Buffer> {
   const document = new Document({
     numbering: {
       config: [
@@ -157,7 +223,9 @@ export async function markdownToDocx(content: string): Promise<Buffer> {
         },
       },
     },
-    sections: [{ children: blocks(parseMarkdown(content)) }],
+    sections: [
+      { children: await blocks(parseMarkdown(content), options.resolveImage) },
+    ],
   });
   return Packer.toBuffer(document);
 }
