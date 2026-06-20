@@ -231,12 +231,7 @@ export function Sidebar({
         </SidebarHeader>
 
         <SidebarGroup className="mx-2 my-2 w-auto shrink-0 rounded-[var(--radius-xl)] bg-[var(--color-surface)] p-1.5">
-          <SidebarMenu
-            className={cn(
-              "grid min-w-0 grid-cols-3 gap-1",
-              collapsed && "lg:grid-cols-1"
-            )}
-          >
+          <SidebarMenu aria-label="工作空间导航" className="gap-1">
             <SidebarMenuItem>
               <SidebarMenuButton
                 type="button"
