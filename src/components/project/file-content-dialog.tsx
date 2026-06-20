@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MarkdownContent } from "@/components/markdown/markdown-content";
 import type { ProjectFile } from "@/components/project/file-list";
 
 interface FileDetail extends ProjectFile {
   textContent?: string | null;
+  resources?: Array<{ id: string; relativePath: string }>;
 }
 
 export function FileContentDialog({
@@ -52,6 +54,16 @@ export function FileContentDialog({
     onUpdated();
   }
 
+  function resolveImageUrl(src: string) {
+    const normalized = src.replace(/^\.\//, "");
+    const resource = detail?.resources?.find(
+      (item) => item.relativePath === normalized
+    );
+    return resource
+      ? `/api/files/${file.id}/resources/${resource.id}`
+      : src;
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-[var(--radius-lg)] bg-[var(--color-surface)] shadow-xl">
@@ -81,9 +93,16 @@ export function FileContentDialog({
               className="min-h-[50vh] w-full resize-y rounded-[var(--radius-md)] bg-[var(--color-panel)] p-3 font-mono text-xs outline-none focus:bg-[var(--color-interaction-hover)]"
             />
           ) : (
-            <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
-              {detail.textContent || "没有解析内容"}
-            </pre>
+            detail.textContent ? (
+              <MarkdownContent
+                content={detail.textContent}
+                resolveImageUrl={resolveImageUrl}
+              />
+            ) : (
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                没有解析内容
+              </p>
+            )
           )}
         </div>
         <div className="flex items-center justify-between bg-[var(--color-panel-muted)] px-4 py-3">

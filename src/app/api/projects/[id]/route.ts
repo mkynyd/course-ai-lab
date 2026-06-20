@@ -144,17 +144,34 @@ export async function DELETE(
 
   const files = await prisma.fileAsset.findMany({
     where: { projectId: id, userId: session.user.id },
-    select: { storageProvider: true, storagePath: true },
+    select: {
+      storageProvider: true,
+      storagePath: true,
+      resources: {
+        select: { storageProvider: true, storagePath: true },
+      },
+    },
   });
   await Promise.all(
-    files.map((file) =>
+    files.flatMap((file) => [
       deleteStoredObject({
         provider: file.storageProvider as StorageProvider,
         key: file.storagePath,
       }).catch((error) => {
         logger.warn("项目文件对象删除失败", { projectId: id, error: String(error) });
-      })
-    )
+      }),
+      ...file.resources.map((resource) =>
+        deleteStoredObject({
+          provider: resource.storageProvider as StorageProvider,
+          key: resource.storagePath,
+        }).catch((error) => {
+          logger.warn("项目文件图片对象删除失败", {
+            projectId: id,
+            error: String(error),
+          });
+        })
+      ),
+    ])
   );
 
   await prisma.$transaction([

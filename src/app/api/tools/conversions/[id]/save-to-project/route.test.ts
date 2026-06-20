@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   projectFindFirst: vi.fn(),
   fileAssetCreate: vi.fn(),
   uploadFileBuffer: vi.fn(),
+  uploadObjectBuffer: vi.fn(),
+  readStoredObject: vi.fn(),
   deleteStoredObject: vi.fn(),
 }));
 
@@ -19,6 +21,8 @@ vi.mock("@/lib/db", () => ({
 }));
 vi.mock("@/lib/storage/object-storage", () => ({
   uploadFileBuffer: mocks.uploadFileBuffer,
+  uploadObjectBuffer: mocks.uploadObjectBuffer,
+  readStoredObject: mocks.readStoredObject,
   deleteStoredObject: mocks.deleteStoredObject,
 }));
 
@@ -41,6 +45,15 @@ describe("POST /api/tools/conversions/[id]/save-to-project", () => {
       userId: "user-1",
       originalName: "lecture.pdf",
       markdownContent: "# Lecture",
+      assets: [
+        {
+          relativePath: "pics/circuit.png",
+          mimeType: "image/png",
+          size: 3,
+          storageProvider: "local",
+          storagePath: "conversions/circuit.png",
+        },
+      ],
     });
     mocks.projectFindFirst.mockResolvedValue({ id: "project-1" });
     mocks.uploadFileBuffer.mockResolvedValue({
@@ -48,6 +61,11 @@ describe("POST /api/tools/conversions/[id]/save-to-project", () => {
       key: "users/user-1/projects/project-1/files/file-1/lecture.md",
       filename: "lecture.md",
     });
+    mocks.readStoredObject.mockResolvedValue(Buffer.from([1, 2, 3]));
+    mocks.uploadObjectBuffer.mockImplementation(
+      async ({ key }: { key: string }) => ({ provider: "qiniu", key })
+    );
+    mocks.deleteStoredObject.mockResolvedValue(undefined);
     mocks.fileAssetCreate.mockResolvedValue({ id: "file-1" });
   });
 
@@ -89,7 +107,25 @@ describe("POST /api/tools/conversions/[id]/save-to-project", () => {
         storagePath: "users/user-1/projects/project-1/files/file-1/lecture.md",
         textContent: "# Lecture",
         status: "parsed",
+        resources: {
+          create: [
+            expect.objectContaining({
+              id: expect.any(String),
+              relativePath: "pics/circuit.png",
+              mimeType: "image/png",
+              size: 3,
+              storageProvider: "qiniu",
+              storagePath: expect.stringMatching(
+                /^users\/user-1\/projects\/project-1\/files\/[^/]+\/resources\/[^/]+\/circuit\.png$/
+              ),
+            }),
+          ],
+        },
       }),
+    });
+    expect(mocks.readStoredObject).toHaveBeenCalledWith({
+      provider: "local",
+      key: "conversions/circuit.png",
     });
     await expect(response.json()).resolves.toEqual({
       fileId: "file-1",
@@ -105,9 +141,17 @@ describe("POST /api/tools/conversions/[id]/save-to-project", () => {
     });
 
     expect(response.status).toBe(500);
-    expect(mocks.deleteStoredObject).toHaveBeenCalledWith({
-      provider: "qiniu",
-      key: "users/user-1/projects/project-1/files/file-1/lecture.md",
-    });
+    expect(mocks.deleteStoredObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "qiniu",
+        key: "users/user-1/projects/project-1/files/file-1/lecture.md",
+      })
+    );
+    expect(mocks.deleteStoredObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "qiniu",
+        key: expect.stringContaining("/resources/"),
+      })
+    );
   });
 });

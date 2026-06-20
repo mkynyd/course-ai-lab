@@ -32,13 +32,25 @@ export async function GET(
 
   const file = await prisma.fileAsset.findFirst({
     where: { id, userId: session.user.id },
+    include: {
+      resources: { select: { id: true, relativePath: true } },
+    },
   });
 
   if (!file) {
     return NextResponse.json({ error: "文件不存在" }, { status: 404 });
   }
 
-  return NextResponse.json({ file });
+  const { resources, ...fileDetail } = file;
+  return NextResponse.json({
+    file: {
+      ...fileDetail,
+      resources: resources.map((resource) => ({
+        id: resource.id,
+        relativePath: resource.relativePath,
+      })),
+    },
+  });
 }
 
 export async function PATCH(
@@ -52,6 +64,11 @@ export async function PATCH(
   const { id } = await params;
   const file = await prisma.fileAsset.findFirst({
     where: { id, userId: session.user.id },
+    include: {
+      resources: {
+        select: { storageProvider: true, storagePath: true },
+      },
+    },
   });
   if (!file) {
     return NextResponse.json({ error: "文件不存在" }, { status: 404 });
@@ -124,6 +141,11 @@ export async function DELETE(
 
   const file = await prisma.fileAsset.findFirst({
     where: { id, userId: session.user.id },
+    include: {
+      resources: {
+        select: { storageProvider: true, storagePath: true },
+      },
+    },
   });
 
   if (!file) {
@@ -139,6 +161,19 @@ export async function DELETE(
   }).catch((error) => {
     logger.warn("文件对象删除失败", { fileId: file.id, error: String(error) });
   });
+  await Promise.all(
+    file.resources.map((resource) =>
+      deleteStoredObject({
+        provider: resource.storageProvider as StorageProvider,
+        key: resource.storagePath,
+      }).catch((error) => {
+        logger.warn("文件图片对象删除失败", {
+          fileId: file.id,
+          error: String(error),
+        });
+      })
+    )
+  );
 
   await prisma.fileAsset.delete({ where: { id } });
   if (file.projectId) {

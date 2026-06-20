@@ -1,0 +1,48 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import {
+  readStoredObject,
+  type StorageProvider,
+} from "@/lib/storage/object-storage";
+
+export async function GET(
+  _request: Request,
+  {
+    params,
+  }: { params: Promise<{ id: string; resourceId: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "请先登录" }, { status: 401 });
+  }
+
+  const { id, resourceId } = await params;
+  const resource = await prisma.fileAssetResource.findFirst({
+    where: {
+      id: resourceId,
+      fileAssetId: id,
+      fileAsset: { userId: session.user.id },
+    },
+    select: {
+      mimeType: true,
+      storageProvider: true,
+      storagePath: true,
+    },
+  });
+  if (!resource) {
+    return NextResponse.json({ error: "图片不存在" }, { status: 404 });
+  }
+
+  const data = await readStoredObject({
+    provider: resource.storageProvider as StorageProvider,
+    key: resource.storagePath,
+  });
+  return new Response(new Uint8Array(data), {
+    headers: {
+      "Content-Type": resource.mimeType,
+      "Cache-Control": "private, max-age=3600",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}

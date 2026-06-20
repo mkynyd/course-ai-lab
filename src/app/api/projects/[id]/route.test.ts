@@ -46,6 +46,12 @@ describe("DELETE /api/projects/[id]", () => {
       {
         storageProvider: "qiniu",
         storagePath: "users/user-1/projects/project-1/files/file-1/file.pdf",
+        resources: [
+          {
+            storageProvider: "qiniu",
+            storagePath: "users/user-1/projects/project-1/files/file-1/resources/resource-1/circuit.png",
+          },
+        ],
       },
     ]);
     mocks.deleteStoredObject.mockResolvedValue(undefined);
@@ -65,11 +71,21 @@ describe("DELETE /api/projects/[id]", () => {
     expect(response.status).toBe(200);
     expect(mocks.fileFindMany).toHaveBeenCalledWith({
       where: { projectId: "project-1", userId: "user-1" },
-      select: { storageProvider: true, storagePath: true },
+      select: {
+        storageProvider: true,
+        storagePath: true,
+        resources: {
+          select: { storageProvider: true, storagePath: true },
+        },
+      },
     });
     expect(mocks.deleteStoredObject).toHaveBeenCalledWith({
       provider: "qiniu",
       key: "users/user-1/projects/project-1/files/file-1/file.pdf",
+    });
+    expect(mocks.deleteStoredObject).toHaveBeenCalledWith({
+      provider: "qiniu",
+      key: "users/user-1/projects/project-1/files/file-1/resources/resource-1/circuit.png",
     });
     expect(mocks.conversationDeleteMany).toHaveBeenCalledWith({
       where: { projectId: "project-1", userId: "user-1" },
