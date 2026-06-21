@@ -171,7 +171,7 @@ export default function NewProjectPage() {
               maxLength={1000}
               value={draft.description}
               onChange={(e) => setDescription(e.target.value)}
-              className="h-24 resize-none bg-[var(--color-bg)]"
+              className="h-24 resize-none"
               placeholder="简要描述这个项目的目标或内容"
             />
           </div>
