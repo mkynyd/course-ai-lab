@@ -1,0 +1,29 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - radiogroup "主题" [ref=e4]:
+      - radio "浅色" [ref=e5]:
+        - img [ref=e6]
+      - radio "自动" [checked] [ref=e12]:
+        - img [ref=e13]
+      - radio "深色" [ref=e15]:
+        - img [ref=e16]
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - heading "course-ai-lab" [level=1] [ref=e20]
+        - paragraph [ref=e21]: 登录你的账户
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: 邮箱
+          - textbox "邮箱" [ref=e26]:
+            - /placeholder: you@example.com
+        - generic [ref=e27]:
+          - generic [ref=e28]: 密码
+          - textbox "密码" [ref=e29]:
+            - /placeholder: ••••••••
+        - button "登录" [ref=e30]
+      - paragraph [ref=e31]:
+        - text: 还没有账户？
+        - link "注册" [ref=e32] [cursor=pointer]:
+          - /url: /register
+  - button "Open Next.js Dev Tools" [ref=e38] [cursor=pointer]:
+    - img [ref=e39]

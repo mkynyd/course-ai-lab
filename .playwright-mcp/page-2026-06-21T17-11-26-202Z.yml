@@ -1,0 +1,162 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - button "打开导航" [ref=e5]:
+          - img [ref=e6]
+        - link "course-ai-lab" [ref=e9] [cursor=pointer]:
+          - /url: /chat
+      - radiogroup "主题" [ref=e11]:
+        - radio "浅色" [ref=e12]:
+          - img [ref=e13]
+        - radio "自动" [checked] [ref=e19]:
+          - img [ref=e20]
+        - radio "深色" [ref=e22]:
+          - img [ref=e23]
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - button
+        - complementary "主导航侧边栏" [ref=e27]:
+          - generic [ref=e28]:
+            - generic [ref=e29]: 工作空间
+            - button "关闭侧边栏" [ref=e30]:
+              - img [ref=e31]
+          - list "工作空间导航" [ref=e34]:
+            - listitem [ref=e35]:
+              - button "聊天" [ref=e36]:
+                - img [ref=e37]
+                - generic [ref=e39]: 聊天
+            - listitem [ref=e40]:
+              - button "项目" [ref=e41]:
+                - img [ref=e42]
+                - generic [ref=e44]: 项目
+            - listitem [ref=e45]:
+              - button "转换" [ref=e46]:
+                - img [ref=e47]
+                - generic [ref=e52]: 转换
+          - generic [ref=e53]:
+            - button [ref=e222]:
+              - img
+              - text: 新建项目
+            - generic [ref=e56]: 项目列表
+            - list [ref=e83]:
+              - listitem [ref=e84]:
+                - link [ref=e223] [cursor=pointer]:
+                  - /url: /projects/cmqibz9w4002gdwc9pn0x14yj
+                  - img [ref=e86]
+                  - generic [ref=e88]: 电路原理
+          - button "打开账户菜单" [ref=e63]:
+            - generic [ref=e64]: T
+            - generic [ref=e65]:
+              - generic [ref=e66]: test@host.alpha
+              - generic [ref=e67]: DeepSeek V4
+            - img [ref=e68]
+      - main [ref=e70]:
+        - generic [ref=e224]:
+          - generic "项目资料侧边栏" [ref=e225]:
+            - generic [ref=e228]:
+              - generic [ref=e229]:
+                - link "项目空间" [ref=e230] [cursor=pointer]:
+                  - /url: /projects
+                  - img
+                  - generic [ref=e231]: 项目空间
+                - link "新建项目" [ref=e232] [cursor=pointer]:
+                  - /url: /projects/new
+                  - img
+                  - generic [ref=e233]: 新建项目
+              - generic [ref=e234]:
+                - generic [ref=e235]:
+                  - img [ref=e236]
+                  - heading "电路原理" [level=2] [ref=e238]
+                - paragraph [ref=e239]: 资料复习
+              - generic [ref=e240]:
+                - generic [ref=e241]:
+                  - group [ref=e242]:
+                    - button "全选" [ref=e243]:
+                      - img
+                    - button "上传资料" [ref=e244]:
+                      - img
+                    - button "重新分类" [ref=e245]:
+                      - img
+                    - button "更多资料操作" [ref=e246]:
+                      - img
+                  - button "课件 25" [ref=e252]:
+                    - generic [ref=e253]:
+                      - img [ref=e254]
+                      - text: 课件
+                    - generic [ref=e256]: "25"
+                - generic [ref=e258]:
+                  - generic [ref=e259]:
+                    - button "项目对话 6" [expanded] [ref=e260]:
+                      - generic [ref=e261]:
+                        - img [ref=e262]
+                        - generic [ref=e264]: 项目对话
+                      - generic [ref=e265]: "6"
+                    - button "新建项目对话" [ref=e266]:
+                      - img [ref=e267]
+                  - generic [ref=e274]:
+                    - button "画一个简单的流程图" [ref=e276] [cursor=pointer]:
+                      - img [ref=e277]
+                      - generic [ref=e279]: 画一个简单的流程图
+                    - button "快捷任务：提取知识点" [ref=e281] [cursor=pointer]:
+                      - img [ref=e282]
+                      - generic [ref=e284]: 快捷任务：提取知识点
+                    - button "快捷任务：生成 Mermaid 逻辑图" [ref=e286] [cursor=pointer]:
+                      - img [ref=e287]
+                      - generic [ref=e289]: 快捷任务：生成 Mermaid 逻辑图
+                    - button "快捷任务：生成 Mermaid 逻辑图" [ref=e291] [cursor=pointer]:
+                      - img [ref=e292]
+                      - generic [ref=e294]: 快捷任务：生成 Mermaid 逻辑图
+                    - button "快捷任务：生成速记版" [ref=e296] [cursor=pointer]:
+                      - img [ref=e297]
+                      - generic [ref=e299]: 快捷任务：生成速记版
+                    - button "快捷任务：提取知识点" [ref=e301] [cursor=pointer]:
+                      - img [ref=e302]
+                      - generic [ref=e304]: 快捷任务：提取知识点
+          - generic [ref=e305]:
+            - generic [ref=e306]:
+              - generic [ref=e307]:
+                - button "切换项目侧边栏" [ref=e308]:
+                  - img [ref=e310]
+                - generic [ref=e313]:
+                  - generic [ref=e314]:
+                    - generic [ref=e315]: 电路原理
+                    - generic [ref=e316]: 资料复习
+                  - paragraph [ref=e317]: 项目资料按问题自动匹配
+              - button "成果库" [ref=e319]
+            - generic [ref=e321]:
+              - button "提取知识点" [ref=e322]
+              - button "生成考点索引" [ref=e323]
+              - button "分析试卷覆盖度" [ref=e324]
+              - button "生成速记版" [ref=e325]
+              - button "整理错题解析" [ref=e326]
+              - button "生成 Mermaid 逻辑图" [ref=e327]
+            - generic [ref=e329]:
+              - img [ref=e331]
+              - heading "电路原理" [level=2] [ref=e334]
+            - generic [ref=e336]:
+              - textbox "消息内容" [ref=e337]:
+                - /placeholder: 输入问题，或让 AI 基于当前资料生成实验报告、复习提纲、代码说明
+              - generic [ref=e338]:
+                - generic [ref=e339]:
+                  - button "添加附件" [ref=e340]:
+                    - img
+                  - button "选择模型强度和模型" [ref=e341]:
+                    - generic [ref=e342]: 高级 · DeepSeek
+                    - img
+                - button "发送消息" [disabled]:
+                  - img
+  - generic [ref=e105]:
+    - img [ref=e107]
+    - button "Open Tanstack query devtools" [ref=e155] [cursor=pointer]:
+      - img [ref=e156]
+  - generic [ref=e209] [cursor=pointer]:
+    - button "Open issues overlay" [ref=e210]:
+      - img [ref=e212]
+      - generic [ref=e214]:
+        - generic [ref=e215]: "0"
+        - generic [ref=e216]: "1"
+      - generic [ref=e217]: Issue
+    - button "Collapse issues badge" [ref=e218]:
+      - img [ref=e219]
+  - alert [ref=e221]

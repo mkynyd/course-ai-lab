@@ -125,14 +125,14 @@ export default function NewProjectPage() {
 
   return (
     <div className="project-workbench h-full overflow-y-auto">
-      <div className="max-w-lg mx-auto px-4 py-8">
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 md:py-12">
         {/* 页头 */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex items-center justify-center w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-project-control)]">
-            <FolderOpen size={20} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
+          <div className="flex items-center justify-center w-11 h-11 rounded-[var(--radius-md)] bg-[var(--color-project-control)]">
+            <FolderOpen size={22} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-[var(--color-text-primary)]">
+            <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
               新建项目
             </h1>
             <p className="text-sm text-[var(--color-text-secondary)]">
@@ -168,7 +168,7 @@ export default function NewProjectPage() {
               maxLength={1000}
               value={draft.description}
               onChange={(e) => setDescription(e.target.value)}
-              className="h-20 resize-none bg-[var(--color-bg)]"
+              className="h-24 resize-none bg-[var(--color-bg)]"
               placeholder="简要描述这个项目的目标或内容"
             />
           </div>
@@ -195,13 +195,13 @@ export default function NewProjectPage() {
                 >
                   <span
                     className={cn(
-                      "text-xs text-[var(--color-text-primary)]",
+                      "text-sm text-[var(--color-text-primary)]",
                       draft.type === pt.value ? "font-semibold" : "font-medium"
                     )}
                   >
                     {pt.label}
                   </span>
-                  <p className="text-[10px] text-[var(--color-text-tertiary)] mt-0.5 leading-relaxed">
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5 leading-relaxed">
                     {pt.desc}
                   </p>
                 </button>
@@ -231,11 +231,11 @@ export default function NewProjectPage() {
               </Button>
             </div>
             {draft.customQuickActions.length > 0 && (
-              <div className="mt-2 space-y-1">
+              <div className="mt-2 space-y-2">
                 {draft.customQuickActions.map((action, index) => (
                   <div
                     key={`${action.title}-${index}`}
-                    className="grid gap-1 rounded-[var(--radius-md)] bg-[var(--color-project-control)] px-2 py-1.5 text-xs"
+                    className="grid gap-2 rounded-[var(--radius-md)] bg-[var(--color-project-control)] px-3 py-2 text-sm"
                   >
                     <div className="flex items-center gap-2">
                       <input

@@ -1,0 +1,63 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - button "收起侧边栏" [expanded] [ref=e5]:
+          - img [ref=e6]
+        - link "course-ai-lab" [ref=e9] [cursor=pointer]:
+          - /url: /chat
+      - radiogroup "主题" [ref=e11]:
+        - radio "浅色" [ref=e12]:
+          - img [ref=e13]
+        - radio "自动" [checked] [ref=e19]:
+          - img [ref=e20]
+        - radio "深色" [ref=e22]:
+          - img [ref=e23]
+    - generic [ref=e25]:
+      - complementary "主导航侧边栏" [ref=e27]:
+        - generic [ref=e29]: 工作空间
+        - list "工作空间导航" [ref=e31]:
+          - listitem [ref=e32]:
+            - button "聊天" [ref=e33]:
+              - img [ref=e34]
+              - generic [ref=e36]: 聊天
+          - listitem [ref=e37]:
+            - button "项目" [ref=e38]:
+              - img [ref=e39]
+              - generic [ref=e41]: 项目
+          - listitem [ref=e42]:
+            - button "转换" [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e49]: 转换
+        - generic [ref=e50]:
+          - button "新对话" [ref=e52]:
+            - img
+            - text: 新对话
+          - generic [ref=e53]: 对话列表
+          - status "正在加载工作区列表" [ref=e55]
+        - button "打开账户菜单" [ref=e60]:
+          - generic [ref=e61]: 账
+          - generic [ref=e62]:
+            - generic [ref=e63]: 账户
+            - generic [ref=e64]: DeepSeek V4
+          - img [ref=e65]
+      - main [ref=e67]:
+        - generic [ref=e69]:
+          - generic [ref=e71]: 聊天
+          - generic [ref=e73]:
+            - img [ref=e75]
+            - heading "开始对话" [level=2] [ref=e78]
+            - paragraph [ref=e79]: 选择强度和模型，然后发送消息即可开始对话。
+          - generic [ref=e81]:
+            - textbox "消息内容" [ref=e82]:
+              - /placeholder: 输入问题，或让 AI 基于当前资料生成实验报告、复习提纲、代码说明
+            - generic [ref=e83]:
+              - generic [ref=e84]:
+                - button "添加附件" [ref=e85]:
+                  - img
+                - button "选择模型强度和模型" [ref=e86]:
+                  - generic [ref=e87]: 高级 · DeepSeek
+                  - img
+              - button "发送消息" [disabled]:
+                - img
+  - alert [ref=e88]
