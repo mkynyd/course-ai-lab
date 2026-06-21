@@ -10,20 +10,58 @@ interface MermaidBlockProps {
   isStreaming?: boolean;
 }
 
-const MERMAID_THEME = {
-  theme: "base" as const,
-  themeVariables: {
-    primaryColor: "#FFFFFF",
-    primaryBorderColor: "#3B82F6",
-    primaryTextColor: "#1E293B",
-    lineColor: "#64748B",
-    secondaryColor: "#FFFFFF",
-    tertiaryColor: "#FFFFFF",
-    noteBkgColor: "#FFFFFF",
-    noteBorderColor: "#F59E0B",
-    noteTextColor: "#1E293B",
-  },
-};
+function resolveMermaidTheme() {
+  if (typeof document === "undefined") {
+    return {
+      theme: "base" as const,
+      themeVariables: {
+        primaryColor: "#FFFFFF",
+        primaryBorderColor: "#3B82F6",
+        primaryTextColor: "#1E293B",
+        lineColor: "#64748B",
+        secondaryColor: "#F8FAFC",
+        tertiaryColor: "#FFFFFF",
+        noteBkgColor: "#FFFFFF",
+        noteBorderColor: "#F59E0B",
+        noteTextColor: "#1E293B",
+      },
+    };
+  }
+
+  const isDark = document.documentElement.classList.contains("dark");
+
+  if (isDark) {
+    return {
+      theme: "base" as const,
+      themeVariables: {
+        primaryColor: "#1E293B",
+        primaryBorderColor: "#60A5FA",
+        primaryTextColor: "#E2E8F0",
+        lineColor: "#94A3B8",
+        secondaryColor: "#1E293B",
+        tertiaryColor: "#0F172A",
+        noteBkgColor: "#1E293B",
+        noteBorderColor: "#FBBF24",
+        noteTextColor: "#E2E8F0",
+      },
+    };
+  }
+
+  return {
+    theme: "base" as const,
+    themeVariables: {
+      primaryColor: "#FFFFFF",
+      primaryBorderColor: "#3B82F6",
+      primaryTextColor: "#1E293B",
+      lineColor: "#64748B",
+      secondaryColor: "#F8FAFC",
+      tertiaryColor: "#FFFFFF",
+      noteBkgColor: "#FFFFFF",
+      noteBorderColor: "#F59E0B",
+      noteTextColor: "#1E293B",
+    },
+  };
+}
 
 function parseSvgLength(value: string | null) {
   if (!value) return null;
@@ -100,7 +138,7 @@ export function MermaidBlock({ code, isStreaming = false }: MermaidBlockProps) {
           startOnLoad: false,
           securityLevel: "loose",
           suppressErrorRendering: true,
-          ...MERMAID_THEME,
+          ...resolveMermaidTheme(),
         });
         const { svg: renderedSvg } = await mermaid.render(id, code);
         if (!cancelled) {
@@ -216,7 +254,7 @@ export function MermaidBlock({ code, isStreaming = false }: MermaidBlockProps) {
     <div className="group relative" data-render-state="ready">
       <div
         ref={containerRef}
-        className="mermaid overflow-x-auto rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white p-3"
+        className="mermaid overflow-x-auto rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
