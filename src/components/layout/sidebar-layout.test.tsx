@@ -58,4 +58,12 @@ describe("main workspace navigation layout", () => {
     expect(collapsed).toHaveClass("flex-col");
     expect(collapsed).not.toHaveClass("grid");
   });
+
+  it("names the document conversion workspace as conversions", () => {
+    const props = { mobileOpen: false, onClose: vi.fn(), onExpand: vi.fn() };
+    render(<Sidebar {...props} collapsed={false} />);
+
+    expect(screen.getByRole("button", { name: "转换" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "文档" })).not.toBeInTheDocument();
+  });
 });

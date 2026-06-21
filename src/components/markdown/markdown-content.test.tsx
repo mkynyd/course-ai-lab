@@ -37,4 +37,29 @@ describe("MarkdownContent", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getByTestId("mermaid")).toHaveTextContent("graph LR; A-->B");
   });
+
+  it("renders sanitized HTML tables emitted by document conversion", () => {
+    render(
+      <MarkdownContent
+        content={[
+          "转换后的表格：",
+          "",
+          '<table><tbody><tr><th rowspan="2">字母</th><th>a</th><th>b</th></tr><tr><td>0</td><td>1</td></tr></tbody></table>',
+          "",
+          "字符检查：Ω · → · 中文",
+          "",
+          '<script>window.__unsafeMarkdown = true</script>',
+        ].join("\n")}
+      />
+    );
+
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "字母" })).toHaveAttribute(
+      "rowspan",
+      "2"
+    );
+    expect(screen.getByText("字符检查：Ω · → · 中文")).toBeInTheDocument();
+    expect(document.querySelector("script")).not.toBeInTheDocument();
+  });
 });

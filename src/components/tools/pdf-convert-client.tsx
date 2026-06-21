@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Check,
@@ -23,6 +23,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 
 const MAX_PDF_SIZE = 200 * 1024 * 1024;
+const COMPLETED_PROGRESS_DISMISS_MS = 1_500;
 
 const STAGES = [
   { key: "uploading", label: "上传" },
@@ -85,6 +86,15 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
 
   const isConverting = stage !== "idle" && stage !== "done";
   const stageIndex = STAGES.findIndex((item) => item.key === stage);
+
+  useEffect(() => {
+    if (stage !== "done") return;
+    const timeout = window.setTimeout(
+      () => setStage("idle"),
+      COMPLETED_PROGRESS_DISMISS_MS
+    );
+    return () => window.clearTimeout(timeout);
+  }, [stage]);
 
   function validateFile(file: File) {
     if (
@@ -368,17 +378,18 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
           >
             <ol className="grid grid-cols-4 gap-1">
               {STAGES.map((item, index) => {
-                const complete = stageIndex > index;
+                const complete = stageIndex > index || stage === "done";
                 const current = stageIndex === index;
                 return (
                   <li key={item.key} className="flex min-w-0 items-center gap-1.5">
                     <span
+                      aria-label={complete ? `${item.label}步骤已完成` : undefined}
                       className={cn(
                         "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
                         complete
                           ? "bg-[var(--color-success-muted)] text-[var(--color-success)]"
                           : current
-                            ? "bg-[var(--color-accent-muted)] text-[var(--color-accent)]"
+                            ? "bg-[var(--color-warning-muted)] text-[var(--color-warning)]"
                             : "bg-[var(--color-panel-muted)] text-[var(--color-text-tertiary)]"
                       )}
                     >

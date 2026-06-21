@@ -107,7 +107,7 @@ export function FileUpload({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <TooltipProvider>
+      <TooltipProvider delayDuration={500}>
         <Tooltip>
           <TooltipTrigger asChild>
             <DialogTrigger asChild>

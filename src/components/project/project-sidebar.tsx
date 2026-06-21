@@ -203,7 +203,7 @@ export function ProjectSidebar({
       {/* 文件区域 */}
       <SidebarContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3">
         <SidebarGroup className="flex min-h-0 shrink-0 flex-col px-0 py-1">
-          <TooltipProvider>
+          <TooltipProvider delayDuration={500}>
             <ButtonGroup className="mb-2 grid w-full grid-cols-4 gap-1 [&>*]:rounded-[var(--radius-sm)]! [&>*]:border-0!">
               <ToolbarButton
                 label={allSelected ? "取消全选" : "全选"}

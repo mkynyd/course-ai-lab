@@ -269,11 +269,11 @@ export function Sidebar({
                 isActive={activeSection === "tools"}
                 className={cn("h-11 lg:h-10", collapsed && "lg:justify-center lg:px-0")}
                 aria-current={activeSection === "tools" ? "page" : undefined}
-                title={collapsed ? "展开文档" : undefined}
+                title={collapsed ? "展开转换" : undefined}
               >
                 <PageEdit strokeWidth={1.8} />
                 <span className={cn("whitespace-nowrap", collapsed && "lg:hidden")}>
-                  文档
+                  转换
                 </span>
               </SidebarMenuButton>
             </SidebarMenuItem>

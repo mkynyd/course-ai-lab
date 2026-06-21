@@ -158,7 +158,7 @@ export default function RegisterPage() {
             disabled={isLoading}
             className={cn(
               "w-full min-h-11 rounded-[var(--radius-md)] text-sm font-medium",
-              "bg-[var(--color-accent)] text-white",
+              "bg-[var(--color-accent)] text-[var(--color-accent-contrast)]",
               "hover:bg-[var(--color-accent-hover)]",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               "transition-colors duration-150",
