@@ -62,11 +62,11 @@ function ActionButton({
       }
       disabled={disabled}
       className={cn(
-        "rounded-[var(--radius-md)] px-3 py-1.5 text-xs",
-        "bg-[var(--color-surface)]",
+        "rounded-[var(--radius-md)] px-3 py-2 text-xs",
+        "bg-[var(--color-project-control)]",
         "text-[var(--color-text-secondary)]",
-        "hover:bg-[var(--color-project-hover)] hover:text-[var(--color-text-primary)]",
-        "focus-visible:bg-[var(--color-project-hover)] focus-visible:text-[var(--color-text-primary)]",
+        "hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)]",
+        "focus-visible:bg-[var(--color-project-surface-hover)] focus-visible:text-[var(--color-text-primary)]",
         "transition-[background-color,color] duration-150 whitespace-nowrap",
         "disabled:opacity-40 disabled:cursor-not-allowed"
       )}
@@ -108,8 +108,8 @@ export function QuickTaskBar({
             onClick={() => setCustomOpen((current) => !current)}
             className={cn(
 	              "inline-flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-1.5 text-xs",
-	              "bg-[var(--color-surface)] text-[var(--color-text-secondary)]",
-	              "hover:bg-[var(--color-project-hover)] hover:text-[var(--color-text-primary)] transition-colors duration-150"
+	              "bg-[var(--color-project-control)] text-[var(--color-text-secondary)]",
+	              "hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-project-surface-hover)] aria-expanded:bg-[var(--color-project-surface-active)] transition-colors duration-150"
             )}
             aria-expanded={customOpen}
           >

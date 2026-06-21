@@ -50,7 +50,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="relative h-full overflow-y-auto">
+    <div className="project-workbench relative h-full overflow-y-auto">
       <AmbientField density="wide" className="opacity-55" />
       <div className="relative mx-auto max-w-5xl px-4 py-8">
         {/* 页头 */}
@@ -64,7 +64,11 @@ export default function ProjectsPage() {
             </p>
           </div>
           <Link href="/projects/new">
-	            <Button variant="primary" size="md">
+	            <Button
+	              variant="primary"
+	              size="md"
+	              className="bg-[var(--color-project-action)] text-[var(--color-project-action-contrast)] hover:bg-[var(--color-project-action-hover)] focus-visible:bg-[var(--color-project-action-hover)]"
+	            >
 	              <Plus width={16} height={16} strokeWidth={2} />
 	              新建项目
 	            </Button>
@@ -77,20 +81,24 @@ export default function ProjectsPage() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-36 animate-pulse rounded-[var(--radius-xl)] bg-[var(--color-surface)]"
+	                className="h-36 animate-pulse rounded-[var(--radius-xl)] bg-[var(--color-project-surface)]"
               />
             ))}
           </div>
         ) : projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-surface)]">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-project-control)]">
 		              <Folder width={24} height={24} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
             </div>
             <h2 className="text-base font-medium text-[var(--color-text-primary)] mb-1">
               暂无项目
             </h2>
             <Link href="/projects/new">
-		              <Button variant="primary" size="md">
+	              <Button
+	                variant="primary"
+	                size="md"
+	                className="bg-[var(--color-project-action)] text-[var(--color-project-action-contrast)] hover:bg-[var(--color-project-action-hover)] focus-visible:bg-[var(--color-project-action-hover)]"
+	              >
 	                <Plus width={16} height={16} strokeWidth={2} />
 	                创建第一个项目
               </Button>
@@ -109,11 +117,11 @@ export default function ProjectsPage() {
 	                  <div className="flex items-start justify-between mb-3">
 	                    <Link
 	                      href={`/projects/${project.id}`}
-	                      className="flex min-h-11 min-w-0 flex-1 flex-col justify-center focus:outline-none"
+	                      className="flex min-h-11 min-w-0 flex-1 flex-col justify-center focus-visible:outline-none focus-visible:bg-[var(--color-project-surface-hover)] rounded-[var(--radius-sm)]"
 	                    >
-	                      <h3 className="truncate text-base font-semibold text-[var(--color-text-primary)]">
+	                      <h2 className="truncate text-base font-semibold text-[var(--color-text-primary)]">
 	                        {project.name}
-	                      </h3>
+	                      </h2>
 	                      <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-tertiary)]">
 	                        {TYPE_LABELS[project.type] || project.type}
 	                      </span>
@@ -156,7 +164,7 @@ export default function ProjectsPage() {
 	                  </div>
 	                  <Link
 	                    href={`/projects/${project.id}`}
-	                    className="block min-h-11 focus:outline-none"
+	                    className="block min-h-11 focus-visible:outline-none focus-visible:bg-[var(--color-project-surface-hover)] rounded-[var(--radius-sm)]"
 	                  >
 	                    {project.description && (
 	                      <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-[var(--color-text-secondary)]">
@@ -164,11 +172,11 @@ export default function ProjectsPage() {
 	                      </p>
 	                    )}
 	                    <div className="flex items-center gap-2 text-[11px] font-mono text-[var(--color-text-tertiary)]">
-	                      <span className="flex items-center gap-1 rounded-[var(--radius-md)] bg-[var(--color-panel-muted)] px-2 py-1">
+	                      <span className="flex items-center gap-1 rounded-[var(--radius-md)] bg-[var(--color-project-control)] px-2 py-1">
 			                      <ChatLines width={12} height={12} strokeWidth={2} />
 	                        {project._count.conversations} 对话
 	                      </span>
-	                      <span className="flex items-center gap-1 rounded-[var(--radius-md)] bg-[var(--color-panel-muted)] px-2 py-1">
+	                      <span className="flex items-center gap-1 rounded-[var(--radius-md)] bg-[var(--color-project-control)] px-2 py-1">
 			                      <Page width={12} height={12} strokeWidth={2} />
 	                        {project._count.files} 文件
 	                      </span>

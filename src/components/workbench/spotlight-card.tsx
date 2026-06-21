@@ -29,11 +29,10 @@ export const SpotlightCard = forwardRef<HTMLDivElement, SpotlightCardProps>(func
   return (
     <div
       className={cn(
-        "workbench-spotlight rounded-[var(--radius-xl)] bg-[var(--color-surface)]",
-        "backdrop-blur-[var(--glass-blur)] transition-[background-color] duration-200",
+        "workbench-spotlight rounded-[var(--radius-xl)] bg-[var(--color-project-surface)] transition-[background-color] duration-200",
         active
-          ? "bg-[var(--color-interaction-active)]"
-          : "hover:bg-[var(--color-surface-hover)]",
+          ? "bg-[var(--color-project-surface-active)]"
+          : "hover:bg-[var(--color-project-surface-hover)]",
         className
       )}
       ref={ref}
