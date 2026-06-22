@@ -260,15 +260,15 @@ function ProfilePromptSection() {
     <div className="rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 space-y-3">
       <div>
         <label className="text-xs font-medium text-[var(--color-text-secondary)]">昵称</label>
-        <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="你的称呼" maxLength={60} className="mt-1" />
+        <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="你的称呼" maxLength={60} className="mt-1 bg-[var(--color-project-control)]" />
       </div>
       <div>
         <label className="text-xs font-medium text-[var(--color-text-secondary)]">职业 / 专业</label>
-        <Input value={profession} onChange={(e) => setProfession(e.target.value)} placeholder="例如：临床医学大三学生" maxLength={100} className="mt-1" />
+        <Input value={profession} onChange={(e) => setProfession(e.target.value)} placeholder="例如：临床医学大三学生" maxLength={100} className="mt-1 bg-[var(--color-project-control)]" />
       </div>
       <div>
         <label className="text-xs font-medium text-[var(--color-text-secondary)]">你的详情</label>
-        <Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="描述你的学习目标、使用习惯等" maxLength={500} className="mt-1 h-20 resize-none" />
+        <Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="描述你的学习目标、使用习惯等" maxLength={500} className="mt-1 h-20 resize-none bg-[var(--color-project-control)]" />
       </div>
       <Button variant="primary" size="sm" onClick={handleGenerate} disabled={generating}>
         {generating ? "生成中..." : saved ? "已保存，点击重新生成" : "生成个人描述"}

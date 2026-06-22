@@ -84,15 +84,17 @@ export function QuickTaskBar({
   className,
 }: QuickTaskBarProps) {
   const [customOpen, setCustomOpen] = useState(false);
-  const [systemExpanded, setSystemExpanded] = useState(false);
+  const [systemExpanded, setSystemExpanded] = useState(true);
   const resolvedActions: QuickTaskAction[] =
     actions && actions.length > 0
       ? sortActions(actions)
       : getDefaultQuickActions(projectType).map((action) => ({ ...action }));
   const systemActions = resolvedActions.filter((action) => action.isSystem !== false);
   const customActions = resolvedActions.filter((action) => action.isSystem === false);
-  const visibleSystemActions = systemExpanded ? systemActions : systemActions.slice(0, 2);
-  const hiddenSystemCount = systemActions.length - 2;
+  // Show all when expanded, show up to 6 when collapsed (more natural threshold)
+  const PREVIEW_COUNT = 6;
+  const showExpandButton = systemActions.length > PREVIEW_COUNT;
+  const visibleSystemActions = systemExpanded || !showExpandButton ? systemActions : systemActions.slice(0, PREVIEW_COUNT);
 
   return (
     <div className={cn("workbench-animated-list flex flex-wrap items-center gap-1.5", className)}>
@@ -104,10 +106,10 @@ export function QuickTaskBar({
           disabled={disabled}
         />
       ))}
-      {hiddenSystemCount > 0 && (
+      {showExpandButton && !systemExpanded && (
         <button
           type="button"
-          onClick={() => setSystemExpanded(!systemExpanded)}
+          onClick={() => setSystemExpanded(true)}
           className={cn(
             "inline-flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2 text-xs",
             "bg-[var(--color-project-control)] text-[var(--color-text-secondary)]",
@@ -116,8 +118,24 @@ export function QuickTaskBar({
             "transition-[background-color,color] duration-150 whitespace-nowrap"
           )}
         >
-          {systemExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          更多 ({hiddenSystemCount})
+          <ChevronRight size={12} />
+          更多 ({systemActions.length - PREVIEW_COUNT})
+        </button>
+      )}
+      {showExpandButton && systemExpanded && (
+        <button
+          type="button"
+          onClick={() => setSystemExpanded(false)}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-[var(--radius-md)] px-3 py-2 text-xs",
+            "bg-[var(--color-project-control)] text-[var(--color-text-secondary)]",
+            "hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)]",
+            "focus-visible:bg-[var(--color-project-surface-hover)]",
+            "transition-[background-color,color] duration-150 whitespace-nowrap"
+          )}
+        >
+          <ChevronDown size={12} />
+          收起
         </button>
       )}
       {customActions.length > 0 && (

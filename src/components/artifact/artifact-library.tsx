@@ -116,20 +116,15 @@ export function ArtifactLibrary({
             <h2 className="text-base font-semibold">成果库</h2>
             <p className="text-xs text-[var(--color-text-tertiary)]">保存、阅读和导出 AI 生成成果</p>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                onClick={close}
-                aria-label="关闭成果库"
-                variant="outline"
-                size="icon"
-              >
-                <X size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">关闭</TooltipContent>
-          </Tooltip>
+          <Button
+            type="button"
+            onClick={close}
+            aria-label="关闭成果库"
+            variant="outline"
+            size="icon"
+          >
+            <X size={16} />
+          </Button>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[280px_1fr]">
           {/* ------ Left: artifact list ------ */}

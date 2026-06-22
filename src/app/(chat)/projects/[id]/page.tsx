@@ -529,6 +529,7 @@ export default function ProjectDetailPage() {
             onConversationSelect={handleConversationSelect}
             onConversationDelete={(id) => void handleConversationDelete(id)}
             activeConversationId={conversationId}
+            onShowArtifacts={() => setShowArtifacts(true)}
           />
         </div>
       </div>
@@ -584,14 +585,6 @@ export default function ProjectDetailPage() {
             </div>
           </div>
           <div className="flex min-w-0 shrink-0 items-center gap-2 overflow-x-auto">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowArtifacts(true)}
-              className="shrink-0 bg-[var(--color-project-control)] text-[var(--color-text-secondary)] hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-project-surface-hover)]"
-            >
-              成果库
-            </Button>
             {usage && (
               <ContextRing used={usage.totalTokens} />
             )}

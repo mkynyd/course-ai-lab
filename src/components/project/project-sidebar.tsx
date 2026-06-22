@@ -86,6 +86,7 @@ interface ProjectData {
 
 interface ProjectSidebarProps {
   project: ProjectData;
+  onShowArtifacts?: () => void;
   selectedFileIds: Set<string>;
   onFileToggle: (id: string, intent: FileSelectionIntent) => void;
   onSelectAllFiles: () => void;
@@ -161,6 +162,7 @@ export function ProjectSidebar({
   onConversationSelect,
   onConversationDelete,
   activeConversationId,
+  onShowArtifacts,
   className,
 }: ProjectSidebarProps) {
   const filesQuery = useProjectFiles(project.id, project.files || []);
@@ -224,6 +226,16 @@ export function ProjectSidebar({
           >
             <InfoCircle width={14} height={14} strokeWidth={1.5} />
           </button>
+          {onShowArtifacts && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onShowArtifacts}
+              className="shrink-0 h-7 rounded-[var(--radius-md)] bg-[var(--color-project-action)] text-[var(--color-project-action-contrast)] hover:bg-[var(--color-project-action-hover)] text-xs"
+            >
+              成果库
+            </Button>
+          )}
         </div>
         <p className="text-[11px] text-[var(--color-text-tertiary)]">
           {TYPE_LABELS[project.type] || project.type}

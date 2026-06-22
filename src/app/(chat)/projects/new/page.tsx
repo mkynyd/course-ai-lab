@@ -4,10 +4,10 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { Stepper } from "@/components/ui/stepper";
+import { RotatingText } from "@/components/ui/rotating-text";
 import { FolderOpen, Sparkles } from "lucide-react";
 import { useCreateProject } from "@/lib/hooks/use-projects";
 
@@ -185,12 +185,23 @@ export default function NewProjectPage() {
               </Button>
             </>
           ) : (
-            <>
-              <Sparkles size={32} strokeWidth={1.5} className="text-[var(--color-accent)] animate-pulse" />
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                {isGenerating ? "正在分析你的场景，生成专属提示词和快捷任务..." : "准备中..."}
+            <div className="flex flex-col items-center gap-5">
+              <Sparkles size={28} strokeWidth={1.5} className="text-[var(--color-accent)] animate-pulse" />
+              <RotatingText
+                words={[
+                  "思考", "探索", "生成", "个性化", "定制",
+                  "烧烤", "进食", "品尝", "翻箱倒柜", "品鉴",
+                  "构建", "深蹲", "卧推",
+                ]}
+                interval={2000}
+                prefix="正在"
+                suffix="..."
+                className="text-sm text-[var(--color-text-secondary)] font-medium"
+              />
+              <p className="text-xs text-[var(--color-text-tertiary)]">
+                正在分析你的场景，生成专属配置
               </p>
-            </>
+            </div>
           )}
         </div>
       ),
