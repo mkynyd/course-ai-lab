@@ -63,7 +63,7 @@ export async function buildClassificationPrompt(
 
   const roleListText = roles
     .map((r) => {
-      const hints = r.classifierHints as ClassifierHints;
+      const hints = r.classifierHints as unknown as ClassifierHints;
       const kw = hints.keywords.join("、");
       const pos = hints.positiveExamples.join("；");
       const neg =
@@ -147,7 +147,7 @@ export async function getRecommendedQuickActions(
   const role = await prisma.userRole.findUnique({ where: { key: roleKey } });
   if (!role?.recommendedQuickActions) return [];
 
-  const actions = role.recommendedQuickActions as QuickActionRecommendation[];
+  const actions = role.recommendedQuickActions as unknown as QuickActionRecommendation[];
   return Array.isArray(actions) ? actions : [];
 }
 
@@ -246,9 +246,9 @@ export async function seedUserRoles(seedPath?: string): Promise<number> {
         label: role.label,
         description: role.description,
         applicableModes: role.applicableModes,
-        classifierHints: role.classifierHints,
+        classifierHints: JSON.parse(JSON.stringify(role.classifierHints)),
         systemPromptAddition: role.systemPromptAddition,
-        recommendedQuickActions: role.recommendedQuickActions,
+        recommendedQuickActions: role.recommendedQuickActions ? JSON.parse(JSON.stringify(role.recommendedQuickActions)) : undefined,
         priority: role.priority,
         isActive: role.isActive,
       },
@@ -256,9 +256,9 @@ export async function seedUserRoles(seedPath?: string): Promise<number> {
         label: role.label,
         description: role.description,
         applicableModes: role.applicableModes,
-        classifierHints: role.classifierHints,
+        classifierHints: JSON.parse(JSON.stringify(role.classifierHints)),
         systemPromptAddition: role.systemPromptAddition,
-        recommendedQuickActions: role.recommendedQuickActions,
+        recommendedQuickActions: role.recommendedQuickActions ? JSON.parse(JSON.stringify(role.recommendedQuickActions)) : undefined,
         priority: role.priority,
         isActive: role.isActive,
         version: { increment: 1 },

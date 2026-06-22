@@ -142,7 +142,8 @@ export async function streamChat(
       ...(params.thinking?.type === "enabled"
         ? { thinking: { type: "adaptive" as const } }
         : {}),
-      ...(params.tools?.length ? { tools: params.tools as Array<{ type: string }> } : {}),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...(params.tools?.length ? { tools: params.tools as any } : {}),
     });
   } catch (error) {
     throw toDeepSeekError(error);

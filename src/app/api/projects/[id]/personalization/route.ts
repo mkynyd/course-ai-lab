@@ -85,7 +85,7 @@ export async function POST(
             projectId,
             roleId: role.id,
             mode: classification.mode,
-            classification: classification as unknown as Record<string, unknown>,
+            classification: JSON.parse(JSON.stringify(classification)),
           },
         });
       }

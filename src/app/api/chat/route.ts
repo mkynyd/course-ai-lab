@@ -406,6 +406,7 @@ export async function POST(request: NextRequest) {
 
   // 11. 调用模型
   let streamResult;
+  const activeSkills: SkillDefinition[] = [];
   try {
     if (modelRoute.provider === "minimax") {
       streamResult = await streamMiniMaxChat(apiKey, {
@@ -417,13 +418,10 @@ export async function POST(request: NextRequest) {
       // Build skills: always include project file skills in project mode,
       // plus web_search if the user has it enabled.
       const skillSet = getSkillSet(projectMode);
-      const activeSkills: SkillDefinition[] = [];
 
       if (webSearchActive) {
-        // web_search is in the skill set by default
         activeSkills.push(...skillSet);
       } else {
-        // Exclude web_search, keep client-side skills
         activeSkills.push(...skillSet.filter((s) => s.type === "client"));
       }
 
@@ -460,60 +458,62 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 11.5 Tool call execution loop (max 2 rounds)
-  const MAX_TOOL_ROUNDS = 2;
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const toolCalls = streamResult.getToolCalls();
-    const clientToolCalls = toolCalls.filter((tc) => {
-      const skill = activeSkills?.find((s) => s.name === tc.name);
-      return skill && skill.type === "client";
-    });
-
-    if (clientToolCalls.length === 0) break;
-
-    // Execute client-side tools
-    const toolResults: Array<{ toolUseId: string; content: string }> = [];
-    for (const tc of clientToolCalls) {
-      const result = await executeSkill(tc.name, tc.input, {
-        userId,
-        projectId: project?.id,
-        conversationId: conversation.id,
+  // 11.5 Tool call execution loop (max 2 rounds, DeepSeek only)
+  if (modelRoute.provider === "deepseek" && "getToolCalls" in streamResult) {
+    const MAX_TOOL_ROUNDS = 2;
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const toolCalls = (streamResult as unknown as { getToolCalls: () => Array<{ id: string; name: string; input: Record<string, unknown> }> }).getToolCalls();
+      const clientToolCalls = toolCalls.filter((tc) => {
+        const skill = activeSkills?.find((s) => s.name === tc.name);
+        return skill && skill.type === "client";
       });
-      toolResults.push({ toolUseId: tc.id, content: result });
-    }
 
-    // Build follow-up messages with tool results
-    const assistantContent = clientToolCalls.map((tc) => ({
-      type: "tool_use" as const,
-      id: tc.id,
-      name: tc.name,
-      input: tc.input,
-    }));
+      if (clientToolCalls.length === 0) break;
 
-    const userContent = toolResults.map((tr) => ({
-      type: "tool_result" as const,
-      tool_use_id: tr.toolUseId,
-      content: tr.content,
-    }));
+      // Execute client-side tools
+      const toolResults: Array<{ toolUseId: string; content: string }> = [];
+      for (const tc of clientToolCalls) {
+        const result = await executeSkill(tc.name, tc.input, {
+          userId,
+          projectId: project?.id,
+          conversationId: conversation.id,
+        });
+        toolResults.push({ toolUseId: tc.id, content: result });
+      }
 
-    const followUpMessages: DeepSeekMessage[] = [
-      ...messages,
-      { role: "assistant", content: JSON.stringify(assistantContent) },
-      { role: "user", content: JSON.stringify(userContent) },
-    ];
+      // Build follow-up messages with tool results
+      const assistantContent = clientToolCalls.map((tc) => ({
+        type: "tool_use" as const,
+        id: tc.id,
+        name: tc.name,
+        input: tc.input,
+      }));
 
-    try {
-      streamResult = await streamChat(apiKey, {
-        model,
-        messages: followUpMessages,
-        thinking: thinkingEnabled
-          ? { type: "enabled" }
-          : { type: "disabled" },
-        reasoning_effort: reasoningEffort,
-      });
-    } catch (err) {
-      logger.error("Tool execution follow-up failed", { error: String(err) });
-      break;
+      const userContent = toolResults.map((tr) => ({
+        type: "tool_result" as const,
+        tool_use_id: tr.toolUseId,
+        content: tr.content,
+      }));
+
+      const followUpMessages: DeepSeekMessage[] = [
+        ...messages,
+        { role: "assistant", content: JSON.stringify(assistantContent) },
+        { role: "user", content: JSON.stringify(userContent) },
+      ];
+
+      try {
+        streamResult = await streamChat(apiKey, {
+          model,
+          messages: followUpMessages,
+          thinking: thinkingEnabled
+            ? { type: "enabled" }
+            : { type: "disabled" },
+          reasoning_effort: reasoningEffort,
+        });
+      } catch (err) {
+        logger.error("Tool execution follow-up failed", { error: String(err) });
+        break;
+      }
     }
   }
 

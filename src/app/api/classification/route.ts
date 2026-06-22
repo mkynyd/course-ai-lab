@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   const { systemPrompt, jsonSchema } = await buildClassificationPrompt(mode);
 
   // 2. Get provider API key
-  const { getProviderApiKey } = await import("@/lib/provider-access");
+  const { getProviderApiKey } = await import("@/lib/data/provider-access");
   let apiKey: string;
   try {
     apiKey = await getProviderApiKey(session.user.id, "deepseek");
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         {
           name: "output_classification",
           description: "输出分类结果",
-          input_schema: jsonSchema as Record<string, unknown>,
+          input_schema: jsonSchema as unknown as { type: "object"; properties: Record<string, unknown>; required?: string[] },
         },
       ],
       tool_choice: { type: "tool", name: "output_classification" },
