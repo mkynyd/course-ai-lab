@@ -9,9 +9,9 @@ function createRedis(): Redis {
     process.env.REDIS_URL || "redis://localhost:6379",
     {
       lazyConnect: true,
-      connectTimeout: 800,
+      connectTimeout: 2000,
       maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
+      enableOfflineQueue: true,
       retryStrategy(times) {
         return Math.min(times * 200, 2_000);
       },
