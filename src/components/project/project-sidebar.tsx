@@ -64,6 +64,7 @@ import {
   ChatLines,
   MoreHoriz,
   InfoCircle,
+  Box3dCenter,
 } from "iconoir-react";
 import { ProjectDetailModal } from "@/components/project/project-detail-modal";
 import { useProjectFiles } from "@/lib/hooks/use-project-files";
@@ -226,16 +227,6 @@ export function ProjectSidebar({
           >
             <InfoCircle width={14} height={14} strokeWidth={1.5} />
           </button>
-          {onShowArtifacts && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={onShowArtifacts}
-              className="shrink-0 h-7 rounded-[var(--radius-md)] bg-[var(--color-project-action)] text-[var(--color-project-action-contrast)] hover:bg-[var(--color-project-action-hover)] text-xs"
-            >
-              成果库
-            </Button>
-          )}
         </div>
         <p className="text-[11px] text-[var(--color-text-tertiary)]">
           {TYPE_LABELS[project.type] || project.type}
@@ -280,7 +271,7 @@ export function ProjectSidebar({
       <SidebarContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3">
         <SidebarGroup className="flex min-h-0 shrink-0 flex-col px-0 py-1">
           <TooltipProvider delayDuration={500}>
-            <ButtonGroup className="mb-2 grid w-full grid-cols-3 gap-1 [&>*]:rounded-[var(--radius-sm)]! [&>*]:border-0!">
+            <ButtonGroup className="mb-2 grid w-full grid-cols-4 gap-1 [&>*]:rounded-[var(--radius-sm)]! [&>*]:border-0!">
               <ToolbarButton
                 label={allSelected ? "取消全选" : "全选"}
                 onClick={allSelected ? onClearFileSelection : onSelectAllFiles}
@@ -302,6 +293,23 @@ export function ProjectSidebar({
                 onUploaded={onFileUploaded}
                 triggerClassName="h-8 w-full rounded-[var(--radius-sm)] border-0 bg-[var(--color-project-control)] text-[var(--color-text-secondary)] hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-project-surface-hover)]"
               />
+              {onShowArtifacts && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon-sm"
+                      onClick={onShowArtifacts}
+                      className="h-8 w-full rounded-[var(--radius-sm)] border-0 bg-[var(--color-project-control)] text-[var(--color-text-secondary)] hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-project-surface-hover)]"
+                      aria-label="成果库"
+                    >
+                      <Box3dCenter strokeWidth={2} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">成果库</TooltipContent>
+                </Tooltip>
+              )}
               <DropdownMenu>
                 <Tooltip>
                   <TooltipTrigger asChild>
