@@ -146,18 +146,23 @@ export default function NewProjectPage() {
         body: JSON.stringify({ userInput: roleInput.trim(), mode: draft.type }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "分类失败");
+      let data: Record<string, unknown>;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`服务器响应异常 (${res.status})`);
       }
 
-      const data = await res.json();
-      setClassification(data.classification);
-      setRecommendedActions(data.quickActions || []);
-      setStepperStep(2); // show recommendations
+      if (!res.ok) {
+        throw new Error((data.error as string) || "分类失败");
+      }
+
+      setClassification(data.classification as ClassificationData);
+      setRecommendedActions((data.quickActions as QuickActionItem[]) || []);
+      setStepperStep(2);
     } catch (err) {
       setClassifyError(err instanceof Error ? err.message : "分类失败");
-      setStepperStep(2); // show empty recommendations
+      setStepperStep(2);
     } finally {
       setIsClassifying(false);
     }

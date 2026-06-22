@@ -43,7 +43,21 @@ export async function POST(request: Request) {
   const { userInput, mode } = parsed.data;
 
   // 1. Build dynamic classification prompt
-  const { systemPrompt, jsonSchema } = await buildClassificationPrompt(mode);
+  const { systemPrompt, jsonSchema, roleKeys } = await buildClassificationPrompt(mode);
+
+  // No roles available — return empty result immediately
+  if (roleKeys.length === 0) {
+    return NextResponse.json({
+      classification: {
+        roleKey: null,
+        mode,
+        domain: "通用",
+        confidence: 0,
+        reason: "no_roles_available",
+      },
+      quickActions: [],
+    });
+  }
 
   // 2. Get provider API key
   const { getProviderApiKey } = await import("@/lib/data/provider-access");
@@ -57,7 +71,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Call DeepSeek with structured output
+  // 3. Call DeepSeek — use simple text output with JSON, more reliable than tool_choice
   try {
     const client = new Anthropic({
       baseURL: DEEPSEEK_BASE_URL,
@@ -65,6 +79,8 @@ export async function POST(request: Request) {
       timeout: 30_000,
       maxRetries: 0,
     });
+
+    const schemaStr = JSON.stringify(jsonSchema, null, 2);
 
     const response = await client.messages.create({
       model: mapDeepSeekModel("deepseek-v4-flash"),
@@ -74,39 +90,52 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "user",
-          content: `用户输入：${userInput}\n\n请根据以上信息判断用户的身份角色和工作模式。`,
+          content: `用户输入：${userInput}\n\n请根据以上信息判断用户的身份角色和工作模式。\n\n必须严格按照以下 JSON Schema 输出，不要输出任何额外内容：\n${schemaStr}`,
         },
       ],
-      tools: [
-        {
-          name: "output_classification",
-          description: "输出分类结果",
-          input_schema: jsonSchema as unknown as { type: "object"; properties: Record<string, unknown>; required?: string[] },
-        },
-      ],
-      tool_choice: { type: "tool", name: "output_classification" },
     });
 
-    // Extract structured output
-    const toolBlock = response.content.find(
-      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
-    );
-    if (!toolBlock) {
+    // Extract text content
+    const textBlock = response.content.find((block) => block.type === "text");
+    if (!textBlock || !("text" in textBlock)) {
       return NextResponse.json(
         { error: "分类器未返回有效结果" },
         { status: 500 }
       );
     }
 
-    const classification = toolBlock.input as {
+    // Parse JSON from response text
+    let classification: {
       roleKey: string | null;
       mode: string;
       domain: string;
       confidence: number;
       reason: string;
     };
+    try {
+      // Extract JSON from possible markdown code blocks
+      const jsonStr = textBlock.text.replace(/```json\n?/g, "").replace(/```/g, "").trim();
+      classification = JSON.parse(jsonStr);
+    } catch {
+      return NextResponse.json(
+        { error: "分类器返回格式异常" },
+        { status: 500 }
+      );
+    }
 
-    // 4. Get recommended quick actions
+    // 4. Validate roleKey against available roles
+    if (classification.roleKey && !roleKeys.includes(classification.roleKey)) {
+      classification.roleKey = null;
+      classification.confidence = 0;
+    }
+
+    // 5. Validate mode
+    const validModes = ["experiment", "review", "coding", "general"];
+    if (!validModes.includes(classification.mode)) {
+      classification.mode = mode;
+    }
+
+    // 6. Get recommended quick actions
     const quickActions = await getRecommendedQuickActions(classification.roleKey);
 
     return NextResponse.json({
