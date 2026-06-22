@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useCacheMetrics } from "@/lib/hooks/use-cache-metrics";
 import { cn } from "@/lib/utils";
-import { AboutYouSection } from "@/components/settings/about-you-section";
+import { Textarea } from "@/components/ui/textarea";
 
 interface SettingsPanelProps {
   compact?: boolean;
@@ -195,9 +195,9 @@ export function SettingsPanel({ compact = false }: SettingsPanelProps) {
           <h2 className="text-sm font-medium">关于你</h2>
         </div>
         <p className="text-xs text-[var(--color-text-secondary)]">
-          设置你的身份和专业背景，帮助 AI 更好地理解你的使用场景。此设置为全局可选，也可以在创建项目时单独设置。
+          设置你的身份和专业背景，AI 会根据这些信息为你生成全局个人描述提示词。
         </p>
-        <AboutYouSection />
+        <ProfilePromptSection />
       </section>
 
       <Separator />
@@ -219,6 +219,62 @@ export function SettingsPanel({ compact = false }: SettingsPanelProps) {
           退出登录
         </Button>
       </section>
+    </div>
+  );
+}
+
+// ============================================================
+// Simplified "About You" — natural language → LLM → profilePrompt
+// ============================================================
+
+function ProfilePromptSection() {
+  const [nickname, setNickname] = useState("");
+  const [profession, setProfession] = useState("");
+  const [details, setDetails] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    if (!nickname.trim() && !profession.trim() && !details.trim()) return;
+    setGenerating(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const res = await fetch("/api/user/generate-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname: nickname.trim(), profession: profession.trim(), details: details.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "生成失败");
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  return (
+    <div className="rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 space-y-3">
+      <div>
+        <label className="text-xs font-medium text-[var(--color-text-secondary)]">昵称</label>
+        <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="你的称呼" maxLength={60} className="mt-1" />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-[var(--color-text-secondary)]">职业 / 专业</label>
+        <Input value={profession} onChange={(e) => setProfession(e.target.value)} placeholder="例如：临床医学大三学生" maxLength={100} className="mt-1" />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-[var(--color-text-secondary)]">你的详情</label>
+        <Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="描述你的学习目标、使用习惯等" maxLength={500} className="mt-1 h-20 resize-none" />
+      </div>
+      <Button variant="primary" size="sm" onClick={handleGenerate} disabled={generating}>
+        {generating ? "生成中..." : saved ? "已保存，点击重新生成" : "生成个人描述"}
+      </Button>
+      {saved && <p className="text-xs text-[var(--color-success)]">已保存。AI 将在对话中参考此信息。</p>}
+      {error && <p className="text-xs text-[var(--color-error)]">{error}</p>}
     </div>
   );
 }

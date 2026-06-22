@@ -63,7 +63,9 @@ import {
   Xmark,
   ChatLines,
   MoreHoriz,
+  InfoCircle,
 } from "iconoir-react";
+import { ProjectDetailModal } from "@/components/project/project-detail-modal";
 import { useProjectFiles } from "@/lib/hooks/use-project-files";
 import {
   Tooltip,
@@ -77,6 +79,7 @@ interface ProjectData {
   name: string;
   description: string | null;
   type: string;
+  systemPrompt?: string | null;
   files?: ProjectFile[];
   conversations?: { id: string; title: string; updatedAt: string }[];
 }
@@ -172,6 +175,7 @@ export function ProjectSidebar({
   const [sidebarTab, setSidebarTab] = useState<"files" | "conversations">("files");
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [conversationsOpen, setConversationsOpen] = useState(true);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [conversationDeleteTarget, setConversationDeleteTarget] = useState<{
     id: string;
     title: string;
@@ -212,6 +216,14 @@ export function ProjectSidebar({
           <h2 className="text-sm font-semibold truncate text-[var(--color-text-primary)]">
             {project.name}
           </h2>
+          <button
+            type="button"
+            onClick={() => setDetailOpen(true)}
+            className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-interaction-hover)] transition-colors"
+            aria-label="查看项目详情"
+          >
+            <InfoCircle width={14} height={14} strokeWidth={1.5} />
+          </button>
         </div>
         <p className="text-[11px] text-[var(--color-text-tertiary)]">
           {TYPE_LABELS[project.type] || project.type}
@@ -543,6 +555,13 @@ export function ProjectSidebar({
       </SidebarContent>
       )}
     </div>
+    <ProjectDetailModal
+      open={detailOpen}
+      onOpenChange={setDetailOpen}
+      projectName={project.name}
+      projectType={project.type}
+      systemPrompt={project.systemPrompt}
+    />
     </SidebarProvider>
   );
 }
