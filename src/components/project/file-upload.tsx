@@ -128,7 +128,7 @@ export function FileUpload({
           <TooltipContent side="bottom">上传资料</TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <DialogContent className={cn("sm:max-w-md", className)}>
+      <DialogContent className={cn(className)}>
         <DialogHeader>
           <DialogTitle>上传资料</DialogTitle>
           <DialogDescription>

@@ -71,7 +71,7 @@ export function SaveToProjectDialog({
         onOpenChange(nextOpen);
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>保存到项目</DialogTitle>
           <DialogDescription>
