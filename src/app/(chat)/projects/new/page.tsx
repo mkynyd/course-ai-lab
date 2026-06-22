@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { Stepper } from "@/components/ui/stepper";
 import { FolderOpen, Sparkles } from "lucide-react";
@@ -159,17 +160,12 @@ export default function NewProjectPage() {
           <p className="text-xs text-[var(--color-text-secondary)]">
             用自然语言告诉 AI 你的背景和目的，AI 会据此生成专属的项目提示词和快捷任务。
           </p>
-          <Input
+          <Textarea
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             placeholder="例如：我是大二医学生，想整理生理学期末复习资料，需要重点背诵的考点和名词解释"
             maxLength={500}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && userInput.trim().length >= 2) {
-                e.preventDefault();
-                handleCreateAndGenerate();
-              }
-            }}
+            className="h-28 resize-none"
           />
           {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
         </div>
