@@ -65,7 +65,7 @@ export function SettingsPanel() {
         </div>
 
         <Link
-          href="/"
+          href="/home"
           className={cn(
             "mt-auto flex items-center gap-2.5 px-3 py-2 text-sm rounded-xl text-left w-full",
             "mt-3",

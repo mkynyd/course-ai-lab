@@ -19,7 +19,7 @@ export function LandingNav() {
         className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6"
       >
         <Link
-          href="/"
+          href="/home"
           className="flex items-center gap-2 rounded-[var(--radius-md)] px-1 py-1 text-[14px] font-semibold tracking-tight text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent)]"
         >
           <span className="flex size-7 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-accent-contrast)]">
