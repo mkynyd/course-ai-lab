@@ -4,34 +4,32 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, FileText, Globe, Paperclip, Send, Sparkles, User, X } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown/markdown-content";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ModelSelector } from "@/components/chat/model-selector";
 import { cn } from "@/lib/utils";
 import { MOCK_CHAT_MESSAGES, type MockChatMessage } from "@/lib/mock/landing-fixtures";
 
 /**
  * 缩放版聊天演示。纯 mock 数据驱动，不接 API / SSE。
- * 视觉上贴近 /chat 工作台：
- *  - 顶部一条 fake 标题栏（与 hero 区分，不显示 nav）
- *  - 消息列表：4 条 mock，user 右气泡、assistant 走 MarkdownContent
- *  - 底部：禁用输入 + 模型徽章
+ * 输入框结构与 /chat 工作台真实 ChatInput 保持一致：textarea + 工具行；
+ * ModelSelector 直接复用真实组件，确保下拉菜单视觉与 /chat 一致。
  */
 export function ChatDemo({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-surface)]",
-        "shadow-[var(--shadow-panel)]",
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-surface)]",
         className
       )}
     >
-      <div className="flex items-center justify-between border-b border-[var(--color-border-light)] bg-[var(--color-panel)] px-4 py-2.5">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-light)] bg-[var(--color-panel)] px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-[var(--color-success)]" aria-hidden />
           <span className="text-xs font-medium text-[var(--color-text-secondary)]">光电效应实验复盘</span>
         </div>
-        <span className="text-[11px] text-[var(--color-text-tertiary)]">在线 · 深度推理</span>
+        <span className="text-[11px] text-[var(--color-text-tertiary)]">在线 · 深度</span>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-hidden bg-[var(--color-bg)] px-3 py-4 sm:px-4">
+      <div className="min-h-0 flex-1 space-y-3 overflow-hidden bg-[var(--color-bg)] px-3 py-4 sm:px-4">
         {MOCK_CHAT_MESSAGES.map((message) => (
           <MockBubble key={message.id} message={message} />
         ))}
@@ -109,39 +107,58 @@ function MockBubble({ message }: { message: MockChatMessage }) {
   );
 }
 
+/**
+ * 视觉上与 /chat 工作台的 ChatInput 保持一致：
+ *  - 外层圆角面板
+ *  - 顶部 textarea（单行 min-h-9）
+ *  - 底部工具行：[Paperclip] [ModelSelector（真实组件）] [Globe] [Send]
+ *  - 底栏挂载/关闭提示
+ * 输入框与按钮全部 disabled，纯展示。
+ */
 function ChatDemoInputDock() {
   return (
-    <div className="border-t border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 py-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-lg)] bg-[var(--color-panel-muted)] px-2.5 py-2">
-        <button
-          type="button"
-          disabled
-          className="flex size-6 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-tertiary)]"
-          aria-label="附件"
-        >
-          <Paperclip size={13} />
-        </button>
-        <span className="hidden h-3 w-px bg-[var(--color-border-light)] sm:inline-block" />
-        <span className="flex-1 truncate text-[12px] text-[var(--color-text-tertiary)]">
+    <div className="shrink-0 border-t border-[var(--color-border-light)] bg-[var(--color-panel)] p-3">
+      <div className="rounded-[calc(var(--radius-xl)+10px)] bg-[var(--color-surface)] p-2">
+        <div className="min-h-9 px-2 py-2 text-[13px] leading-snug text-[var(--color-text-tertiary)]">
           向 LumenLab 提问，支持附件、引用资料…
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-[var(--radius-md)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--color-text-secondary)]">
-          深度推理 · DeepSeek
-          <ChevronDown size={10} />
-        </span>
-        <span className="hidden text-[var(--color-text-tertiary)] sm:inline-flex">
-          <Globe size={12} />
-        </span>
-        <button
-          type="button"
-          disabled
-          className="flex size-6 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-accent-contrast)] disabled:opacity-60"
-          aria-label="发送"
-        >
-          <Send size={12} />
-        </button>
+        </div>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <button
+              type="button"
+              disabled
+              className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--color-text-tertiary)] disabled:opacity-60"
+              aria-label="添加附件"
+            >
+              <Paperclip size={17} strokeWidth={2} />
+            </button>
+            <ModelSelector
+              model="deepseek-v4-pro"
+              onChange={() => {}}
+              reasoningEffort="max"
+              onReasoningEffortChange={() => {}}
+              compact
+            />
+            <button
+              type="button"
+              disabled
+              className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--color-text-tertiary)] disabled:opacity-60"
+              aria-label="联网搜索"
+            >
+              <Globe size={17} strokeWidth={2} />
+            </button>
+          </div>
+          <button
+            type="button"
+            disabled
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-accent-contrast)] disabled:opacity-60"
+            aria-label="发送消息"
+          >
+            <Send size={17} strokeWidth={2} />
+          </button>
+        </div>
       </div>
-      <div className="mt-1.5 flex items-center gap-3 text-[10px] text-[var(--color-text-tertiary)]">
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-[var(--color-text-tertiary)]">
         <span className="inline-flex items-center gap-1">
           <FileText size={10} />
           1 资料已挂载

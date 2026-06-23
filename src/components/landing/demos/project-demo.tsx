@@ -20,12 +20,11 @@ export function ProjectDemo({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-panel)] p-4",
-        "shadow-[var(--shadow-panel)]",
+        "flex h-full min-h-0 flex-col gap-3 overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-panel)] p-4",
         className
       )}
     >
-      <SpotlightCard className="p-4">
+      <SpotlightCard className="shrink-0 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -66,7 +65,7 @@ export function ProjectDemo({ className }: { className?: string }) {
         </div>
       </SpotlightCard>
 
-      <div className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] px-2.5 py-1.5">
+      <div className="flex shrink-0 items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] px-2.5 py-1.5">
         <Search size={12} className="text-[var(--color-text-tertiary)]" />
         <span className="flex-1 text-[12px] text-[var(--color-text-tertiary)]">搜索资料、对话…</span>
         <span className="rounded-[var(--radius-xs)] bg-[var(--color-panel-muted)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-tertiary)]">
@@ -74,13 +73,13 @@ export function ProjectDemo({ className }: { className?: string }) {
         </span>
       </div>
 
-      <ul className="flex flex-col gap-2.5">
+      <ul className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-auto">
         {FILE_CATEGORIES.map((category) => {
           const items = grouped.get(category) ?? [];
           if (items.length === 0) return null;
           return (
             <li key={category} className="flex flex-col gap-1">
-              <div className="flex items-center gap-1.5 px-1 text-[10.5px] font-medium uppercase tracking-wider text-[var(--color-text-tertiary)]">
+              <div className="flex items-center gap-1.5 px-1 text-[11px] font-medium text-[var(--color-text-secondary)]">
                 {category}
                 <span className="rounded-[var(--radius-xs)] bg-[var(--color-surface-active)] px-1 text-[10px] tabular-nums text-[var(--color-text-secondary)]">
                   {items.length}

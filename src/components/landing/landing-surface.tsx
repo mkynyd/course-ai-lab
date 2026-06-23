@@ -1,4 +1,4 @@
-import { FeatureRail } from "./feature-rail";
+import { FeaturesSection } from "./features-section";
 import { HeroSection } from "./hero-section";
 import { HowToSection } from "./how-to-section";
 import { LandingFooter } from "./landing-footer";
@@ -16,7 +16,7 @@ export function LandingSurface() {
       <LandingNav />
       <main className="flex-1">
         <HeroSection />
-        <FeatureRail />
+        <FeaturesSection />
         <HowToSection />
       </main>
       <LandingFooter />

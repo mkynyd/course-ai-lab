@@ -17,14 +17,13 @@ export function ConversionDemo({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-surface)]",
-        "shadow-[var(--shadow-panel)]",
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-surface)]",
         className
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border-light)] bg-[var(--color-panel)] px-4 py-3.5">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border-light)] bg-[var(--color-panel)] px-4 py-3.5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[10.5px] font-medium uppercase tracking-wider text-[var(--color-text-tertiary)]">
+          <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--color-text-secondary)]">
             文档工具
           </div>
           <h3 className="mt-0.5 truncate text-[14px] font-semibold text-[var(--color-text-primary)]">
@@ -50,7 +49,7 @@ export function ConversionDemo({ className }: { className?: string }) {
         </div>
       </div>
 
-      <div className="border-b border-[var(--color-border-light)] bg-[var(--color-bg)] px-4 py-3">
+      <div className="shrink-0 border-b border-[var(--color-border-light)] bg-[var(--color-bg)] px-4 py-3">
         <ol className="flex items-center gap-1.5 text-[11px]">
           {MOCK_CONVERSION.stages.map((stage, index) => (
             <li key={stage.key} className="flex flex-1 items-center gap-1.5">
@@ -86,13 +85,13 @@ export function ConversionDemo({ className }: { className?: string }) {
         </ol>
       </div>
 
-      <div className="max-h-[420px] overflow-auto bg-[var(--color-panel-muted)] px-5 py-4">
+      <div className="min-h-0 flex-1 overflow-auto bg-[var(--color-panel-muted)] px-5 py-4">
         <article className="markdown-body mx-auto max-w-3xl">
           <MarkdownContent content={MOCK_CONVERSION.markdownSample} imageLoading="lazy" />
         </article>
       </div>
 
-      <div className="flex items-center gap-2 border-t border-[var(--color-border-light)] bg-[var(--color-panel)] px-4 py-2 text-[11px] text-[var(--color-text-tertiary)]">
+      <div className="flex shrink-0 items-center gap-2 border-t border-[var(--color-border-light)] bg-[var(--color-panel)] px-4 py-2 text-[11px] text-[var(--color-text-tertiary)]">
         <Folder size={11} />
         <span>导出包含 Markdown · pics/ · 打印版 PDF · DOCX</span>
       </div>

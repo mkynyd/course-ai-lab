@@ -180,26 +180,33 @@ $$
 > 这一关系给出了 $h$ 的精确测量方法——它正是 Millikan 实验的核心。`,
 };
 
-export const MOCK_HOW_TO_STEPS = [
-  {
-    index: 1,
-    title: "克隆仓库并安装依赖",
-    description: "项目使用 pnpm 管理依赖；Node 版本要求 ≥ 20。",
-    command: "pnpm install",
-    note: "需要先在 .env 中配置 DATABASE_URL 和 ANTHROPIC_API_KEY。",
-  },
-  {
-    index: 2,
-    title: "初始化数据库并启动开发服务",
-    description: "迁移 Prisma schema，启动 Next.js 开发服务器。",
-    command: "pnpm prisma migrate dev && pnpm dev",
-    note: "首次运行会自动建表；启动后访问 http://localhost:3000。",
-  },
-  {
-    index: 3,
-    title: "注册并创建第一个项目",
-    description: "在登录页使用注册码开通账号，进入「项目空间」新建项目。",
-    command: "pnpm dlx tsx scripts/issue-registration-code.ts",
-    note: "Alpha 阶段账号通过注册码开通；运行上面的命令可以现场签发一个。",
-  },
-] as const;
+/**
+ * 首页「三步建项目」演示的静态数据：复刻 /projects/new 表单（步骤 1 + 步骤 4），
+ * 不接 API / SSE；和真实页面共用同一组视觉 token。
+ */
+export const MOCK_NEW_PROJECT = {
+  name: "光电效应实验复盘",
+  type: "experiment",
+  sceneDescription:
+    "我是大二物理专业学生，想把这次光电效应实验的数据、误差源和复习提纲整理到一处，复习前能快速调出。",
+  generatedPrompt: `# 项目背景
+
+你是为光电效应实验复盘而设的项目助手。
+
+# 任务范围
+
+- 解读实验数据 CSV 与原始讲义。
+- 推导截止频率与不确定度区间。
+- 生成可背诵的复习提纲。
+
+# 输出约束
+
+- 公式一律用 KaTeX。
+- 引用过的段落必须标注文献来源。
+- 复习提纲按考点拆条，不写空话。`,
+  quickActions: [
+    { title: "误差分析思路", prompt: "按系统 / 随机 / 粗大三类误差拆解，给出本次实验的不确定度合成思路。" },
+    { title: "复习提纲生成", prompt: "根据讲义与本次数据，整理一份按考点拆条的复习提纲，输出 Markdown。" },
+    { title: "截止频率计算", prompt: "读取原始 CSV 数据，复算 λ_c，给出 ν_0 的置信区间。" },
+  ],
+} as const;

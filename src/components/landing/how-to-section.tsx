@@ -1,84 +1,83 @@
 "use client";
 
-import { Copy, Terminal } from "lucide-react";
 import { ScrollReveal } from "./scroll-reveal";
-import { MOCK_HOW_TO_STEPS } from "@/lib/mock/landing-fixtures";
+import { ProjectCreateDemo } from "./demos/project-create-demo";
+
+const STEPS = [
+  {
+    title: "命名并选择项目类型",
+    body: "给项目起一个名字，并从实验、复习、代码、通用四种类型中选择最贴近你当前任务的一项。",
+  },
+  {
+    title: "描述使用场景",
+    body: "用一两句话告诉 AI 你准备怎么使用这个项目，系统会据此生成项目提示词和推荐快捷任务。",
+  },
+  {
+    title: "确认并进入工作台",
+    body: "挑选需要的快捷任务，确认后进入项目。随后即可上传资料、开始对话或转换文档。",
+  },
+];
 
 /**
- * 使用方法：三步 + 命令块。
- * 视觉靠"步骤编号 + 命令 + 注脚"三件套区分层级，不放 icon+title+text 的重复卡片。
+ * 上手板块：用真实「新建项目」页面同款 UI 代码精简到主页做静态演示。
+ * 步骤编号用于表达真实顺序，而不是装饰性节奏；采用垂直时间线强化进程感。
  */
 export function HowToSection() {
   return (
     <section
       id="how-to"
-      aria-label="上手步骤"
-      className="relative bg-[var(--color-bg)] py-20 sm:py-28"
+      data-section="how-to"
+      aria-label="三步建项目"
+      className="relative bg-[var(--color-bg)] py-24 sm:py-36"
     >
-      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-        <ScrollReveal>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-tertiary)]">
+      <div className="mx-auto grid w-full max-w-7xl gap-14 px-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] md:gap-16 lg:gap-20">
+        <ScrollReveal className="flex flex-col justify-center">
+          <p className="text-[15px] font-medium text-[var(--color-accent)]">
             上手
           </p>
           <h2
-            className="mt-3 max-w-[22ch] text-[clamp(1.875rem,3.6vw,2.75rem)] font-semibold leading-[1.12] tracking-[-0.025em] text-[var(--color-text-primary)]"
+            className="mt-4 max-w-[12ch] text-[clamp(1.875rem,4.2vw,3rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-[var(--color-text-primary)]"
             style={{ textWrap: "balance" }}
           >
-            三条命令，从克隆到第一条对话。
+            三步建一个项目
           </h2>
           <p
-            className="mt-4 max-w-[58ch] text-[15px] leading-relaxed text-[var(--color-text-secondary)]"
+            className="mt-5 max-w-[46ch] text-[16px] leading-[1.65] text-[var(--color-text-secondary)]"
             style={{ textWrap: "pretty" }}
           >
-            项目自托管；下面三步是推荐的开发启动流程。生产环境另行参考部署文档。
+            进入「项目空间」新建项目：填名、选类型、告诉 AI 你的场景。
+            系统会生成项目提示词与推荐快捷任务，确认后即可开始。
           </p>
+
+          <ol className="relative mt-10 flex flex-col gap-0">
+            {STEPS.map((step, index) => (
+              <li key={index} className="relative pl-11 pb-8 last:pb-0">
+                {index < STEPS.length - 1 && (
+                  <span
+                    className="absolute left-[18px] top-9 h-[calc(100%-24px)] w-px bg-[var(--color-border-light)]"
+                    aria-hidden
+                  />
+                )}
+                <span
+                  className="absolute left-0 top-0 flex size-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[14px] font-semibold text-[var(--color-accent-contrast)]"
+                  aria-hidden
+                >
+                  {index + 1}
+                </span>
+                <h3 className="text-[17px] font-semibold leading-snug text-[var(--color-text-primary)]">
+                  {step.title}
+                </h3>
+                <p className="mt-1.5 max-w-[46ch] text-[15px] leading-[1.6] text-[var(--color-text-secondary)]">
+                  {step.body}
+                </p>
+              </li>
+            ))}
+          </ol>
         </ScrollReveal>
 
-        <ol className="mt-12 flex flex-col gap-10">
-          {MOCK_HOW_TO_STEPS.map((step, i) => (
-            <li key={step.index}>
-              <ScrollReveal delay={i * 0.05}>
-                <article className="grid gap-4 sm:grid-cols-[auto_1fr] sm:gap-6">
-                <div className="flex items-start gap-3">
-                  <span
-                    className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface)] text-[14px] font-semibold text-[var(--color-text-primary)]"
-                    aria-hidden
-                  >
-                    {String(step.index).padStart(2, "0")}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-[18px] font-semibold leading-snug text-[var(--color-text-primary)]">
-                    {step.title}
-                  </h3>
-                  <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--color-text-secondary)]">
-                    {step.description}
-                  </p>
-
-                  <div className="mt-4 flex items-center gap-2 rounded-[var(--radius-lg)] bg-[var(--color-surface)] px-3 py-2.5">
-                    <Terminal size={14} className="shrink-0 text-[var(--color-text-tertiary)]" />
-                    <code className="flex-1 truncate font-mono text-[12.5px] text-[var(--color-text-primary)]">
-                      {step.command}
-                    </code>
-                    <button
-                      type="button"
-                      disabled
-                      aria-label="复制命令"
-                      className="flex size-7 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
-                    >
-                      <Copy size={12} />
-                    </button>
-                  </div>
-
-                  <p className="mt-2.5 text-[12.5px] leading-relaxed text-[var(--color-text-tertiary)]">
-                    {step.note}
-                  </p>
-                </div>
-              </article>
-              </ScrollReveal>
-            </li>
-          ))}
-        </ol>
+        <ScrollReveal delay={0.08} yOffset={28}>
+          <ProjectCreateDemo />
+        </ScrollReveal>
       </div>
     </section>
   );
