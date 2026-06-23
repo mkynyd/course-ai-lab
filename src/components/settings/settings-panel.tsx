@@ -68,7 +68,7 @@ export function SettingsPanel() {
           href="/"
           className={cn(
             "mt-auto flex items-center gap-2.5 px-3 py-2 text-sm rounded-xl text-left w-full",
-            "border-t border-[var(--color-border-light)] pt-3",
+            "mt-3",
             "text-[var(--color-text-secondary)] hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]",
             "transition-colors duration-150"
           )}
