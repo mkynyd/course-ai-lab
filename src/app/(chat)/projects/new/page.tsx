@@ -187,15 +187,17 @@ export default function NewProjectPage() {
             </>
           ) : (
             <RotatingText
-              words={[
+              texts={[
                 "Thinking", "Exploring", "Generating", "Personalizing", "Customizing",
                 "Grilling", "Eating", "Tasting", "Rummaging", "Savoring",
                 "Building", "Squatting", "Benching",
               ]}
-              interval={2200}
+              interval={2400}
+              staggerDuration={0.028}
               prefix="Lumen"
-              className="items-center gap-3 text-4xl font-semibold tracking-tight text-[var(--color-text-primary)] sm:text-5xl"
-              wordClassName={cn(
+              mainClassName="items-baseline gap-3 text-4xl font-medium tracking-tight text-[var(--color-text-primary)] sm:text-5xl"
+              prefixClassName="text-[var(--color-text-primary)]"
+              rotatingWrapperClassName={cn(
                 "rounded-xl px-4 py-2 text-[var(--color-accent-contrast)]",
                 "bg-[var(--color-accent)]",
                 "shadow-[0_10px_28px_color-mix(in_oklab,var(--color-accent)_28%,transparent)]",
