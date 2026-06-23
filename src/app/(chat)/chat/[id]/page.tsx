@@ -10,7 +10,7 @@ export default async function ConversationPage({
 }) {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/login");
+    redirect("/home");
   }
 
   const { id } = await params;

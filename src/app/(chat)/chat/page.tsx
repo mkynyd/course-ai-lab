@@ -6,7 +6,7 @@ import { getProviderApiKey } from "@/lib/data/provider-access";
 export default async function ChatPage() {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/login");
+    redirect("/home");
   }
 
   try {

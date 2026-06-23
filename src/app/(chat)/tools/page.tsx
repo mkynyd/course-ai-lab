@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 
 export default async function ToolsPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/home");
 
   const conversions = await prisma.documentConversion.findMany({
     where: { userId: session.user.id },

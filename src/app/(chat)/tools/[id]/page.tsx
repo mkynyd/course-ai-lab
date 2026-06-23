@@ -14,7 +14,7 @@ export default async function ConversionDetailPage({
   searchParams: Promise<{ print?: string }>;
 }) {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/home");
 
   const { id } = await params;
   const printMode = (await searchParams).print === "1";
