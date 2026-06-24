@@ -8,6 +8,7 @@
  */
 
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@/generated/prisma/client";
 import type { ToolMetadata } from "./types";
 
 export interface ToolExecutionContext {
@@ -75,8 +76,8 @@ export async function persistExecution(
       status,
       executedAt: new Date(),
       completedAt: new Date(),
-      resultSummary: result ?? null,
-      errorSummary: error ?? null,
+      resultSummary: (result ?? null) as Prisma.InputJsonValue,
+      errorSummary: (error ?? null) as Prisma.InputJsonValue,
     },
   });
 }

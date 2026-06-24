@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
@@ -22,8 +22,15 @@ export function LandingNav() {
           href="/home"
           className="flex items-center gap-2 rounded-[var(--radius-md)] px-1 py-1 text-[15px] font-semibold tracking-tight text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent)]"
         >
-          <span className="flex size-8 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-accent-contrast)]">
-            <Sparkles size={15} />
+          <span className="relative flex size-8 items-center justify-center overflow-hidden rounded-[var(--radius-md)]">
+            <Image
+              src="/LumenLab-logo-only-128.png"
+              alt="LumenLab"
+              width={32}
+              height={32}
+              className="object-cover"
+              priority
+            />
           </span>
           <span>LumenLab</span>
         </Link>

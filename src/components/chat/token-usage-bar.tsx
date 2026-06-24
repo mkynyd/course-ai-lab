@@ -28,7 +28,7 @@ export function TokenUsageBar({
   return (
     <div className={cn("space-y-1", className)}>
       <Progress value={percent} size="sm" color={color} />
-      <div className="flex items-center justify-between text-[11px] font-mono">
+      <div className="flex items-center justify-between text-xs font-mono">
         <span className="text-[var(--color-text-secondary)]">
           {fmt(used)} / {fmt(total)} tokens
           {cacheHit > 0 && (

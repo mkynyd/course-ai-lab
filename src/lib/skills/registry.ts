@@ -75,7 +75,9 @@ export const SKILL_LIST_PROJECT_FILES: SkillDefinition = {
   inputSchema: { type: "object", properties: {} },
 };
 
-export function getSkillSet(_mode?: string): SkillDefinition[] {
+export function getSkillSet(mode?: string): SkillDefinition[] {
+  // mode 保留给未来按项目类型裁剪技能集使用，当前返回完整技能集。
+  void mode;
   return [
     SKILL_WEB_SEARCH,
     SKILL_SEARCH_PROJECT_FILES,

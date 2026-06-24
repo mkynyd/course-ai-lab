@@ -34,7 +34,7 @@ export function ProjectDemo({ className }: { className?: string }) {
               <h3 className="truncate text-[14px] font-semibold text-[var(--color-text-primary)]">
                 {MOCK_PROJECT.name}
               </h3>
-              <span className="inline-flex h-5 items-center rounded-4xl bg-[var(--color-surface-active)] px-2 text-[10.5px] font-medium text-[var(--color-text-secondary)]">
+              <span className="inline-flex h-5 items-center rounded-4xl bg-[var(--color-surface-active)] px-2 text-xs font-medium text-[var(--color-text-secondary)]">
                 {MOCK_PROJECT.type}
               </span>
             </div>
@@ -52,7 +52,7 @@ export function ProjectDemo({ className }: { className?: string }) {
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-3 text-[11px] text-[var(--color-text-tertiary)]">
+        <div className="mt-3 flex items-center gap-3 text-xs text-[var(--color-text-tertiary)]">
           <span className="inline-flex items-center gap-1">
             <ChatLines width={11} height={11} strokeWidth={2} />
             {MOCK_PROJECT.conversationCount} 对话
@@ -68,7 +68,7 @@ export function ProjectDemo({ className }: { className?: string }) {
       <div className="flex shrink-0 items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] px-2.5 py-1.5">
         <Search size={12} className="text-[var(--color-text-tertiary)]" />
         <span className="flex-1 text-[12px] text-[var(--color-text-tertiary)]">搜索资料、对话…</span>
-        <span className="rounded-[var(--radius-xs)] bg-[var(--color-panel-muted)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-tertiary)]">
+        <span className="rounded-[var(--radius-xs)] bg-[var(--color-panel-muted)] px-1.5 py-0.5 text-xs text-[var(--color-text-tertiary)]">
           {MOCK_PROJECT.files.length}
         </span>
       </div>
@@ -79,9 +79,9 @@ export function ProjectDemo({ className }: { className?: string }) {
           if (items.length === 0) return null;
           return (
             <li key={category} className="flex flex-col gap-1">
-              <div className="flex items-center gap-1.5 px-1 text-[11px] font-medium text-[var(--color-text-secondary)]">
+              <div className="flex items-center gap-1.5 px-1 text-xs font-medium text-[var(--color-text-secondary)]">
                 {category}
-                <span className="rounded-[var(--radius-xs)] bg-[var(--color-surface-active)] px-1 text-[10px] tabular-nums text-[var(--color-text-secondary)]">
+                <span className="rounded-[var(--radius-xs)] bg-[var(--color-surface-active)] px-1 text-xs tabular-nums text-[var(--color-text-secondary)]">
                   {items.length}
                 </span>
               </div>
@@ -103,15 +103,15 @@ function FileRow({ file }: { file: MockProjectFile }) {
     <li className="flex items-center gap-2 rounded-[var(--radius-md)] px-2 py-1.5 text-[12px] hover:bg-[var(--color-surface-hover)]">
       <FileText size={12} className="shrink-0 text-[var(--color-text-tertiary)]" />
       <span className="flex-1 truncate text-[var(--color-text-primary)]">{file.name}</span>
-      <span className="shrink-0 text-[10.5px] tabular-nums text-[var(--color-text-tertiary)]">{file.size}</span>
+      <span className="shrink-0 text-xs tabular-nums text-[var(--color-text-tertiary)]">{file.size}</span>
       {file.status === "parsing" && (
-        <span className="inline-flex items-center gap-1 rounded-4xl bg-[var(--color-info-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-info)]">
+        <span className="inline-flex items-center gap-1 rounded-4xl bg-[var(--color-info-muted)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-info)]">
           <Spinner className="size-2.5" />
           解析中
         </span>
       )}
       {file.status === "ready" && file.pageCount && (
-        <span className="shrink-0 text-[10.5px] tabular-nums text-[var(--color-text-tertiary)]">
+        <span className="shrink-0 text-xs tabular-nums text-[var(--color-text-tertiary)]">
           {file.pageCount} 页
         </span>
       )}

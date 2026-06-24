@@ -2,31 +2,20 @@ import PDFDocument from "pdfkit";
 import type { Content, Root } from "mdast";
 import { readFileSync } from "fs";
 import path from "path";
-import { Font } from "fonteditor-core";
-import { inflate } from "pako";
 import { markdownNodeText, parseMarkdown } from "@/lib/export/markdown-ast";
 
 const FONT_PATH = path.join(
-  process.env.PDF_FONT_PATH ||
-    path.join(
-      /* turbopackIgnore: true */ process.cwd(),
-      "node_modules",
-      "@fontsource",
-      "noto-sans-sc",
-      "files",
-      "noto-sans-sc-chinese-simplified-400-normal.woff"
-    )
+  /* turbopackIgnore: true */ process.cwd(),
+  "public",
+  "fonts",
+  "noto-sans-sc",
+  "noto-sans-sc-400.woff2"
 );
 let fontBuffer: Buffer | null = null;
 
 export function getPdfFont(): Buffer {
   if (!fontBuffer) {
-    fontBuffer = Buffer.from(
-      Font.create(readFileSync(FONT_PATH), {
-        type: "woff",
-        inflate: (data) => Array.from(inflate(new Uint8Array(data))),
-      }).write({ type: "ttf", toBuffer: true })
-    );
+    fontBuffer = readFileSync(FONT_PATH);
   }
   return fontBuffer;
 }

@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Stepper } from "@/components/ui/stepper";
-import { RotatingText } from "@/components/ui/rotating-text";
 import { FolderOpen } from "lucide-react";
+import { RotatingText } from "@/components/ui/rotating-text";
 import { useCreateProject } from "@/lib/hooks/use-projects";
 
 const PROJECT_TYPES = [
@@ -186,23 +186,35 @@ export default function NewProjectPage() {
               </Button>
             </>
           ) : (
-            <RotatingText
-              texts={[
-                "Thinking", "Exploring", "Generating", "Personalizing", "Customizing",
-                "Grilling", "Eating", "Tasting", "Rummaging", "Savoring",
-                "Building", "Squatting", "Benching",
-              ]}
-              interval={2400}
-              staggerDuration={0.028}
-              prefix="Lumen"
-              mainClassName="items-baseline gap-3 text-4xl font-medium tracking-tight text-[var(--color-text-primary)] sm:text-5xl"
-              prefixClassName="text-[var(--color-text-primary)]"
-              rotatingWrapperClassName={cn(
-                "rounded-xl px-4 py-2 text-[var(--color-accent-contrast)]",
-                "bg-[var(--color-accent)]",
-                "dark:bg-[oklch(0.45_0.13_181.95)]",
-              )}
-            />
+            <div className="flex flex-col items-center justify-center gap-3 py-16">
+              <div className="text-lg font-medium leading-tight">
+                <RotatingText
+                  prefix="Lumen"
+                  texts={[
+                    "Thinking",
+                    "Exploring",
+                    "Generating",
+                    "Personalizing",
+                    "Customizing",
+                    "Grilling",
+                    "Eating",
+                    "Tasting",
+                    "Rummaging",
+                    "Savoring",
+                    "Building",
+                    "Squatting",
+                    "Benching",
+                  ]}
+                  interval={2200}
+                  prefixClassName="text-[var(--color-text-primary)]"
+                  rotatingWrapperClassName="h-[1.25em] align-bottom"
+                  elementLevelClassName="text-[var(--color-project-action)]"
+                />
+              </div>
+              <p className="text-xs text-[var(--color-text-tertiary)]">
+                正在生成项目提示词与快捷任务
+              </p>
+            </div>
           )}
         </div>
       ),
@@ -266,8 +278,8 @@ export default function NewProjectPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-5">
-            <div className="flex items-center justify-center w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-accent)]">
-              <FolderOpen size={22} strokeWidth={1.75} className="text-[var(--color-accent-contrast)]" />
+            <div className="flex items-center justify-center w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-project-action)] hover:bg-[var(--color-project-action-hover)]">
+              <FolderOpen size={22} strokeWidth={1.75} className="text-[var(--color-project-action-contrast)]" />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">新建项目</h1>

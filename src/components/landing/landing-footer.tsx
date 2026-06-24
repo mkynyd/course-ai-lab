@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RotatingText } from "@/components/ui/rotating-text";
 import { ScrollReveal } from "./scroll-reveal";
@@ -26,7 +27,7 @@ export function LandingFooter() {
   return (
     <footer
       data-section="footer"
-      className="relative bg-[var(--color-bg)]"
+      className="relative flex min-h-screen snap-center items-center bg-[var(--color-bg)]"
     >
       <div className="mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 sm:py-36">
         <ScrollReveal>
@@ -104,8 +105,15 @@ export function LandingFooter() {
 
         <div className="mt-20 flex flex-col gap-2 border-t border-[var(--color-border-light)] pt-6 text-[13px] text-[var(--color-text-tertiary)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <span className="flex size-6 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-accent)] text-[var(--color-accent-contrast)]">
-              <Sparkles size={11} aria-hidden />
+            <span className="relative flex size-6 items-center justify-center overflow-hidden rounded-[var(--radius-xs)]">
+              <Image
+                src="/LumenLab-logo-only-128.png"
+                alt="LumenLab"
+                width={24}
+                height={24}
+                className="object-cover"
+                aria-hidden
+              />
             </span>
             <span>LumenLab</span>
             <span aria-hidden>·</span>

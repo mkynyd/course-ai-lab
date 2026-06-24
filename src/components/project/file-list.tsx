@@ -151,7 +151,7 @@ export function FileList({
           {file.originalName}
         </span>
         {parsing && (
-          <span className="shrink-0 text-[10px] text-[var(--color-text-tertiary)]">
+          <span className="shrink-0 text-xs text-[var(--color-text-tertiary)]">
             解析中
           </span>
         )}
@@ -212,7 +212,7 @@ export function FileList({
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
-                  className="flex h-7 w-full items-center justify-between rounded-[var(--radius-sm)] px-2 text-[11px] font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:bg-[var(--color-project-surface-hover)] focus-visible:text-[var(--color-text-primary)]"
+                  className="flex h-7 w-full items-center justify-between rounded-[var(--radius-sm)] px-2 text-xs font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:bg-[var(--color-project-surface-hover)] focus-visible:text-[var(--color-text-primary)]"
                   aria-expanded={open}
                 >
                   <span className="inline-flex items-center gap-1">

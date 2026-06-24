@@ -140,7 +140,7 @@ function DemoStepper({
               >
                 <span
                   className={cn(
-                    "flex size-6 items-center justify-center rounded-full text-[11px] font-semibold transition-colors duration-300",
+                    "flex size-6 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-300",
                     isComplete && "bg-[var(--color-accent)] text-[var(--color-accent-contrast)]",
                     isCurrent && "bg-[var(--color-accent)] text-[var(--color-accent-contrast)]",
                     !isComplete && !isCurrent && "bg-[var(--color-panel-muted)] text-[var(--color-text-tertiary)]"
@@ -212,7 +212,7 @@ function BasicsStep() {
                 >
                   {pt.label}
                 </span>
-                <p className="mt-0.5 text-[11px] text-[var(--color-text-tertiary)]">
+                <p className="mt-0.5 text-xs text-[var(--color-text-tertiary)]">
                   {pt.desc}
                 </p>
               </div>

@@ -4,7 +4,10 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 function LoginForm() {
   const router = useRouter();
@@ -45,116 +48,85 @@ function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-sm">
-      {/* 品牌标识 */}
-      <div className="text-center mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-[var(--color-text-primary)]">
-          LumenLab
-        </h1>
-        <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-          登录你的账户
-        </p>
-      </div>
-
-      {/* 登录卡片 */}
-      <div className="motion-safe:animate-slide-up-fade rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5"
-            >
-              邮箱
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              className={cn(
-                "w-full h-10 px-3 text-sm rounded-[var(--radius-md)]",
-                "bg-[var(--color-bg)] text-[var(--color-text-primary)]",
-                "placeholder:text-[var(--color-text-tertiary)]",
-                "focus:outline-none focus:bg-[var(--color-interaction-active)]",
-                "transition-colors duration-150"
-              )}
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5"
-            >
-              密码
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              className={cn(
-                "w-full h-10 px-3 text-sm rounded-[var(--radius-md)]",
-                "bg-[var(--color-bg)] text-[var(--color-text-primary)]",
-                "placeholder:text-[var(--color-text-tertiary)]",
-                "focus:outline-none focus:bg-[var(--color-interaction-active)]",
-                "transition-colors duration-150",
-                "font-mono"
-              )}
-              placeholder="••••••••"
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-[var(--color-error)]" role="alert">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={cn(
-              "w-full min-h-11 rounded-[var(--radius-md)] text-sm font-medium",
-              "bg-[var(--color-accent)] text-[var(--color-accent-contrast)]",
-              "hover:bg-[var(--color-accent-hover)]",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-              "transition-colors duration-150",
-              "flex items-center justify-center gap-2"
-            )}
+    <AuthShell
+      title="LumenLab"
+      subtitle="登录你的账户"
+      footer={
+        <>
+          还没有账户？{" "}
+          <Link
+            href="/register"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center px-1 text-[var(--color-accent)] transition-colors hover:text-[var(--color-accent-hover)]"
           >
-            {isLoading ? (
-              <>
-                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                登录中…
-              </>
-            ) : (
-              "登录"
-            )}
-          </button>
-        </form>
-      </div>
+            注册
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-[var(--color-text-primary)]"
+          >
+            邮箱
+          </label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="you@example.com"
+          />
+        </div>
 
-      {/* 底部链接 */}
-      <p className="text-center mt-6 text-sm text-[var(--color-text-secondary)]">
-        还没有账户？{" "}
-        <Link
-          href="/register"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center px-1 text-[var(--color-accent)] transition-colors hover:text-[var(--color-accent-hover)]"
+        <div className="space-y-1.5">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-[var(--color-text-primary)]"
+          >
+            密码
+          </label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            placeholder="••••••••"
+            className="font-mono"
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-[var(--color-error)]" role="alert">
+            {error}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full h-9 rounded-[var(--radius-md)]"
         >
-          注册
-        </Link>
-      </p>
-    </div>
+          {isLoading ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              登录中…
+            </>
+          ) : (
+            "登录"
+          )}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="w-full max-w-sm" />}>
+    <Suspense fallback={<div className="min-h-screen" />}>
       <LoginForm />
     </Suspense>
   );

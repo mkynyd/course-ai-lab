@@ -59,7 +59,7 @@ export function CostDisplay({
           {fmt(totalCost)}
         </span>
       </div>
-      <div className="flex gap-2 text-[10px] font-mono text-[var(--color-text-tertiary)]">
+      <div className="flex gap-2 text-xs font-mono text-[var(--color-text-tertiary)]">
         <span>输入:{fmt(inputCacheHitCost + inputCacheMissCost)}</span>
         <span>输出:{fmt(outputCost)}</span>
         {cacheHitTokens > 0 && (

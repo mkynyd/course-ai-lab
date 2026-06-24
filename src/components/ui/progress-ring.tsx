@@ -73,7 +73,7 @@ export function ProgressRing({
             <span className="text-xs font-mono font-medium text-[var(--color-text-primary)] leading-tight">
               {Math.round(clampedValue)}
             </span>
-            <span className="text-[10px] text-[var(--color-text-tertiary)] leading-tight">
+            <span className="text-xs text-[var(--color-text-tertiary)] leading-tight">
               %
             </span>
           </>

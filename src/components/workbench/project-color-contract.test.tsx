@@ -9,7 +9,7 @@ describe("project workspace color contract", () => {
 
     expect(container.firstChild).toHaveClass(
       "bg-[var(--color-project-surface)]",
-      "hover:bg-[var(--color-project-surface-hover)]"
+      "hover:bg-[var(--color-project-surface)]"
     );
   });
 

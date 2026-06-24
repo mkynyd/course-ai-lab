@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { generateProjectPrompt, generateQuickActions } from "@/lib/classification";
+import { getDefaultQuickActions } from "@/lib/quick-actions";
 import { z } from "zod";
 
 const reqSchema = z.object({
@@ -60,21 +61,31 @@ export async function POST(
       data: { systemPrompt },
     });
 
-    // Save quick actions
-    if (quickActions.length > 0) {
+    // Merge default system actions with generated ones so recommendations are appended, not replaced.
+    const defaultActions = getDefaultQuickActions(mode).map((action, index) => ({
+      title: action.title,
+      prompt: action.prompt,
+      isSystem: true as const,
+      sortOrder: index,
+    }));
+    const generatedActions = quickActions.map((qa, index) => ({
+      projectId,
+      title: qa.title,
+      prompt: qa.prompt,
+      isSystem: true as const,
+      sortOrder: defaultActions.length + index,
+    }));
+    const mergedActions = [
+      ...defaultActions.map((action) => ({ ...action, projectId })),
+      ...generatedActions,
+    ];
+
+    if (mergedActions.length > 0) {
       await prisma.quickAction.deleteMany({ where: { projectId, isSystem: true } });
-      await prisma.quickAction.createMany({
-        data: quickActions.map((qa, i) => ({
-          projectId,
-          title: qa.title,
-          prompt: qa.prompt,
-          isSystem: true,
-          sortOrder: i,
-        })),
-      });
+      await prisma.quickAction.createMany({ data: mergedActions });
     }
 
-    return NextResponse.json({ systemPrompt, quickActions });
+    return NextResponse.json({ systemPrompt, quickActions: mergedActions });
   } catch (err) {
     console.error("generate-prompt error:", err);
     return NextResponse.json({ error: "生成失败，请重试" }, { status: 500 });

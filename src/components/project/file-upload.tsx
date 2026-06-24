@@ -162,7 +162,7 @@ export function FileUpload({
               >
                 {c}
               </span>
-              <p className="mt-0.5 text-[11px] text-[var(--color-text-tertiary)] line-clamp-2 leading-relaxed">
+              <p className="mt-0.5 text-xs text-[var(--color-text-tertiary)] line-clamp-2 leading-relaxed">
                 {CATEGORY_DESCRIPTIONS[c]}
               </p>
             </button>

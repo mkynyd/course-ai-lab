@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "motion/react";
+import { motion } from "motion/react";
 import { useRef, type ReactNode } from "react";
 import { usePrefersReducedMotion } from "./prefers-motion";
 
@@ -18,9 +18,9 @@ interface ScrollRevealProps {
 }
 
 /**
- * 滚动 scrub 入场揭示：元素顶部进入视口 25%–80% 区间时淡入 + 轻微上移。
- * - 开始：元素顶部到达视口 75% 位置（从底部算起 25%）
- * - 完成：元素顶部到达视口 20% 位置（从底部算起 80%）
+ * 滚动入场揭示：元素进入视口时淡入 + 轻微上移，离开视口时淡出。
+ * - viewport amount 0.4：元素进入 40% 时触发
+ * - 过渡时长 0.6s，ease-out
  * - prefers-reduced-motion: 退化为直接可见
  * - 永远渲染 motion.div，需要不同语义的元素时由调用方在 children 里自行包裹
  */
@@ -31,14 +31,6 @@ export function ScrollReveal({
 }: ScrollRevealProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const reduced = usePrefersReducedMotion();
-
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 0.75", "start 0.20"],
-  });
-
-  const opacity = useTransform(scrollYProgress, [0, 1], [0, 1]);
-  const y = useTransform(scrollYProgress, [0, 1], [yOffset, 0]);
 
   if (reduced) {
     return (
@@ -52,7 +44,10 @@ export function ScrollReveal({
     <motion.div
       ref={ref}
       className={className}
-      style={{ opacity, y }}
+      initial={{ opacity: 0, y: yOffset }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: false, amount: 0.4 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
     >
       {children}
     </motion.div>

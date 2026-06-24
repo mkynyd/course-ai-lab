@@ -120,7 +120,7 @@ export function ArtifactLibrary({
             type="button"
             onClick={close}
             aria-label="关闭成果库"
-            variant="outline"
+            variant="ghost"
             size="icon"
           >
             <X size={16} />

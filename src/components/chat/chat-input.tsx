@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ModelSelector } from "@/components/chat/model-selector";
+import { useMeasuredTextareaHeight } from "@/lib/hooks/use-measured-textarea-height";
 import {
   Tooltip,
   TooltipContent,
@@ -54,6 +55,14 @@ export function ChatInput({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const currentValue = value ?? internalValue;
   const hasSendableContent = currentValue.trim().length > 0 || attachments.length > 0;
+  const { ref: textareaRef, style: textareaStyle } = useMeasuredTextareaHeight({
+    value: currentValue,
+    minHeight: 36,
+    maxHeight: 128,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: '"Noto Sans SC"',
+  });
 
   function updateValue(nextValue: string) {
     if (value === undefined) {
@@ -96,13 +105,6 @@ export function ChatInput({
     onAttachmentsChange?.(attachments.filter((attachment) => attachment.id !== id));
   }
 
-  function resizeTextarea(el: HTMLTextAreaElement) {
-    el.style.height = "auto";
-    const nextHeight = Math.min(el.scrollHeight, 128);
-    el.style.height = `${Math.max(nextHeight, 36)}px`;
-    el.style.overflowY = el.scrollHeight > 128 ? "auto" : "hidden";
-  }
-
   return (
     <TooltipProvider>
       <form
@@ -121,14 +123,14 @@ export function ChatInput({
               : "bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
           )}
         >
-          <span className="min-w-0 truncate text-[11px]">
+          <span className="min-w-0 truncate text-xs">
             {blockedReason}
           </span>
         </div>
       )}
       <div
         className={cn(
-          "rounded-[calc(var(--radius-xl)+10px)] bg-[var(--color-surface)] p-2",
+          "rounded-xl bg-[var(--color-surface)] p-2",
           "outline-none ring-0 shadow-none focus-within:bg-[var(--color-surface)]"
         )}
       >
@@ -162,6 +164,7 @@ export function ChatInput({
           onChange={(event) => addFiles(event.target.files)}
         />
         <Textarea
+          ref={textareaRef}
           aria-label="消息内容"
           value={currentValue}
           onChange={(e) => updateValue(e.target.value)}
@@ -171,12 +174,11 @@ export function ChatInput({
           disabled={disabled}
           autoComplete="off"
           className={cn(
-            "max-h-32 min-h-9 resize-none overflow-y-hidden border-0 bg-transparent px-2 py-2 text-sm shadow-none outline-none ring-0 focus:outline-none focus-visible:ring-0",
+            "max-h-32 min-h-9 resize-none border-0 bg-transparent px-2 py-2 text-sm shadow-none outline-none ring-0 focus:outline-none focus-visible:ring-0",
             "text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]",
             "focus:outline-none disabled:opacity-50"
           )}
-          style={{ minHeight: "36px" }}
-          onInput={(e) => resizeTextarea(e.currentTarget)}
+          style={textareaStyle}
         />
         <div className="mt-1 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
@@ -188,7 +190,7 @@ export function ChatInput({
                   onClick={() => fileInputRef.current?.click()}
                   variant="ghost"
                   size="icon-sm"
-                  className="shrink-0 rounded-full"
+                  className="shrink-0 rounded-md"
                   aria-label="添加附件"
                 >
                   <Paperclip size={17} strokeWidth={2} />
@@ -216,8 +218,8 @@ export function ChatInput({
                     onClick={onWebSearchToggle}
                     disabled={isStreaming || disabled}
                     className={cn(
-                      "shrink-0 rounded-full",
-                      webSearchActive && "bg-[var(--color-accent-muted)] text-[var(--color-accent)]"
+                      "shrink-0 rounded-md",
+                      webSearchActive && "bg-[var(--color-surface-active)] text-[var(--color-accent)]"
                     )}
                     aria-label={webSearchActive ? "关闭联网搜索" : "打开联网搜索"}
                     aria-pressed={webSearchActive}
@@ -239,7 +241,7 @@ export function ChatInput({
                   onClick={onStop}
                   variant="destructive"
                   size="icon-lg"
-                  className="shrink-0 rounded-full"
+                  className="shrink-0 rounded-md"
                   aria-label="停止生成"
                 >
                   <StopCircle size={17} strokeWidth={2} />
@@ -255,7 +257,7 @@ export function ChatInput({
                   disabled={!hasSendableContent || disabled}
                   variant="primary"
                   size="icon-lg"
-                  className="shrink-0 rounded-full"
+                  className="shrink-0 rounded-md"
                   aria-label="发送消息"
                 >
                   <Send size={17} strokeWidth={2} />

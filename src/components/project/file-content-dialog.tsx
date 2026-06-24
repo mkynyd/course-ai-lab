@@ -70,7 +70,7 @@ export function FileContentDialog({
         <div className="flex items-center justify-between px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold">{file.originalName}</h2>
-            <p className="text-[11px] text-[var(--color-text-tertiary)]">
+            <p className="text-xs text-[var(--color-text-tertiary)]">
               OCR 原文可编辑，修改后会更新检索分块
             </p>
           </div>

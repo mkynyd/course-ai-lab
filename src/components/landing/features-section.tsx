@@ -48,7 +48,7 @@ export function FeaturesSection() {
       {FEATURES.map((feature, index) => (
         <SectionReveal
           key={feature.id}
-          className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 md:py-28"
+          className="mx-auto flex min-h-screen w-full max-w-7xl snap-center items-center px-4 py-20 sm:px-6 md:py-28"
           innerClassName="w-full"
           yOffset={40 + index * 8}
         >

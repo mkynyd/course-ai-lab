@@ -228,7 +228,7 @@ export function ProjectSidebar({
             <InfoCircle width={14} height={14} strokeWidth={1.5} />
           </button>
         </div>
-        <p className="text-[11px] text-[var(--color-text-tertiary)]">
+        <p className="text-xs text-[var(--color-text-tertiary)]">
           {TYPE_LABELS[project.type] || project.type}
         </p>
         {project.description && (
@@ -439,7 +439,7 @@ export function ProjectSidebar({
             <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex h-7 min-w-0 flex-1 items-center justify-between rounded-[var(--radius-sm)] px-2 text-[11px] font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:bg-[var(--color-project-surface-hover)] focus-visible:text-[var(--color-text-primary)]"
+              className="flex h-7 min-w-0 flex-1 items-center justify-between rounded-[var(--radius-sm)] px-2 text-xs font-medium text-[var(--color-text-tertiary)] hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:bg-[var(--color-project-surface-hover)] focus-visible:text-[var(--color-text-primary)]"
               aria-expanded={conversationsOpen}
             >
               <span className="inline-flex min-w-0 items-center gap-1">

@@ -48,7 +48,7 @@ export function LoadingIndicator({
           {label}
         </span>
         {detail && (
-          <span className="block truncate text-[11px] text-[var(--color-text-tertiary)]">
+          <span className="block truncate text-xs text-[var(--color-text-tertiary)]">
             {detail}
           </span>
         )}

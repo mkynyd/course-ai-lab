@@ -21,12 +21,8 @@ describe("QuickTaskBar", () => {
     });
   });
 
-  it("includes the report code explanation task for coding projects", async () => {
-    const user = userEvent.setup();
+  it("includes the report code explanation task for coding projects", () => {
     render(<QuickTaskBar projectType="coding" onSend={vi.fn()} />);
-
-    // The quick task bar collapses system actions to 2 by default; expand first
-    await user.click(screen.getByRole("button", { name: /更多/ }));
 
     expect(
       screen.getByRole("button", { name: "整理实验报告代码说明" })

@@ -68,6 +68,7 @@ describe("POST /api/projects/[id]/files", () => {
       }),
       "lecture.pdf"
     );
+    body.append("category", "讲义");
 
     const response = await POST(
       { formData: async () => body } as unknown as Request,

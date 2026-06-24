@@ -6,6 +6,31 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---- Local fonts: Noto Sans SC (Chinese subset) ---- */
+@font-face {
+  font-family: "Noto Sans SC";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("/fonts/noto-sans-sc/noto-sans-sc-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Noto Sans SC";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("/fonts/noto-sans-sc/noto-sans-sc-500.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Noto Sans SC";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("/fonts/noto-sans-sc/noto-sans-sc-700.woff2") format("woff2");
+}
+
 /* ============================================
    LumenLab Design System
    Academic Workbench
@@ -132,8 +157,8 @@
 
   /* Accent */
   --color-accent: oklch(64.92% .1572 181.95);
-  --color-accent-hover: oklch(32.11% .0788 179.82);
-  --color-accent-muted: oklch(32.11% .0788 179.82);
+  --color-accent-hover: oklch(0.72 0.14 181.95);
+  --color-accent-muted: oklch(0.32 0.05 181.95);
   --color-accent-soft: oklch(54.817% 0.09601 178.06 / 0.728);
   --color-accent-contrast: oklch(0.995 0 0);
 
@@ -255,7 +280,7 @@
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
-  --font-sans: var(--font-figtree, "Noto Sans SC"), "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-figtree), "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
   --font-heading: var(--font-sans);
   --font-display: var(--font-figtree, "Noto Sans SC"), "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
@@ -317,21 +342,6 @@ html {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* ---- Scrollbar (thin, industrial) ---- */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-text-tertiary);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
-}
 
 /* ---- Motion Tokens ---- */
 :root {
@@ -579,6 +589,19 @@ pre code {
   height: 100%;
 }
 
+html.landing-snap {
+  scroll-snap-type: y proximity;
+  scroll-padding-top: 3.5rem;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.landing-snap {
+    scroll-snap-type: none;
+    scroll-behavior: auto;
+  }
+}
+
 .workbench-glass {
   background: var(--color-panel);
   box-shadow: var(--shadow-panel);
@@ -619,7 +642,7 @@ pre code {
 
 .workbench-spotlight:hover::before,
 .workbench-spotlight:focus-within::before {
-  opacity: 0.95;
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {

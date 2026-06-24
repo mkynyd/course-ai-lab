@@ -18,7 +18,7 @@ import { ScrollReveal } from "./scroll-reveal";
  */
 export function HeroSection() {
   return (
-    <section data-section="hero" className="relative isolate overflow-hidden">
+    <section data-section="hero" className="relative isolate flex min-h-screen snap-center items-center overflow-hidden">
       <AmbientField
         intensity="medium"
         density="wide"
@@ -27,11 +27,12 @@ export function HeroSection() {
 
       <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 pb-24 pt-14 sm:px-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:gap-14 md:pb-36 md:pt-24">
         <ScrollReveal className="flex flex-col justify-center" yOffset={20}>
-          <p className="text-[15px] font-medium leading-snug text-[var(--color-accent)]">
+          <p data-dot-avoid className="text-[15px] font-medium leading-snug text-[var(--color-accent)]">
             面向大学生的 AI 学习工作台
           </p>
 
           <h1
+            data-dot-avoid
             className="mt-5 text-[clamp(2.25rem,6vw,4.5rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-[var(--color-text-primary)] break-keep"
             style={{ textWrap: "pretty" }}
           >
@@ -41,6 +42,7 @@ export function HeroSection() {
           </h1>
 
           <p
+            data-dot-avoid
             className="mt-6 max-w-[50ch] text-[16px] leading-[1.65] text-[var(--color-text-secondary)] sm:text-[17px]"
             style={{ textWrap: "pretty" }}
           >
@@ -67,7 +69,7 @@ export function HeroSection() {
               <Link href="#features">了解功能</Link>
             </Button>
           </div>
-          <p className="mt-3 text-[13px] text-[var(--color-text-tertiary)]">
+          <p data-dot-avoid className="mt-3 text-[13px] text-[var(--color-text-tertiary)]">
             Alpha 阶段免费 · 注册码现场签发
           </p>
         </ScrollReveal>

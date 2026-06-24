@@ -268,7 +268,7 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         <header className="max-w-2xl">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
+          <p className="text-xs font-medium text-[var(--color-text-tertiary)]">
             文档工具
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
@@ -311,7 +311,7 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
               disabled={isConverting}
               onChange={(event) => handleFile(event.target.files?.[0])}
             />
-            <span className="flex size-14 items-center justify-center rounded-full bg-[var(--color-surface)] text-[var(--color-text-tertiary)]">
+            <span className="flex size-14 items-center justify-center rounded-2xl bg-[var(--color-surface)] text-[var(--color-text-tertiary)]">
               {isConverting ? (
                 <Spinner className="size-6" />
               ) : (
@@ -385,7 +385,7 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
                     <span
                       aria-label={complete ? `${item.label}步骤已完成` : undefined}
                       className={cn(
-                        "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+                        "flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold",
                         complete
                           ? "bg-[var(--color-success-muted)] text-[var(--color-success)]"
                           : current
@@ -397,7 +397,7 @@ export function PdfConvertClient({ conversions }: PdfConvertClientProps) {
                     </span>
                     <span
                       className={cn(
-                        "truncate text-[11px] sm:text-xs",
+                        "truncate text-xs",
                         stageIndex >= index
                           ? "text-[var(--color-text-primary)]"
                           : "text-[var(--color-text-tertiary)]"

@@ -9,8 +9,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
-        primary: "bg-primary text-primary-foreground hover:bg-primary/80",
+        default: "bg-primary text-primary-foreground hover:bg-[var(--color-accent-hover)]",
+        primary: "bg-primary text-primary-foreground hover:bg-[var(--color-accent-hover)]",
         outline:
           "bg-background hover:bg-[var(--color-interaction-hover)] hover:text-foreground aria-expanded:bg-[var(--color-interaction-active)] aria-expanded:text-foreground dark:bg-[var(--color-interaction-hover)] dark:hover:bg-[var(--color-interaction-active)]",
         secondary:
@@ -18,9 +18,9 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-[var(--color-interaction-hover)] hover:text-foreground aria-expanded:bg-[var(--color-interaction-active)] aria-expanded:text-foreground dark:hover:bg-[var(--color-interaction-hover)]",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30",
+          "bg-destructive/10 text-destructive hover:bg-[var(--color-error-muted)] focus-visible:bg-[var(--color-error-muted)] dark:bg-destructive/20 dark:hover:bg-[var(--color-error-muted)]",
         danger:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30",
+          "bg-destructive/10 text-destructive hover:bg-[var(--color-error-muted)] focus-visible:bg-[var(--color-error-muted)] dark:bg-destructive/20 dark:hover:bg-[var(--color-error-muted)]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

@@ -26,7 +26,7 @@ export function ChatDemo({ className }: { className?: string }) {
           <span className="size-1.5 rounded-full bg-[var(--color-success)]" aria-hidden />
           <span className="text-xs font-medium text-[var(--color-text-secondary)]">光电效应实验复盘</span>
         </div>
-        <span className="text-[11px] text-[var(--color-text-tertiary)]">在线 · 深度</span>
+        <span className="text-xs text-[var(--color-text-tertiary)]">在线 · 深度</span>
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-hidden bg-[var(--color-bg)] px-3 py-4 sm:px-4">
@@ -67,7 +67,7 @@ function MockBubble({ message }: { message: MockChatMessage }) {
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-1.5 py-1 text-[11px] text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
+                className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-1.5 py-1 text-xs text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
                 aria-expanded={reasoningOpen}
               >
                 {reasoningOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
@@ -99,7 +99,7 @@ function MockBubble({ message }: { message: MockChatMessage }) {
           )}
         </div>
 
-        <div className="mt-1 px-1 text-[10px] tabular-nums text-[var(--color-text-tertiary)]">
+        <div className="mt-1 px-1 text-xs tabular-nums text-[var(--color-text-tertiary)]">
           {message.tokenCount} tokens
         </div>
       </div>
@@ -158,7 +158,7 @@ function ChatDemoInputDock() {
           </button>
         </div>
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[10px] text-[var(--color-text-tertiary)]">
+      <div className="mt-2 flex items-center gap-3 text-xs text-[var(--color-text-tertiary)]">
         <span className="inline-flex items-center gap-1">
           <FileText size={10} />
           1 资料已挂载

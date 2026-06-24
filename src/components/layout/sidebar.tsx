@@ -184,7 +184,7 @@ export function Sidebar({
       <button
         type="button"
         className={cn(
-          "fixed inset-0 z-40 bg-slate-950/20 transition-opacity duration-300 ease-out lg:hidden motion-reduce:transition-none",
+          "fixed inset-0 z-40 bg-[var(--color-overlay)] transition-opacity duration-300 ease-out lg:hidden motion-reduce:transition-none",
           mobileOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
@@ -209,7 +209,7 @@ export function Sidebar({
         <SidebarHeader className="flex h-14 shrink-0 flex-row items-center justify-between px-3 py-0">
           <span
             className={cn(
-              "whitespace-nowrap text-xs font-medium uppercase tracking-wider text-[var(--color-text-tertiary)]",
+              "whitespace-nowrap text-xs font-medium text-[var(--color-text-tertiary)]",
               "transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
               collapsed
                 ? "lg:pointer-events-none lg:-translate-x-2 lg:opacity-0"
@@ -306,7 +306,7 @@ export function Sidebar({
             </Button>
           </SidebarGroup>
 
-          <SidebarGroupLabel className="px-4 pb-2 text-[11px] uppercase tracking-wider">
+          <SidebarGroupLabel className="px-4 pb-2 text-xs">
             {activeSection === "chat"
               ? "对话列表"
               : activeSection === "tools"
@@ -513,7 +513,7 @@ export function Sidebar({
                   <span className="block truncate text-xs font-medium text-[var(--color-text-primary)]">
                     {accountName}
                   </span>
-                  <span className="block truncate text-[10px] text-[var(--color-text-tertiary)]">
+                  <span className="block truncate text-xs text-[var(--color-text-tertiary)]">
                     DeepSeek V4
                   </span>
                 </span>

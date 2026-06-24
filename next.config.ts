@@ -12,7 +12,6 @@ const nextConfig: NextConfig = {
     "@napi-rs/canvas",
     "pdfkit",
     "adm-zip",
-    "@fontsource/noto-sans-sc",
     "fonteditor-core",
   ],
   // Turbopack root fix

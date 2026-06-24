@@ -23,7 +23,7 @@ export function ConversionDemo({ className }: { className?: string }) {
     >
       <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border-light)] bg-[var(--color-panel)] px-4 py-3.5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--color-text-secondary)]">
+          <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)]">
             文档工具
           </div>
           <h3 className="mt-0.5 truncate text-[14px] font-semibold text-[var(--color-text-primary)]">
@@ -50,12 +50,12 @@ export function ConversionDemo({ className }: { className?: string }) {
       </div>
 
       <div className="shrink-0 border-b border-[var(--color-border-light)] bg-[var(--color-bg)] px-4 py-3">
-        <ol className="flex items-center gap-1.5 text-[11px]">
+        <ol className="flex items-center gap-1.5 text-xs">
           {MOCK_CONVERSION.stages.map((stage, index) => (
             <li key={stage.key} className="flex flex-1 items-center gap-1.5">
               <span
                 className={cn(
-                  "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium",
+                  "flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium",
                   stage.done
                     ? "bg-[var(--color-accent)] text-[var(--color-accent-contrast)]"
                     : "bg-[var(--color-surface-active)] text-[var(--color-text-tertiary)]"
@@ -91,7 +91,7 @@ export function ConversionDemo({ className }: { className?: string }) {
         </article>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 border-t border-[var(--color-border-light)] bg-[var(--color-panel)] px-4 py-2 text-[11px] text-[var(--color-text-tertiary)]">
+      <div className="flex shrink-0 items-center gap-2 border-t border-[var(--color-border-light)] bg-[var(--color-panel)] px-4 py-2 text-xs text-[var(--color-text-tertiary)]">
         <Folder size={11} />
         <span>导出包含 Markdown · pics/ · 打印版 PDF · DOCX</span>
       </div>

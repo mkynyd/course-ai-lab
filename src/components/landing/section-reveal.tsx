@@ -1,73 +1,53 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { motion } from "motion/react";
+import { useRef } from "react";
+import { usePrefersReducedMotion } from "./prefers-motion";
 
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
-
-interface SectionRevealProps {
-  children: ReactNode;
-  className?: string;
+interface SectionRevealProps extends React.HTMLAttributes<HTMLElement> {
   innerClassName?: string;
   yOffset?: number;
 }
 
 /**
- * 纵向 section reveal：内容从下方淡入并上滑。
- * - 不 pin、不水平滚动
- * - 元素顶部到达视口 75% 位置（从底部算 25%）时开始
- * - 元素顶部到达视口 20% 位置（从底部算 80%）时完成
- * - 使用 ease-out-expo 感觉的非线性 scrub
- * - prefers-reduced-motion 时禁用
+ * 纵向 section reveal：内容进入视口时淡入并上滑，离开时淡出。
+ * - viewport amount 0.4：元素进入 40% 时触发
+ * - 过渡时长 0.6s，ease-out
+ * - prefers-reduced-motion: 退化为直接可见
  */
 export function SectionReveal({
   children,
   className = "",
   innerClassName = "",
   yOffset = 48,
+  ...rest
 }: SectionRevealProps) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
+  const reduced = usePrefersReducedMotion();
 
-  useEffect(() => {
-    const section = sectionRef.current;
-    const inner = innerRef.current;
-    if (!section || !inner) return;
-
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (reducedMotion.matches) return;
-
-    const tween = gsap.fromTo(
-      inner,
-      { opacity: 0, y: yOffset },
-      {
-        opacity: 1,
-        y: 0,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: section,
-          start: "top 75%",
-          end: "top 20%",
-          scrub: 0.6,
-        },
-      }
+  if (reduced) {
+    return (
+      <section ref={sectionRef} className={className} {...rest}>
+        <div ref={innerRef} className={innerClassName}>
+          {children}
+        </div>
+      </section>
     );
-
-    return () => {
-      tween.kill();
-      const st = tween.scrollTrigger;
-      if (st) st.kill();
-    };
-  }, [yOffset]);
+  }
 
   return (
-    <section ref={sectionRef} className={className}>
-      <div ref={innerRef} className={innerClassName}>
+    <section ref={sectionRef} className={className} {...rest}>
+      <motion.div
+        ref={innerRef}
+        className={innerClassName}
+        initial={{ opacity: 0, y: yOffset }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: false, amount: 0.4 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         {children}
-      </div>
+      </motion.div>
     </section>
   );
 }

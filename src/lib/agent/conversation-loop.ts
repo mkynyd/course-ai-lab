@@ -28,6 +28,7 @@ import {
 import { hashArguments } from "./approval-token";
 import { buildPreview } from "./preview-builder";
 import { formatAgentEvent } from "./event-stream";
+import type { Prisma } from "@/generated/prisma/client";
 import type {
   AgentContext,
   AgentEvent,
@@ -129,7 +130,7 @@ async function createExecutionRecord(args: {
       skillId: args.skillId ?? null,
       skillVersion: args.skillVersion ?? null,
       toolId: args.tool.toolId,
-      normalizedArguments: args.toolCallArgs,
+      normalizedArguments: args.toolCallArgs as Prisma.InputJsonValue,
       argumentsHash,
       riskLevel: args.riskLevel,
       status: args.status,
@@ -221,7 +222,7 @@ export const _internalForTesting = {
         data: {
           status: "pending_approval",
           expiresAt: token.expiresAt,
-          approvalSnapshot: decision as unknown as Record<string, unknown>,
+          approvalSnapshot: decision as unknown as Prisma.InputJsonValue,
         },
       });
       eventTap.emit({

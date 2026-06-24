@@ -39,7 +39,7 @@ export function AmbientField({
       pulseStartedAt: 0,
     };
     let rafId = 0;
-    let dots: Array<{ x: number; y: number }> = [];
+    let dots: Array<{ x: number; y: number; ox: number; oy: number }> = [];
     let width = 0;
     let height = 0;
     let dotSize = 2.2;
@@ -63,6 +63,66 @@ export function AmbientField({
     }
 
     let proximity = 125;
+    const OBSTACLE_REPULSION_PROXIMITY = 120;
+    const OBSTACLE_REPULSION_STRENGTH = 32;
+    const OBSTACLE_LERP = 0.12;
+    let obstacles: Array<{ left: number; top: number; right: number; bottom: number }> = [];
+
+    function refreshObstacles() {
+      const wrapperRect = wrapperEl.getBoundingClientRect();
+      const padding = gap;
+      const scopeEl = wrapperEl.parentElement ?? wrapperEl;
+      obstacles = Array.from(scopeEl.querySelectorAll("[data-dot-avoid]")).map((el) => {
+        const rect = el.getBoundingClientRect();
+        return {
+          left: rect.left - wrapperRect.left - padding,
+          top: rect.top - wrapperRect.top - padding,
+          right: rect.right - wrapperRect.left + padding,
+          bottom: rect.bottom - wrapperRect.top + padding,
+        };
+      });
+    }
+
+    function isDotHidden(dot: { x: number; y: number }) {
+      for (const rect of obstacles) {
+        if (
+          dot.x >= rect.left &&
+          dot.x <= rect.right &&
+          dot.y >= rect.top &&
+          dot.y <= rect.bottom
+        ) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function computeObstacleRepulsion(dot: { x: number; y: number }) {
+      let nearestDistance = Infinity;
+      let nearestDx = 0;
+      let nearestDy = 0;
+      for (const rect of obstacles) {
+        const nearestX = Math.max(rect.left, Math.min(dot.x, rect.right));
+        const nearestY = Math.max(rect.top, Math.min(dot.y, rect.bottom));
+        const dx = dot.x - nearestX;
+        const dy = dot.y - nearestY;
+        const distance = Math.hypot(dx, dy);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestDx = dx;
+          nearestDy = dy;
+        }
+      }
+      if (nearestDistance > 0 && nearestDistance < OBSTACLE_REPULSION_PROXIMITY) {
+        const t = 1 - nearestDistance / OBSTACLE_REPULSION_PROXIMITY;
+        const force = OBSTACLE_REPULSION_STRENGTH * t * t;
+        return {
+          tx: (nearestDx / nearestDistance) * force,
+          ty: (nearestDy / nearestDistance) * force,
+        };
+      }
+      return { tx: 0, ty: 0 };
+    }
 
     function buildGrid() {
       const rect = wrapperEl.getBoundingClientRect();
@@ -91,9 +151,12 @@ export function AmbientField({
           dots.push({
             x: offsetX + col * step,
             y: offsetY + row * step,
+            ox: 0,
+            oy: 0,
           });
         }
       }
+      refreshObstacles();
     }
 
     function draw() {
@@ -101,13 +164,32 @@ export function AmbientField({
       const activeColor = readThemeColor("--dot-grid-active") || "rgba(37,99,235,0.7)";
       const now = performance.now();
       ctx.clearRect(0, 0, width, height);
+      let needsAnimation = false;
+      const respectMotion = !reducedMotion.matches;
+
       for (const dot of dots) {
-        const dx = dot.x - pointer.x;
-        const dy = dot.y - pointer.y;
+        if (isDotHidden(dot)) continue;
+
+        if (respectMotion) {
+          const repulsion = computeObstacleRepulsion(dot);
+          dot.ox += (repulsion.tx - dot.ox) * OBSTACLE_LERP;
+          dot.oy += (repulsion.ty - dot.oy) * OBSTACLE_LERP;
+          if (Math.abs(dot.ox) > 0.05 || Math.abs(dot.oy) > 0.05) {
+            needsAnimation = true;
+          }
+        } else {
+          dot.ox = 0;
+          dot.oy = 0;
+        }
+
+        const drawX = dot.x + dot.ox;
+        const drawY = dot.y + dot.oy;
+        const dx = drawX - pointer.x;
+        const dy = drawY - pointer.y;
         const distance = Math.hypot(dx, dy);
         const t = Math.max(0, 1 - distance / proximity);
         const pulseAge = now - pointer.pulseStartedAt;
-        const pulseDistance = Math.hypot(dot.x - pointer.pulseX, dot.y - pointer.pulseY);
+        const pulseDistance = Math.hypot(drawX - pointer.pulseX, drawY - pointer.pulseY);
         const pulse = pulseAge < 640
           ? Math.max(0, 1 - pulseAge / 640) * Math.max(0, 1 - pulseDistance / 220)
           : 0;
@@ -116,11 +198,13 @@ export function AmbientField({
         ctx.globalAlpha = 0.6 + strength * (intensity === "medium" ? 0.4 : 0.28);
         ctx.fillStyle = strength > 0.04 ? activeColor : baseColor;
         ctx.beginPath();
-        ctx.arc(dot.x, dot.y, dotSize + strength * 1.8, 0, Math.PI * 2);
+        ctx.arc(drawX, drawY, dotSize + strength * 1.8, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
-      if (shouldContinueAmbientFrame(pointer.pulseStartedAt, now, reducedMotion.matches)) {
+      const continueFrame =
+        shouldContinueAmbientFrame(pointer.pulseStartedAt, now, reducedMotion.matches) || needsAnimation;
+      if (continueFrame) {
         rafId = window.requestAnimationFrame(draw);
       }
     }
@@ -149,10 +233,20 @@ export function AmbientField({
       draw();
     });
     const themeObserver = new MutationObserver(draw);
+    const obstacleObserver = new MutationObserver(() => {
+      refreshObstacles();
+      draw();
+    });
     observer.observe(wrapperEl);
     themeObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class"],
+    });
+    obstacleObserver.observe(wrapperEl, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-dot-avoid"],
     });
     reducedMotion.addEventListener("change", draw);
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
@@ -161,6 +255,7 @@ export function AmbientField({
     return () => {
       observer.disconnect();
       themeObserver.disconnect();
+      obstacleObserver.disconnect();
       window.cancelAnimationFrame(rafId);
       reducedMotion.removeEventListener("change", draw);
       window.removeEventListener("pointermove", handlePointerMove);

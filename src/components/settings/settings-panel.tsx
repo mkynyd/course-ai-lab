@@ -44,11 +44,18 @@ export function SettingsPanel() {
   return (
     <div className="flex h-[560px]">
       {/* Left sidebar — neutral surface, no border, breathing room */}
-      <nav className="w-52 shrink-0 bg-[var(--color-panel)] py-5 px-3 flex flex-col gap-0.5">
+      <nav
+        className="w-52 shrink-0 bg-[var(--color-panel)] py-5 px-3 flex flex-col gap-0.5"
+        role="tablist"
+        aria-label="设置标签页"
+      >
         <div className="flex flex-col gap-0.5">
           {tabs.map((item) => (
             <button
               key={item.id}
+              role="tab"
+              aria-selected={tab === item.id}
+              aria-controls={`settings-panel-${item.id}`}
               onClick={() => setTab(item.id)}
               className={cn(
                 "flex items-center gap-2.5 px-3 py-2 text-sm rounded-xl text-left w-full",
@@ -98,14 +105,16 @@ export function SettingsPanel() {
 // ============================================================
 
 function SectionShell({
+  id,
   title,
   children,
 }: {
+  id: string;
   title: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-5">
+    <div id={id} className="space-y-5" role="tabpanel" aria-label={title}>
       <div className="pb-3 border-b border-[var(--color-border-light)]">
         <h2 className="text-base font-semibold text-[var(--color-text-primary)] tracking-tight">
           {title}
@@ -155,7 +164,7 @@ function AlphaSection() {
   }
 
   return (
-    <SectionShell title="服务访问">
+    <SectionShell id="settings-panel-alpha" title="Alpha 服务访问">
       <div className="rounded-2xl bg-[var(--color-project-control)] p-4">
         <div className="flex items-start gap-3">
           <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[var(--color-success)]" />
@@ -209,7 +218,7 @@ function TokensSection() {
   const cacheMetrics = useCacheMetrics(7);
 
   return (
-    <SectionShell title="用量统计">
+    <SectionShell id="settings-panel-tokens" title="用量统计">
       <p className="text-xs text-[var(--color-text-tertiary)] -mt-2">
         近 7 天 Token 使用情况
       </p>
@@ -279,7 +288,7 @@ function ProfileSection() {
   }
 
   return (
-    <SectionShell title="关于你">
+    <SectionShell id="settings-panel-profile" title="关于你">
       <p className="text-xs text-[var(--color-text-tertiary)] -mt-2">
         AI 会根据这些信息更好地理解你的使用场景
       </p>
@@ -343,7 +352,7 @@ function ProfileSection() {
 
 function AppearanceSection() {
   return (
-    <SectionShell title="外观">
+    <SectionShell id="settings-panel-appearance" title="外观">
       <div className="flex items-center justify-between rounded-2xl bg-[var(--color-project-control)] p-4">
         <span className="text-sm text-[var(--color-text-primary)]">主题</span>
         <ThemeToggle />
@@ -356,7 +365,7 @@ function AccountSection() {
   const { data: session } = useSession();
 
   return (
-    <SectionShell title="账户">
+    <SectionShell id="settings-panel-account" title="账户">
       <div className="rounded-2xl bg-[var(--color-project-control)] p-4">
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-[var(--color-text-tertiary)]">邮箱</span>

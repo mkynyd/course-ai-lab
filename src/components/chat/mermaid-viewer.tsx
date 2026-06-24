@@ -137,11 +137,23 @@ export function MermaidViewer({ code, open, onOpenChange }: MermaidViewerProps) 
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
+  // 用 state 记录上一次 open，避免在 render 中读取 ref 而触发 lint。
+  const [prevOpen, setPrevOpen] = useState(open);
   const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const svgWrapperRef = useRef<HTMLDivElement>(null);
   const svgSizeRef = useRef({ width: 800, height: 600 });
   const renderCountRef = useRef(0);
+
+  // 当对话框从关闭变为打开时，重置缩放、位置并清空旧 SVG，避免显示旧图。
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) {
+      if (scale !== 1) setScale(1);
+      if (position.x !== 0 || position.y !== 0) setPosition({ x: 0, y: 0 });
+      if (svg !== null) setSvg(null);
+    }
+  }
 
   // Render mermaid SVG on open with unique id to prevent stale DOM conflicts
   useEffect(() => {
@@ -175,16 +187,6 @@ export function MermaidViewer({ code, open, onOpenChange }: MermaidViewerProps) 
       cancelled = true;
     };
   }, [code, rawId, open]);
-
-  // Reset zoom and position when dialog opens; clear SVG on close
-  useEffect(() => {
-    if (open) {
-      setScale(1);
-      setPosition({ x: 0, y: 0 });
-    } else {
-      setSvg(null);
-    }
-  }, [open]);
 
   // Measure SVG natural size after render for boundary clamping
   useEffect(() => {
@@ -332,7 +334,7 @@ export function MermaidViewer({ code, open, onOpenChange }: MermaidViewerProps) 
     URL.revokeObjectURL(url);
   }
 
-  const sliderPercent = ((scale - MIN_SCALE) / (MAX_SCALE - MIN_SCALE)) * 100;
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

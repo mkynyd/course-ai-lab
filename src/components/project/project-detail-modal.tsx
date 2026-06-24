@@ -41,9 +41,6 @@ export function ProjectDetailModal({
     { id: "prompt", label: "系统提示词", icon: FileText },
   ];
 
-  // 类型别名用于 icon prop；实际传入的是 lucide-react 组件
-  type IconComponent = typeof Info;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[min(960px,calc(100vw-2rem))] h-[70vh] p-0 gap-0 overflow-hidden sm:max-w-[960px] rounded-3xl flex flex-col">

@@ -44,7 +44,7 @@ export function SelectMenu({
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="md"
           disabled={disabled}
           aria-label={ariaLabel}

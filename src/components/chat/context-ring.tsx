@@ -29,7 +29,7 @@ export function ContextRing({
         <p className="text-xs font-medium text-[var(--color-text-primary)]">
           上下文窗口
         </p>
-        <p className="text-[11px] font-mono text-[var(--color-text-secondary)]">
+        <p className="text-xs font-mono text-[var(--color-text-secondary)]">
           {fmt(used)} / {fmt(total)}
         </p>
       </div>

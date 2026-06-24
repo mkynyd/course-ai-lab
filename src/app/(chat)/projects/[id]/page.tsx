@@ -30,7 +30,6 @@ import type {
 import { FileContentDialog } from "@/components/project/file-content-dialog";
 import type { ProjectType } from "@/components/chat/quick-task-bar";
 import { ArtifactLibrary } from "@/components/artifact/artifact-library";
-import { Button } from "@/components/ui/button";
 import { useProject } from "@/lib/hooks/use-projects";
 import {
   conversationQueryOptions,
@@ -598,6 +597,7 @@ export default function ProjectDetailPage() {
 	            <AmbientField density="wide" className="opacity-80" />
             <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
               <div
+                data-dot-avoid
                 className={cn(
 	                  "mb-4 flex h-14 w-14 items-center justify-center rounded-2xl",
 	                  "bg-[var(--color-panel)]"
@@ -605,11 +605,11 @@ export default function ProjectDetailPage() {
               >
 	                <Hashtag width={26} height={26} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
               </div>
-              <h2 className="text-base font-medium text-[var(--color-text-primary)] mb-1">
+              <h2 data-dot-avoid className="text-base font-medium text-[var(--color-text-primary)] mb-1">
                 {project.name}
               </h2>
               {selectedFileIds.size > 0 && (
-                <p className="max-w-md text-sm leading-relaxed text-[var(--color-text-secondary)]">
+                <p data-dot-avoid className="max-w-md text-sm leading-relaxed text-[var(--color-text-secondary)]">
                   已选择 {selectedFileIds.size} 个文件作为上下文，点击快捷任务或输入问题开始对话
                 </p>
               )}

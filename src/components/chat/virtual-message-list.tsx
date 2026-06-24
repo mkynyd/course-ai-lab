@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDown } from "lucide-react";
 import { MessageBubble } from "@/components/chat/message-bubble";
+import { estimateMessageHeight } from "@/lib/chat-message-layout";
+import { loadFontForOptions } from "@/lib/text-layout";
 import type { ChatMessage } from "@/lib/hooks/use-chat";
 
 type SaveArtifact = (input: {
@@ -49,6 +51,9 @@ function Bubble({
 /** Threshold in px — user is "at bottom" if within this distance from the end. */
 const AT_BOTTOM_THRESHOLD = 64;
 
+const BODY_FONT_SIZE = 14.8;
+const CODE_FONT_SIZE = 13;
+
 export function VirtualMessageList({
   messages,
   onSaveArtifact,
@@ -61,16 +66,76 @@ export function VirtualMessageList({
   const userAtBottomRef = useRef(true);
   const prevMsgCountRef = useRef(messages.length);
   const [pinned, setPinned] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [fontsReady, setFontsReady] = useState(false);
+
+  // Track container width for Pretext-based estimates.
+  useEffect(() => {
+    const el = parentRef.current;
+    if (!el) return;
+    const update = () => setContainerWidth(el.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Wait for the fonts Pretext will measure against before trusting estimates.
+  useEffect(() => {
+    Promise.all([
+      loadFontForOptions({
+        fontSize: BODY_FONT_SIZE,
+        fontFamily: '"Noto Sans SC"',
+      }),
+      loadFontForOptions({
+        fontSize: CODE_FONT_SIZE,
+        fontFamily:
+          'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      }),
+    ]).then(() => setFontsReady(true));
+  }, []);
+
+  const estimates = useMemo(() => {
+    const map = new Map<string, number>();
+    if (containerWidth === 0 || !fontsReady) return map;
+    const context = { containerWidth };
+    for (const message of messages) {
+      map.set(
+        message.id,
+        estimateMessageHeight(
+          {
+            content: message.content,
+            role: message.role,
+            reasoningContent: message.reasoningContent,
+            tokenCount: message.tokenCount,
+            isStreaming: message.isStreaming,
+            isReasoningOpen: false,
+          },
+          context
+        )
+      );
+    }
+    return map;
+  }, [messages, containerWidth, fontsReady]);
+
+  const estimatesRef = useRef(estimates);
+  estimatesRef.current = estimates;
 
   // TanStack Virtual intentionally exposes imperative functions that the React Compiler cannot memoize.
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: completed.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 120,
+    estimateSize: (index) =>
+      estimatesRef.current.get(completed[index].id) ?? 120,
     getItemKey: (index) => completed[index].id,
     overscan: 5,
   });
+
+  // Re-measure when Pretext estimates change.
+  useEffect(() => {
+    virtualizer.measure();
+  }, [estimates, virtualizer]);
 
   const isNearBottom = useCallback(() => {
     const el = parentRef.current;
@@ -175,7 +240,7 @@ export function VirtualMessageList({
             setPinned(false);
             userAtBottomRef.current = true;
           }}
-          className="fixed bottom-24 right-8 z-20 flex size-10 items-center justify-center rounded-full bg-[var(--color-surface)] text-[var(--color-text-secondary)] shadow-[var(--shadow-panel)] transition-colors hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]"
+          className="fixed bottom-24 right-8 z-20 flex size-10 items-center justify-center rounded-lg bg-[var(--color-surface)] text-[var(--color-text-secondary)] shadow-[var(--shadow-panel)] transition-colors hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]"
           aria-label="滚动到底部"
         >
           <ArrowDown size={16} strokeWidth={2} aria-hidden="true" />

@@ -56,10 +56,10 @@ export default function ProjectsPage() {
         {/* 页头 */}
         <div className="mb-8 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
+            <h1 data-dot-avoid className="text-xl font-semibold text-[var(--color-text-primary)]">
               项目空间
             </h1>
-            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+            <p data-dot-avoid className="mt-1 text-sm text-[var(--color-text-secondary)]">
               管理你的实验工作台、资料复习和代码项目
             </p>
           </div>
@@ -87,14 +87,15 @@ export default function ProjectsPage() {
           </div>
         ) : projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-project-control)]">
+            <div data-dot-avoid className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-project-control)]">
 		              <Folder width={24} height={24} strokeWidth={1.5} className="text-[var(--color-text-tertiary)]" />
             </div>
-            <h2 className="text-base font-medium text-[var(--color-text-primary)] mb-1">
+            <h2 data-dot-avoid className="text-base font-medium text-[var(--color-text-primary)] mb-1">
               暂无项目
             </h2>
             <Link href="/projects/new">
 	              <Button
+	                data-dot-avoid
 	                variant="primary"
 	                size="md"
 	                className="bg-[var(--color-project-action)] text-[var(--color-project-action-contrast)] hover:bg-[var(--color-project-action-hover)] focus-visible:bg-[var(--color-project-action-hover)]"

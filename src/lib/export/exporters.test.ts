@@ -43,7 +43,7 @@ describe("artifact exporters", () => {
   });
 
   it("creates a PDF containing Chinese Markdown", async () => {
-    expect(getPdfFont().subarray(0, 4).toString("hex")).toBe("00010000");
+    expect(getPdfFont().subarray(0, 4).toString("hex")).toBe("774f4632");
     const buffer = await markdownToPdf(SAMPLE);
     expect(buffer.subarray(0, 4).toString()).toBe("%PDF");
   }, 20_000);

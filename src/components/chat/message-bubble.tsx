@@ -91,6 +91,7 @@ function MessageBubbleComponent({
             ? "bg-[var(--color-accent)] text-[var(--color-accent-contrast)]"
             : "bg-[var(--color-panel-muted)] text-[var(--color-text-secondary)]"
         )}
+        aria-hidden="true"
       >
         {isUser ? <User size={14} /> : <Bot size={14} />}
       </div>
@@ -139,7 +140,7 @@ function MessageBubbleComponent({
           className={cn(
             "text-sm",
             isUser
-              ? "max-w-[85%] rounded-[var(--radius-xl)] bg-[var(--color-accent-soft)] px-3.5 py-2.5 leading-relaxed"
+              ? "w-fit max-w-[85%] rounded-[var(--radius-xl)] bg-[var(--color-surface-active)] px-3.5 py-2.5 leading-relaxed text-[var(--color-text-primary)]"
               : "workbench-readable text-[var(--color-text-primary)]"
           )}
         >
@@ -163,7 +164,7 @@ function MessageBubbleComponent({
             <button
               type="button"
               onClick={() => setShowSave((current) => !current)}
-	              className="flex items-center gap-1 rounded-[var(--radius-md)] px-2 py-1 text-[11px] text-[var(--color-text-tertiary)] hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]"
+	              className="flex items-center gap-1 rounded-[var(--radius-md)] px-2 py-1 text-xs text-[var(--color-text-tertiary)] hover:bg-[var(--color-interaction-hover)] hover:text-[var(--color-text-primary)]"
               aria-expanded={showSave}
             >
               <Save size={12} />
@@ -205,7 +206,7 @@ function MessageBubbleComponent({
         )}
 
         {tokenCount != null && (
-          <span className="mt-1 text-[10px] font-mono text-[var(--color-text-tertiary)]">
+          <span className="mt-1 text-xs font-mono text-[var(--color-text-tertiary)]">
             {tokenCount.toLocaleString()} tokens
           </span>
         )}

@@ -32,7 +32,7 @@ export const SpotlightCard = forwardRef<HTMLDivElement, SpotlightCardProps>(func
         "workbench-spotlight rounded-[var(--radius-xl)] bg-[var(--color-project-surface)] transition-[background-color] duration-200",
         active
           ? "bg-[var(--color-project-surface-active)]"
-          : "hover:bg-[var(--color-project-surface-hover)]",
+          : "hover:bg-[var(--color-project-surface)]",
         className
       )}
       ref={ref}
