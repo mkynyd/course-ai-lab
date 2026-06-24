@@ -107,7 +107,7 @@ export function LandingFooter() {
           <div className="flex items-center gap-2">
             <span className="relative flex size-6 items-center justify-center overflow-hidden rounded-[var(--radius-xs)]">
               <Image
-                src="/LumenLab-logo-only-128.png"
+                src="/LumenLab-logo-only.png"
                 alt="LumenLab"
                 width={24}
                 height={24}

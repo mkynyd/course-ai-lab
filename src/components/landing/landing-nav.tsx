@@ -24,7 +24,7 @@ export function LandingNav() {
         >
           <span className="relative flex size-8 items-center justify-center overflow-hidden rounded-[var(--radius-md)]">
             <Image
-              src="/LumenLab-logo-only-128.png"
+              src="/LumenLab-logo-only.png"
               alt="LumenLab"
               width={32}
               height={32}
