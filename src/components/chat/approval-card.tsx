@@ -55,7 +55,7 @@ export function ApprovalCard({
             {preview.summary}
           </p>
           {preview.skillName && (
-            <p className="mt-0.5 text-[11px] text-[var(--color-text-tertiary)] font-mono">
+            <p className="mt-0.5 text-xs text-[var(--color-text-tertiary)] font-mono">
               {preview.skillName}
             </p>
           )}
@@ -75,20 +75,20 @@ export function ApprovalCard({
                 <FileText size={11} className="shrink-0 text-[var(--color-text-tertiary)]" />
               )}
               <span className="truncate">{res.displayName}</span>
-              <span className="ml-auto text-[10px] text-[var(--color-text-tertiary)] uppercase">
+              <span className="ml-auto text-xs text-[var(--color-text-tertiary)]">
                 {res.type}
               </span>
             </li>
           ))}
           {preview.affectedResources.length > 6 && (
-            <li className="text-[11px] text-[var(--color-text-tertiary)]">
+            <li className="text-xs text-[var(--color-text-tertiary)]">
               等 {preview.affectedResources.length} 项
             </li>
           )}
         </ul>
       )}
 
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
         {preview.sendsToExternal && (
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-warning,#b45309)]/12 px-2 py-0.5 text-[var(--color-warning,#b45309)]">
             <ExternalLink size={10} />
@@ -113,7 +113,7 @@ export function ApprovalCard({
       </div>
 
       {preview.samplePreview && (
-        <details className="text-[11px]">
+        <details className="text-xs">
           <summary className="cursor-pointer text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] inline-flex items-center gap-1">
             <RotateCcw size={10} /> 查看数据样本
           </summary>
@@ -135,7 +135,7 @@ export function ApprovalCard({
         </Button>
         {canApproveSession && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             disabled={busy}
             onClick={() => handle("session")}

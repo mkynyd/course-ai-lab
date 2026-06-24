@@ -115,7 +115,7 @@ function AgentTimelineComponent({ state, onApprove, onDeny }: AgentTimelineProps
   if (state.kind === "proposed" || state.kind === "executing" || state.kind === "completed" || state.kind === "failed") {
     return (
       <ToolCallCard
-        preview={state.preview ?? fallbackPreview(state)}
+        preview={state.kind === "proposed" ? state.preview : fallbackPreview(state)}
         status={state.kind}
         progress={state.kind === "executing" ? state.progress : undefined}
         message={state.kind === "executing" ? state.message : undefined}

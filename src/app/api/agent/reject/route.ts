@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     userId,
     conversationId: execution.conversationId,
     toolExecutionId: execution.id,
-    skillId: execution.skillId,
+    skillId: execution.skillId ?? undefined,
     toolId: execution.toolId,
     eventType: "user_rejected",
     severity: "warn",

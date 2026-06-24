@@ -12,6 +12,18 @@ import {
 import type { FileAttachment } from "@/lib/chat/router";
 import type { ProjectType } from "@/components/chat/quick-task-bar";
 import { queryKeys } from "@/lib/query-keys";
+import type { AgentEvent, ApprovalScope } from "@/lib/agent/types";
+
+export interface AgentTimelineEntry {
+  executionId: string;
+  /** Latest event for this execution, replaces previous state. */
+  latestEvent: AgentEvent;
+  /** Resolved on approve; only present once user has acted. */
+  approvedScope?: ApprovalScope;
+  /** Stored when awaiting approval so the UI can call /api/agent/approve. */
+  approvalToken?: string;
+  approvalExpiresAt?: number;
+}
 
 export interface ChatMessage {
   id: string;
@@ -66,6 +78,9 @@ export function useChat(options: UseChatOptions = {}) {
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(
     options.reasoningEffort ?? "max"
   );
+  const [agentTimeline, setAgentTimeline] = useState<
+    Record<string, AgentTimelineEntry>
+  >({});
   const abortRef = useRef<AbortController | null>(null);
   const conversationIdRef = useRef<string | undefined>(
     options.initialConversationId
@@ -97,6 +112,7 @@ export function useChat(options: UseChatOptions = {}) {
 
       // Abort any still-attached foreground stream before sending a new message.
       abortRef.current?.abort();
+      setAgentTimeline({});
       const streamSession = streamSessionRef.current + 1;
       streamSessionRef.current = streamSession;
 
@@ -197,11 +213,13 @@ export function useChat(options: UseChatOptions = {}) {
         let fullContent = "";
         let fullReasoning = "";
 
-        const result = await readSSEStream(reader, (chunk) => {
-          if (chunk.done) return;
+        const result = await readSSEStream(
+          reader,
+          (chunk) => {
+            if (chunk.done) return;
 
-          fullContent += chunk.content;
-          fullReasoning += chunk.reasoningContent;
+            fullContent += chunk.content;
+            fullReasoning += chunk.reasoningContent;
 
           // Update the streaming message in-place. If this stream was detached
           // by a conversation switch, the id will not exist in the visible list.
@@ -216,7 +234,44 @@ export function useChat(options: UseChatOptions = {}) {
                 : m
             )
           );
-        });
+          },
+          {
+            onAgentEvent: (event) => {
+              if (event.type === "skill_activated" || event.type === "skill_deactivated") {
+                // Skill lifecycle is informational; timeline only tracks executions.
+                return;
+              }
+              const executionId = (event as { executionId: string }).executionId;
+              setAgentTimeline((prev) => {
+                const existing = prev[executionId];
+                if (event.type === "approval_required") {
+                  return {
+                    ...prev,
+                    [executionId]: {
+                      executionId,
+                      latestEvent: event,
+                      approvalToken: event.token,
+                      approvalExpiresAt: event.expiresAt,
+                    },
+                  };
+                }
+                return {
+                  ...prev,
+                  [executionId]: {
+                    executionId,
+                    latestEvent: event,
+                    ...(existing?.approvalToken
+                      ? { approvalToken: existing.approvalToken }
+                      : {}),
+                    ...(existing?.approvalExpiresAt
+                      ? { approvalExpiresAt: existing.approvalExpiresAt }
+                      : {}),
+                  },
+                };
+              });
+            },
+          }
+        );
 
         // Stream complete
         if (result.usage) {
@@ -319,6 +374,7 @@ export function useChat(options: UseChatOptions = {}) {
     setUsage(null);
     setError(null);
     setIsStreaming(false);
+    setAgentTimeline({});
   }, []);
 
   const loadConversation = useCallback(
@@ -341,6 +397,76 @@ export function useChat(options: UseChatOptions = {}) {
     []
   );
 
+  const approveExecution = useCallback(
+    async (executionId: string, token: string, scope: ApprovalScope) => {
+      const entry = agentTimeline[executionId];
+      if (!entry) return;
+      const response = await fetch("/api/agent/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          executionId,
+          scope,
+        }),
+      });
+      if (!response.ok) {
+        setError(`审批失败 (${response.status})`);
+        return;
+      }
+      setAgentTimeline((prev) => {
+        const existing = prev[executionId];
+        if (!existing) return prev;
+        return {
+          ...prev,
+          [executionId]: {
+            ...existing,
+            latestEvent: {
+              type: "approval_granted",
+              executionId,
+              scope,
+            },
+            approvedScope: scope,
+            approvalToken: undefined,
+            approvalExpiresAt: undefined,
+          },
+        };
+      });
+    },
+    [agentTimeline]
+  );
+
+  const rejectExecution = useCallback(
+    async (executionId: string) => {
+      const response = await fetch("/api/agent/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ executionId }),
+      });
+      if (!response.ok) {
+        setError(`拒绝失败 (${response.status})`);
+        return;
+      }
+      setAgentTimeline((prev) => {
+        const existing = prev[executionId];
+        if (!existing) return prev;
+        return {
+          ...prev,
+          [executionId]: {
+            ...existing,
+            latestEvent: {
+              type: "approval_denied",
+              executionId,
+            },
+            approvalToken: undefined,
+            approvalExpiresAt: undefined,
+          },
+        };
+      });
+    },
+    []
+  );
+
   return {
     messages,
     isStreaming,
@@ -358,5 +484,8 @@ export function useChat(options: UseChatOptions = {}) {
     clearError,
     newConversation,
     loadConversation,
+    agentTimeline,
+    approveExecution,
+    rejectExecution,
   };
 }

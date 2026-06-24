@@ -6,6 +6,7 @@
 
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import type { Prisma } from "@/generated/prisma/client";
 
 export interface AgentAuditPayload {
   userId: string;
@@ -42,7 +43,7 @@ export async function recordAuditEvent(event: AgentAuditPayload): Promise<void> 
         toolId: event.toolId ?? null,
         eventType: event.eventType,
         severity: event.severity,
-        payload: event.payload,
+        payload: event.payload as Prisma.InputJsonValue,
         ip: event.ip ?? null,
         userAgent: event.userAgent ?? null,
       },

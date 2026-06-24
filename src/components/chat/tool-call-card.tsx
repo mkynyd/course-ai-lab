@@ -49,7 +49,7 @@ export function ToolCallCard({
           {preview.summary}
         </span>
         {preview.skillName && (
-          <span className="text-[var(--color-text-tertiary)] font-mono text-[10px]">
+          <span className="text-[var(--color-text-tertiary)] font-mono text-xs">
             {preview.skillName}
           </span>
         )}
@@ -76,7 +76,7 @@ export function ToolCallCard({
         <div className="mt-1 text-[var(--color-text-tertiary)] truncate">{message}</div>
       )}
       {expandable && expanded && (
-        <pre className="mt-2 max-h-40 overflow-auto rounded-md bg-[var(--color-surface)] p-2 text-[11px] whitespace-pre-wrap break-words text-[var(--color-text-secondary)]">
+        <pre className="mt-2 max-h-40 overflow-auto rounded-md bg-[var(--color-surface)] p-2 text-xs whitespace-pre-wrap break-words text-[var(--color-text-secondary)]">
           {error ?? JSON.stringify(resultSummary, null, 2)}
         </pre>
       )}
