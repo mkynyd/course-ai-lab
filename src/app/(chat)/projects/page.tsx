@@ -115,70 +115,28 @@ export default function ProjectsPage() {
                       "group relative p-5"
                     )}
                   >
-	                  <div className="flex items-start justify-between mb-3">
-	                    <Link
-	                      href={`/projects/${project.id}`}
-	                      className="flex min-h-11 min-w-0 flex-1 flex-col justify-center focus-visible:outline-none focus-visible:bg-[var(--color-project-surface-hover)] rounded-[var(--radius-sm)]"
-	                    >
-	                      <h2 className="truncate text-base font-semibold text-[var(--color-text-primary)]">
-	                        {project.name}
-	                      </h2>
-	                      <span className="text-[11px] text-[var(--color-text-tertiary)]">
-	                        {TYPE_LABELS[project.type] || project.type}
-	                      </span>
-	                    </Link>
-	                    <AlertDialog>
-	                      <AlertDialogTrigger asChild>
-	                        <Button
-	                          type="button"
-	                          variant="ghost"
-	                          size="icon-sm"
-	                          className={cn(
-	                            "size-11 shrink-0 rounded-[var(--radius-sm)] sm:size-7",
-	                            "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
-	                            "text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-muted)]",
-	                            "transition-all duration-100"
-	                          )}
-	                          aria-label={`删除 ${project.name}`}
-	                        >
-		                          <Trash width={14} height={14} strokeWidth={2} />
-	                        </Button>
-	                      </AlertDialogTrigger>
-	                      <AlertDialogContent>
-	                        <AlertDialogHeader>
-	                          <AlertDialogTitle>删除项目</AlertDialogTitle>
-	                          <AlertDialogDescription>
-	                            确定要删除「{project.name}」吗？相关文件和对话将被一并删除。
-	                          </AlertDialogDescription>
-	                        </AlertDialogHeader>
-	                        <AlertDialogFooter>
-	                          <AlertDialogCancel>取消</AlertDialogCancel>
-	                          <AlertDialogAction
-	                            variant="destructive"
-                          onClick={() => void deleteProject(project.id)}
-	                          >
-	                            删除
-	                          </AlertDialogAction>
-	                        </AlertDialogFooter>
-	                      </AlertDialogContent>
-	                    </AlertDialog>
-	                  </div>
 	                  <Link
 	                    href={`/projects/${project.id}`}
-	                    className="block min-h-11 focus-visible:outline-none focus-visible:bg-[var(--color-project-surface-hover)] rounded-[var(--radius-sm)]"
+	                    className="block min-h-11 rounded-[var(--radius-sm)] pr-10 focus-visible:outline-none focus-visible:bg-[var(--color-project-surface-hover)]"
 	                  >
+	                    <h2 className="mb-0.5 truncate text-base font-semibold text-[var(--color-text-primary)]">
+	                      {project.name}
+	                    </h2>
+	                    <span className="text-[11px] text-[var(--color-text-tertiary)]">
+	                      {TYPE_LABELS[project.type] || project.type}
+	                    </span>
 	                    {project.description && (
-	                      <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-[var(--color-text-secondary)]">
+	                      <p className="mt-3 mb-3 line-clamp-2 text-sm leading-relaxed text-[var(--color-text-secondary)]">
 	                        {project.description}
 	                      </p>
 	                    )}
-	                    <div className="flex items-center gap-2 text-[11px] font-mono text-[var(--color-text-tertiary)]">
+	                    <div className="mt-3 flex items-center gap-2 text-[11px] font-mono text-[var(--color-text-tertiary)]">
 	                      <span className="flex items-center gap-1 rounded-[var(--radius-md)] bg-[var(--color-project-control)] px-2 py-1">
-			                      <ChatLines width={12} height={12} strokeWidth={2} />
+	                        <ChatLines width={12} height={12} strokeWidth={2} />
 	                        {project._count.conversations} 对话
 	                      </span>
 	                      <span className="flex items-center gap-1 rounded-[var(--radius-md)] bg-[var(--color-project-control)] px-2 py-1">
-			                      <Page width={12} height={12} strokeWidth={2} />
+	                        <Page width={12} height={12} strokeWidth={2} />
 	                        {project._count.files} 文件
 	                      </span>
 	                      <span className="ml-auto">
@@ -186,6 +144,43 @@ export default function ProjectsPage() {
 	                      </span>
 	                    </div>
 	                  </Link>
+	                  <AlertDialog>
+	                    <AlertDialogTrigger asChild>
+	                      <Button
+	                        type="button"
+	                        variant="ghost"
+	                        size="icon-sm"
+	                        className={cn(
+	                          "absolute right-2 top-2 z-10",
+	                          "size-11 rounded-[var(--radius-sm)] sm:size-7",
+	                          "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
+	                          "text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-muted)]",
+	                          "transition-opacity duration-100"
+	                        )}
+	                        aria-label={`删除 ${project.name}`}
+	                        onClick={(event) => event.stopPropagation()}
+	                      >
+	                        <Trash width={14} height={14} strokeWidth={2} />
+	                      </Button>
+	                    </AlertDialogTrigger>
+	                    <AlertDialogContent>
+	                      <AlertDialogHeader>
+	                        <AlertDialogTitle>删除项目</AlertDialogTitle>
+	                        <AlertDialogDescription>
+	                          确定要删除「{project.name}」吗？相关文件和对话将被一并删除。
+	                        </AlertDialogDescription>
+	                      </AlertDialogHeader>
+	                      <AlertDialogFooter>
+	                        <AlertDialogCancel>取消</AlertDialogCancel>
+	                        <AlertDialogAction
+	                          variant="destructive"
+	                          onClick={() => void deleteProject(project.id)}
+	                        >
+	                          删除
+	                        </AlertDialogAction>
+	                      </AlertDialogFooter>
+	                    </AlertDialogContent>
+	                  </AlertDialog>
                   </SpotlightCard>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="min-w-36">

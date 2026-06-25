@@ -37,6 +37,7 @@ export default function NewProjectPage() {
   const [quickActions, setQuickActions] = useState<QuickActionItem[]>([]);
   const [selectedActions, setSelectedActions] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [newProjectId, setNewProjectId] = useState<string | null>(null);
 
   // Create project first, then trigger prompt generation
   const handleCreateAndGenerate = useCallback(async () => {
@@ -56,6 +57,7 @@ export default function NewProjectPage() {
       // Move to analyzing step
       setStep(2);
       setIsGenerating(true);
+      setNewProjectId(data.project.id);
 
       // Call generate-prompt API
       const res = await fetch(`/api/projects/${data.project.id}/generate-prompt`, {
@@ -74,9 +76,6 @@ export default function NewProjectPage() {
       setGeneratedPrompt(result.systemPrompt || "");
       setQuickActions(result.quickActions || []);
       setStep(3);
-
-      // Store project ID for navigation
-      (window as unknown as Record<string, unknown>)._newProjectId = data.project.id;
     } catch (err) {
       setError(err instanceof Error ? err.message : "操作失败");
       setStep(2); // stay on analyzing step to show error
@@ -86,8 +85,7 @@ export default function NewProjectPage() {
   }, [projectName, projectType, userInput, createProject]);
 
   function goToProject() {
-    const id = (window as unknown as Record<string, unknown>)._newProjectId as string;
-    if (id) router.push(`/projects/${id}`);
+    if (newProjectId) router.push(`/projects/${newProjectId}`);
     else router.push("/chat");
   }
 
@@ -252,7 +250,7 @@ export default function NewProjectPage() {
                     className={cn(
                       "w-full text-left rounded-[var(--radius-md)] p-3 transition-colors duration-150",
                       selectedActions.has(index)
-                        ? "bg-[var(--color-accent-muted)] ring-1 ring-[var(--color-accent)]"
+                        ? "bg-[var(--color-accent-muted)] text-[var(--color-accent)] font-semibold"
                         : "bg-[var(--color-project-control)] hover:bg-[var(--color-project-surface-hover)]"
                     )}
                   >
@@ -282,7 +280,7 @@ export default function NewProjectPage() {
               <FolderOpen size={22} strokeWidth={1.75} className="text-[var(--color-project-action-contrast)]" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">新建项目</h1>
+              <h1 className="text-xl font-semibold tracking-tight text-[var(--color-text-primary)]">新建项目</h1>
               <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">AI 会根据你的场景生成专属配置</p>
             </div>
           </div>

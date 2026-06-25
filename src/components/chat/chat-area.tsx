@@ -131,7 +131,7 @@ export function ChatArea({
           <span className="flex-1">{error}</span>
           <button
             onClick={clearError}
-            className="text-xs underline hover:no-underline"
+            className="rounded-md px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-error-muted)] focus-visible:text-[var(--color-error)]"
           >
             关闭
           </button>

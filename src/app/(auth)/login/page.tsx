@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useId, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
@@ -13,9 +13,11 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("from") || "/chat";
+  const errorId = useId();
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorField, setErrorField] = useState<"email" | "password" | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -35,6 +37,7 @@ function LoginForm() {
 
       if (result?.error) {
         setError("邮箱或密码错误，请重试");
+        setErrorField("password");
         setIsLoading(false);
         return;
       }
@@ -43,6 +46,7 @@ function LoginForm() {
       router.refresh();
     } catch {
       setError("登录异常，请稍后重试");
+      setErrorField(null);
       setIsLoading(false);
     }
   }
@@ -78,6 +82,8 @@ function LoginForm() {
             autoComplete="email"
             required
             placeholder="you@example.com"
+            aria-invalid={errorField === "email" || undefined}
+            aria-describedby={error ? errorId : undefined}
           />
         </div>
 
@@ -96,11 +102,17 @@ function LoginForm() {
             required
             placeholder="••••••••"
             className="font-mono"
+            aria-invalid={errorField === "password" || undefined}
+            aria-describedby={error ? errorId : undefined}
           />
         </div>
 
         {error && (
-          <p className="text-sm text-[var(--color-error)]" role="alert">
+          <p
+            id={errorId}
+            className="text-sm text-[var(--color-error)]"
+            role="alert"
+          >
             {error}
           </p>
         )}

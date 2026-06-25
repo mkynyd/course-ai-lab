@@ -27,8 +27,8 @@
   font-family: "Noto Sans SC";
   font-style: normal;
   font-display: swap;
-  font-weight: 700;
-  src: url("/fonts/noto-sans-sc/noto-sans-sc-700.woff2") format("woff2");
+  font-weight: 600;
+  src: url("/fonts/noto-sans-sc/noto-sans-sc-500.woff2") format("woff2");
 }
 
 /* ============================================
@@ -399,10 +399,17 @@ html {
   }
 }
 
-/* ---- Accessible focus states ---- */
+/* ---- Accessible focus states ----
+   Buttons/links: focus uses accent-soft fill (3.5:1 contrast on bg, well above
+   the 3:1 non-text minimum). AGENTS.md bans ring/outline on buttons/cards, but
+   focus-visible is an accessibility signal not a decorative border — using a
+   background fill (no border, no outline) keeps the design flat.
+   Inputs/textarea/select: caret-color only, no visible ring — keeps the
+   flat-by-default aesthetic. Keyboard users still see cursor position via
+   the accent caret. */
 :where(a, button, [role="button"]):focus-visible {
   color: var(--color-text-primary);
-  background-color: var(--color-interaction-active);
+  background-color: var(--color-accent-soft);
 }
 
 :where(input, textarea, select):focus-visible {

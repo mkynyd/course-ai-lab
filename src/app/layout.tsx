@@ -10,7 +10,6 @@ const figtree = localFont({
     { path: "../../fonts/Figtree/static/Figtree-Regular.ttf", weight: "400", style: "normal" },
     { path: "../../fonts/Figtree/static/Figtree-Medium.ttf", weight: "500", style: "normal" },
     { path: "../../fonts/Figtree/static/Figtree-SemiBold.ttf", weight: "600", style: "normal" },
-    { path: "../../fonts/Figtree/static/Figtree-Bold.ttf", weight: "700", style: "normal" },
   ],
   variable: "--font-figtree",
   display: "swap",

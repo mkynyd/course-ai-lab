@@ -39,6 +39,37 @@ import { useSaveArtifact } from "@/lib/hooks/use-artifacts";
 import { queryKeys } from "@/lib/query-keys";
 import { toChatMessages } from "@/lib/chat/project-conversation-state";
 
+// Empty-state quick prompts: tailored to project type. Project page is where
+// context is loaded (files already uploaded), so these prompts are framed as
+// "do this with my material" — they don't fit the chat route, which is generic
+// (no project context, no uploaded files).
+const SUGGESTED_PROMPTS: Record<ProjectType, string[]> = {
+  review: [
+    "梳理这份资料的章节结构与核心论点",
+    "用通俗的话解释最关键的 3 个概念",
+    "出 5 道判断题检验我的理解",
+    "总结高频考点并按优先级排序",
+  ],
+  experiment: [
+    "总结这份实验报告的研究目的和方法",
+    "列出数据中的关键变量和异常点",
+    "解释实验结论并指出可能的局限",
+    "基于结果生成实验报告大纲",
+  ],
+  coding: [
+    "解释这段代码的整体结构和依赖",
+    "找出可能存在的 bug 和边界问题",
+    "为这个模块生成文档与使用示例",
+    "把这段代码改写成可读的函数注释",
+  ],
+  general: [
+    "梳理这份资料的核心结构",
+    "用通俗的话解释最关键的 3 个概念",
+    "出 5 道题检验我的理解",
+    "总结重点并标注优先级",
+  ],
+};
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const projectId = params.id as string;
@@ -534,11 +565,11 @@ export default function ProjectDetailPage() {
             "bg-[var(--color-panel)] shrink-0 backdrop-blur-[var(--glass-blur)]"
           )}
         >
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
             <button
               onClick={toggleProjectSidebar}
               className={cn(
-	                "inline-flex h-9 w-9 items-center justify-center rounded-xl",
+	                "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
 	                "bg-[var(--color-project-control)]",
 	                "text-[var(--color-text-tertiary)] hover:bg-[var(--color-project-surface-hover)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-project-surface-hover)]",
                 "transition-colors duration-150"
@@ -560,16 +591,16 @@ export default function ProjectDetailPage() {
 	                )}
               </span>
             </button>
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-1 basis-full flex-col gap-0.5 sm:basis-auto">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                   {project.name}
                 </span>
-                <span className="hidden rounded-xl bg-[var(--color-project-control)] px-2 py-0.5 text-[11px] text-[var(--color-text-tertiary)] sm:inline">
+                <span className="rounded-xl bg-[var(--color-project-control)] px-2 py-0.5 text-[11px] text-[var(--color-text-tertiary)]">
                   {projectModeLabel}
                 </span>
               </div>
-              <p className="hidden truncate text-[11px] text-[var(--color-text-tertiary)] sm:block">
+              <p className="hidden truncate text-[11px] text-[var(--color-text-tertiary)] md:block">
                 {contextHint}
               </p>
             </div>
@@ -613,6 +644,30 @@ export default function ProjectDetailPage() {
                   已选择 {selectedFileIds.size} 个文件作为上下文，点击快捷任务或输入问题开始对话
                 </p>
               )}
+              {project.files.length === 0 ? (
+                <p data-dot-avoid className="mt-2 max-w-md text-sm leading-relaxed text-[var(--color-text-secondary)]">
+                  从左侧项目资料上传 PDF / Markdown，上传后 AI 会自动按问题匹配相关片段。
+                </p>
+              ) : (
+                <div data-dot-avoid className="mt-5 flex w-full max-w-xl flex-wrap items-center justify-center gap-2">
+                  {SUGGESTED_PROMPTS[projectType].map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => void sendMessage({ content: prompt, attachments: chatAttachments })}
+                      className={cn(
+                        "rounded-[var(--radius-md)] px-3 py-1.5 text-xs",
+                        "bg-[var(--color-surface)] text-[var(--color-text-secondary)]",
+                        "hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]",
+                        "focus-visible:bg-[var(--color-accent-soft)] focus-visible:text-[var(--color-text-primary)]",
+                        "transition-colors duration-150"
+                      )}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -635,7 +690,7 @@ export default function ProjectDetailPage() {
             <span className="flex-1">{error}</span>
             <button
               onClick={clearError}
-              className="text-xs underline hover:no-underline"
+              className="rounded-md px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-error-muted)] focus-visible:text-[var(--color-error)]"
             >
               关闭
             </button>

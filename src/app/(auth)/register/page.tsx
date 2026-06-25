@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const errorId = useId();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorField, setErrorField] = useState<"email" | "registrationCode" | "password" | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -25,6 +27,7 @@ export default function RegisterPage() {
 
     if (password.length < 8) {
       setError("密码至少需要 8 个字符");
+      setErrorField("password");
       setIsLoading(false);
       return;
     }
@@ -40,12 +43,16 @@ export default function RegisterPage() {
         const data = await res.json();
         if (res.status === 409) {
           setError("该邮箱已被注册");
+          setErrorField("email");
         } else if (data.error?.registrationCode) {
           setError(data.error.registrationCode[0]);
+          setErrorField("registrationCode");
         } else if (data.error?.email) {
           setError(data.error.email[0]);
+          setErrorField("email");
         } else {
           setError("注册失败，请稍后重试");
+          setErrorField(null);
         }
         setIsLoading(false);
         return;
@@ -54,6 +61,7 @@ export default function RegisterPage() {
       router.push("/login?registered=true");
     } catch {
       setError("网络异常，请稍后重试");
+      setErrorField(null);
       setIsLoading(false);
     }
   }
@@ -89,6 +97,8 @@ export default function RegisterPage() {
             autoComplete="email"
             required
             placeholder="you@example.com"
+            aria-invalid={errorField === "email" || undefined}
+            aria-describedby={error ? errorId : undefined}
           />
         </div>
 
@@ -108,6 +118,8 @@ export default function RegisterPage() {
             minLength={8}
             placeholder="输入 Alpha 注册码"
             className="uppercase tracking-wide"
+            aria-invalid={errorField === "registrationCode" || undefined}
+            aria-describedby={error ? errorId : undefined}
           />
         </div>
 
@@ -127,11 +139,17 @@ export default function RegisterPage() {
             minLength={8}
             placeholder="至少 8 个字符"
             className="font-mono"
+            aria-invalid={errorField === "password" || undefined}
+            aria-describedby={error ? errorId : undefined}
           />
         </div>
 
         {error && (
-          <p className="text-sm text-[var(--color-error)]" role="alert">
+          <p
+            id={errorId}
+            className="text-sm text-[var(--color-error)]"
+            role="alert"
+          >
             {error}
           </p>
         )}
