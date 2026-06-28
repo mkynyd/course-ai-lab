@@ -364,8 +364,9 @@ model DocumentChunk {
   chunkIndex  Int     @default(0)
   tokenCount  Int?
   metadata    Json?
+  mediaUrls   String[] @default([])
 
-  // pgvector embedding — 1024 dimensions (Aliyun Bailian text-embedding-v4)
+  // pgvector embedding — 1024 dimensions (qwen3-vl-embedding fusion mode)
   embedding Unsupported("vector(1024)")?
 
   createdAt DateTime @default(now())
