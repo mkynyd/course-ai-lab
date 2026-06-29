@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import crypto from "crypto";
 import {
   embedQuery,
   embedTexts,
@@ -8,8 +9,10 @@ import {
 } from "./embedding";
 
 const mockCreateMultiModalEmbedding = vi.hoisted(() => vi.fn());
-const mockPrismaDocumentChunkFindMany = vi.hoisted(() => vi.fn());
+const mockPrismaFileAssetFindUnique = vi.hoisted(() => vi.fn());
 const mockPrismaExecuteRawUnsafe = vi.hoisted(() => vi.fn());
+const mockRedisGet = vi.hoisted(() => vi.fn());
+const mockRedisSetex = vi.hoisted(() => vi.fn());
 
 vi.mock("dashscope-sdk-official", () => ({
   Configuration: class {},
@@ -20,16 +23,26 @@ vi.mock("dashscope-sdk-official", () => ({
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    documentChunk: { findMany: mockPrismaDocumentChunkFindMany },
+    fileAsset: { findUnique: mockPrismaFileAssetFindUnique },
     $executeRawUnsafe: mockPrismaExecuteRawUnsafe,
+    $queryRawUnsafe: mockPrismaExecuteRawUnsafe,
   },
+}));
+
+vi.mock("@/lib/redis", () => ({
+  getRedis: () => ({
+    get: mockRedisGet,
+    setex: mockRedisSetex,
+  }),
 }));
 
 describe("embedding", () => {
   beforeEach(() => {
     mockCreateMultiModalEmbedding.mockReset();
-    mockPrismaDocumentChunkFindMany.mockReset();
+    mockPrismaFileAssetFindUnique.mockReset();
     mockPrismaExecuteRawUnsafe.mockReset();
+    mockRedisGet.mockReset();
+    mockRedisSetex.mockReset();
   });
 
   it("embedQuery returns a 1024-dim vector", async () => {
@@ -91,14 +104,17 @@ describe("embedding", () => {
   });
 
   it("embedChunksForFile fuses text with image and video URLs", async () => {
+    mockPrismaFileAssetFindUnique.mockResolvedValue({ textContent: "text content" });
     const chunks = [
       {
         id: "chunk-1",
         content: "text content",
+        contentHash: "different-hash",
         mediaUrls: ["https://example.com/image.png", "https://example.com/video.mp4"],
+        embedding: null,
       },
     ];
-    mockPrismaDocumentChunkFindMany.mockResolvedValue(chunks);
+    mockPrismaExecuteRawUnsafe.mockResolvedValueOnce(chunks);
     mockCreateMultiModalEmbedding.mockResolvedValue({
       status_code: 200,
       output: {
@@ -108,11 +124,10 @@ describe("embedding", () => {
 
     await embedChunksForFile({ fileAssetId: "file-1", apiKey: "sk-test" });
 
-    expect(mockPrismaDocumentChunkFindMany).toHaveBeenCalledWith({
-      where: { fileAssetId: "file-1" },
-      select: { id: true, content: true, mediaUrls: true },
-      orderBy: { chunkIndex: "asc" },
-    });
+    expect(mockPrismaExecuteRawUnsafe).toHaveBeenCalledWith(
+      expect.stringContaining(`SELECT id, "contentHash", content, "mediaUrls", embedding FROM "DocumentChunk"`),
+      "file-1"
+    );
     expect(mockCreateMultiModalEmbedding).toHaveBeenCalledWith({
       model: EMBEDDING_MODEL,
       input: [
@@ -131,15 +146,18 @@ describe("embedding", () => {
   });
 
   it("embedChunksForFile caps media URLs at 5 per fusion request", async () => {
+    mockPrismaFileAssetFindUnique.mockResolvedValue({ textContent: "text content" });
     const mediaUrls = Array.from({ length: 7 }, (_, i) => `https://example.com/img${i}.png`);
     const chunks = [
       {
         id: "chunk-2",
         content: "text content",
+        contentHash: "different-hash",
         mediaUrls,
+        embedding: null,
       },
     ];
-    mockPrismaDocumentChunkFindMany.mockResolvedValue(chunks);
+    mockPrismaExecuteRawUnsafe.mockResolvedValueOnce(chunks);
     mockCreateMultiModalEmbedding.mockResolvedValue({
       status_code: 200,
       output: {
@@ -154,5 +172,25 @@ describe("embedding", () => {
     expect(call.input.slice(1)).toEqual(
       mediaUrls.slice(0, 5).map((url) => ({ image: url }))
     );
+  });
+
+  it("embedChunksForFile short-circuits when contentHash is unchanged and embeddings exist", async () => {
+    mockPrismaFileAssetFindUnique.mockResolvedValue({ textContent: "text content" });
+    const contentHash = crypto.createHash("sha256").update("text content").digest("hex").slice(0, 32);
+    const chunks = [
+      {
+        id: "chunk-3",
+        content: "text content",
+        contentHash,
+        mediaUrls: [],
+        embedding: [0.1], // non-null indicates already embedded
+      },
+    ];
+    mockPrismaExecuteRawUnsafe.mockResolvedValueOnce(chunks);
+
+    await embedChunksForFile({ fileAssetId: "file-1", apiKey: "sk-test" });
+
+    expect(mockCreateMultiModalEmbedding).not.toHaveBeenCalled();
+    expect(mockPrismaExecuteRawUnsafe).toHaveBeenCalledTimes(1);
   });
 });

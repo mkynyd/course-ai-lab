@@ -10,6 +10,8 @@ import { refreshProjectIndex } from "@/lib/rag/project-index";
 import { z } from "zod";
 import { deleteStoredObject, type StorageProvider } from "@/lib/storage/object-storage";
 import { logger } from "@/lib/logger";
+import { invalidateSearchCache } from "@/lib/cache/rag-search-cache";
+import { invalidateFileSelectCache } from "@/lib/cache/rag-file-select-cache";
 
 const updateFileSchema = z
   .object({
@@ -177,6 +179,8 @@ export async function DELETE(
 
   await prisma.fileAsset.delete({ where: { id } });
   if (file.projectId) {
+    await invalidateSearchCache(file.projectId);
+    await invalidateFileSelectCache(file.projectId);
     await refreshProjectIndex({
       userId: session.user.id,
       projectId: file.projectId,

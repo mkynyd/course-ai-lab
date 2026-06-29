@@ -19,6 +19,10 @@ export interface CacheMetricsResponse {
     "markdown" | "docx" | "pdf",
     { hits: number; misses: number; hitRate: number }
   >;
+  rag: Record<
+    "search" | "file-select" | "query-embed",
+    { hits: number; misses: number; hitRate: number }
+  >;
 }
 
 export function useCacheMetrics(days = 7) {

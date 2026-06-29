@@ -226,29 +226,62 @@ function TokensSection() {
       {cacheMetrics.isPending ? (
         <Skeleton className="h-24 rounded-2xl" />
       ) : cacheMetrics.data ? (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-[var(--color-project-control)] p-4">
-            <p className="text-xs text-[var(--color-text-tertiary)]">近 7 天总量</p>
-            <p className="mt-1 text-2xl font-semibold text-[var(--color-text-primary)] tracking-tight">
-              {formatTokenCount(cacheMetrics.data.tokenUsage.totalTokens)}
-            </p>
-            <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-              今日 {formatTokenCount(cacheMetrics.data.tokenUsage.todayTokens)}
-            </p>
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-[var(--color-project-control)] p-4">
+              <p className="text-xs text-[var(--color-text-tertiary)]">近 7 天总量</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--color-text-primary)] tracking-tight">
+                {formatTokenCount(cacheMetrics.data.tokenUsage.totalTokens)}
+              </p>
+              <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                今日 {formatTokenCount(cacheMetrics.data.tokenUsage.todayTokens)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[var(--color-project-control)] p-4 space-y-1">
+              {(["deepseek", "minimax"] as const).map((provider) => (
+                <div key={provider} className="flex justify-between py-0.5 text-sm">
+                  <span className="text-[var(--color-text-secondary)]">
+                    {provider === "deepseek" ? "DeepSeek" : "MiniMax"}
+                  </span>
+                  <span className="font-mono text-[var(--color-text-primary)]">
+                    {cacheMetrics.data.tokenUsage.providers[provider].requestCount > 0
+                      ? formatTokenCount(cacheMetrics.data.tokenUsage.providers[provider].totalTokens)
+                      : "--"}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="rounded-2xl bg-[var(--color-project-control)] p-4 space-y-1">
-            {(["deepseek", "minimax"] as const).map((provider) => (
-              <div key={provider} className="flex justify-between py-0.5 text-sm">
-                <span className="text-[var(--color-text-secondary)]">
-                  {provider === "deepseek" ? "DeepSeek" : "MiniMax"}
-                </span>
-                <span className="font-mono text-[var(--color-text-primary)]">
-                  {cacheMetrics.data.tokenUsage.providers[provider].requestCount > 0
-                    ? formatTokenCount(cacheMetrics.data.tokenUsage.providers[provider].totalTokens)
-                    : "--"}
-                </span>
-              </div>
-            ))}
+
+          <div>
+            <p className="text-xs text-[var(--color-text-tertiary)] mb-2">
+              RAG 缓存命中率
+            </p>
+            <div className="rounded-2xl bg-[var(--color-project-control)] p-4 space-y-2">
+              {([
+                ["search", "检索结果缓存"] as const,
+                ["file-select", "文件选择缓存"] as const,
+                ["query-embed", "查询向量缓存"] as const,
+              ]).map(([key, label]) => {
+                const metric = cacheMetrics.data.rag[key];
+                const total = metric.hits + metric.misses;
+                const rate = total > 0 ? Math.round(metric.hitRate * 100) : 0;
+                return (
+                  <div key={key} className="flex items-center gap-3 text-sm">
+                    <span className="w-24 text-[var(--color-text-secondary)]">{label}</span>
+                    <div className="flex-1 h-2 rounded-full bg-[var(--color-surface)] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-[var(--color-success)]"
+                        style={{ width: `${rate}%` }}
+                      />
+                    </div>
+                    <span className="w-12 text-right font-mono text-[var(--color-text-primary)]">
+                      {total > 0 ? `${rate}%` : "--"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : (

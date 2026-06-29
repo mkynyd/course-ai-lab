@@ -1,5 +1,10 @@
 import { Configuration, DashscopeApi } from "dashscope-sdk-official";
 import { prisma } from "@/lib/db";
+import crypto from "crypto";
+import {
+  getQueryEmbeddingCache,
+  setQueryEmbeddingCache,
+} from "@/lib/cache/rag-query-embed-cache";
 
 export const EMBEDDING_MODEL = "qwen3-vl-embedding";
 export const EMBEDDING_DIM = 1024;
@@ -92,51 +97,103 @@ export async function embedTexts(
 }
 
 export async function embedQuery(query: string, apiKey: string): Promise<number[]> {
+  const cached = await getQueryEmbeddingCache(query);
+  if (cached) return cached;
+
   const embeddings = await embedTexts([query], apiKey);
-  return embeddings[0];
+  const result = embeddings[0];
+  await setQueryEmbeddingCache(query, result);
+  return result;
+}
+
+export async function embedChunkWithFallback(options: {
+  chunk: { id: string; content: string; mediaUrls: string[] };
+  api: DashscopeApi;
+}): Promise<number[]> {
+  const { chunk, api } = options;
+  const mediaUrls = (chunk.mediaUrls ?? []).slice(0, MAX_MEDIA_PER_FUSION);
+  const multimediaInput: { text?: string; image?: string; video?: string }[] = [
+    { text: chunk.content },
+  ];
+  for (const url of mediaUrls) {
+    if (/\.(mp4|mov|avi|webm|mkv|flv|mpeg|mpg)(\?.*)?$/i.test(url)) {
+      multimediaInput.push({ video: url });
+    } else {
+      multimediaInput.push({ image: url });
+    }
+  }
+
+  try {
+    const embeddings = await callMultiModalEmbedding(api, multimediaInput, {
+      enableFusion: true,
+      expectCount: 1,
+      context: `chunk ${chunk.id}`,
+    });
+    return embeddings[0];
+  } catch (error) {
+    console.warn(
+      `Multimodal embedding failed for chunk ${chunk.id}, falling back to text-only`,
+      error
+    );
+    const embeddings = await callMultiModalEmbedding(api, [{ text: chunk.content }], {
+      enableFusion: false,
+      expectCount: 1,
+      context: `chunk ${chunk.id} text fallback`,
+    });
+    return embeddings[0];
+  }
 }
 
 export async function embedChunksForFile(options: {
   fileAssetId: string;
   apiKey: string;
 }): Promise<void> {
-  const chunks = await prisma.documentChunk.findMany({
-    where: { fileAssetId: options.fileAssetId },
-    select: { id: true, content: true, mediaUrls: true },
-    orderBy: { chunkIndex: "asc" },
+  const fileAsset = await prisma.fileAsset.findUnique({
+    where: { id: options.fileAssetId },
+    select: { textContent: true },
   });
-  if (chunks.length === 0) return;
+  if (!fileAsset?.textContent) return;
+
+  const newHash = crypto
+    .createHash("sha256")
+    .update(fileAsset.textContent)
+    .digest("hex")
+    .slice(0, 32);
+
+  const existingChunks =
+    await prisma.$queryRawUnsafe<
+      { id: string; contentHash: string | null; content: string; mediaUrls: string[]; embedding: unknown }[]
+    >(
+      `SELECT id, "contentHash", content, "mediaUrls", embedding FROM "DocumentChunk" WHERE "fileAssetId" = $1 ORDER BY "chunkIndex" ASC`,
+      options.fileAssetId
+    );
+
+  if (
+    existingChunks.length > 0 &&
+    existingChunks.every((c) => c.contentHash === newHash && c.embedding !== null)
+  ) {
+    return; // Content unchanged and already embedded
+  }
+
+  if (existingChunks.length === 0) return;
 
   const api = getApi(options.apiKey);
 
-  for (let i = 0; i < chunks.length; i += CHUNK_EMBED_CONCURRENCY) {
-    const batch = chunks.slice(i, i + CHUNK_EMBED_CONCURRENCY);
+  for (let i = 0; i < existingChunks.length; i += CHUNK_EMBED_CONCURRENCY) {
+    const batch = existingChunks.slice(i, i + CHUNK_EMBED_CONCURRENCY);
     await Promise.all(
       batch.map(async (chunk) => {
-        const mediaUrls = (chunk.mediaUrls ?? []).slice(0, MAX_MEDIA_PER_FUSION);
-        const input: { text?: string; image?: string; video?: string }[] = [
-          { text: chunk.content },
-        ];
-        for (const url of mediaUrls) {
-          if (/\.(mp4|mov|avi|webm|mkv|flv|mpeg|mpg)(\?.*)?$/i.test(url)) {
-            input.push({ video: url });
-          } else {
-            input.push({ image: url });
-          }
+        try {
+          const embedding = await embedChunkWithFallback({ chunk, api });
+          const vector = `[${embedding.join(",")}]`;
+          await prisma.$executeRawUnsafe(
+            `UPDATE "DocumentChunk" SET embedding = $1::vector WHERE id = $2`,
+            vector,
+            chunk.id
+          );
+        } catch (error) {
+          console.error(`Failed to embed chunk ${chunk.id}:`, error);
         }
-
-        const embeddings = await callMultiModalEmbedding(api, input, {
-          enableFusion: true,
-          expectCount: 1,
-          context: `chunk ${chunk.id}`,
-        });
-
-        const vector = `[${embeddings[0].join(",")}]`;
-        await prisma.$executeRawUnsafe(
-          `UPDATE "DocumentChunk" SET embedding = $1::vector WHERE id = $2`,
-          vector,
-          chunk.id
-        );
       })
     );
   }

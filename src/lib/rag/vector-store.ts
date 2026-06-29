@@ -13,6 +13,15 @@ import {
   matchProjectIndex,
   refreshProjectIndex,
 } from "@/lib/rag/project-index";
+import {
+  getSearchCache,
+  setSearchCache,
+  invalidateSearchCache,
+} from "@/lib/cache/rag-search-cache";
+import {
+  getFileSelectCache,
+  setFileSelectCache,
+} from "@/lib/cache/rag-file-select-cache";
 
 // ============================================================
 // Configuration
@@ -375,6 +384,10 @@ export async function createDocumentChunks(params: CreateChunksParams): Promise<
 
   await prisma.documentChunk.createMany({ data });
 
+  if (projectId) {
+    await invalidateSearchCache(projectId);
+  }
+
   return texts.length;
 }
 
@@ -471,6 +484,10 @@ export async function selectFilesWithDeepSeek(params: {
   limit?: number;
 }): Promise<{ fileIds: string[]; source: "agentic-retrieval" | "index-fallback" }> {
   const limit = params.limit ?? 12;
+
+  const cached = await getFileSelectCache(params.projectId, params.query);
+  if (cached) return cached;
+
   const fallback = async () => {
     const result = await matchProjectIndex({
       userId: params.userId,
@@ -488,7 +505,9 @@ export async function selectFilesWithDeepSeek(params: {
   try {
     apiKey = await getProviderApiKey(params.userId, "deepseek");
   } catch {
-    return fallback();
+    const result = await fallback();
+    await setFileSelectCache(params.projectId, params.query, result);
+    return result;
   }
 
   let projectIndex = await prisma.projectIndex.findUnique({
@@ -535,10 +554,18 @@ export async function selectFilesWithDeepSeek(params: {
     const fileIds = [...new Set(extractJsonFileIds(output))]
       .filter((id) => validIds.has(id))
       .slice(0, limit);
-    if (fileIds.length === 0) return fallback();
-    return { fileIds, source: "agentic-retrieval" };
+    if (fileIds.length === 0) {
+      const result = await fallback();
+      await setFileSelectCache(params.projectId, params.query, result);
+      return result;
+    }
+    const result = { fileIds, source: "agentic-retrieval" as const };
+    await setFileSelectCache(params.projectId, params.query, result);
+    return result;
   } catch {
-    return fallback();
+    const result = await fallback();
+    await setFileSelectCache(params.projectId, params.query, result);
+    return result;
   }
 }
 
@@ -634,6 +661,13 @@ export async function hybridSearch(params: {
   fileAssetIds?: string[];
   limit?: number;
 }): Promise<KeywordChunkResult[]> {
+  const cached = await getSearchCache(
+    params.projectId,
+    params.query,
+    params.fileAssetIds
+  );
+  if (cached) return cached;
+
   const limit = params.limit ?? 10;
   const [vectorResults, keywordResults] = await Promise.all([
     params.queryEmbedding
@@ -667,7 +701,10 @@ export async function hybridSearch(params: {
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([id]) => id);
-  if (sortedIds.length === 0) return [];
+  if (sortedIds.length === 0) {
+    await setSearchCache(params.projectId, params.query, params.fileAssetIds, []);
+    return [];
+  }
 
   const chunks = await prisma.documentChunk.findMany({
     where: { id: { in: sortedIds }, userId: params.userId },
@@ -683,7 +720,7 @@ export async function hybridSearch(params: {
   });
   const byId = new Map(chunks.map((chunk) => [chunk.id, chunk]));
 
-  return sortedIds.flatMap((id) => {
+  const result = sortedIds.flatMap((id) => {
     const chunk = byId.get(id);
     if (!chunk) return [];
     return [{
@@ -696,6 +733,9 @@ export async function hybridSearch(params: {
       originalName: chunk.fileAsset?.originalName || chunk.title,
     }];
   });
+
+  await setSearchCache(params.projectId, params.query, params.fileAssetIds, result);
+  return result;
 }
 
 function parserNotice(file: {
