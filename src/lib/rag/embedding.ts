@@ -1,5 +1,9 @@
 import { Configuration, DashscopeApi } from "dashscope-sdk-official";
 import { prisma } from "@/lib/db";
+import {
+  getQueryEmbeddingCache,
+  setQueryEmbeddingCache,
+} from "@/lib/cache/rag-query-embed-cache";
 
 export const EMBEDDING_MODEL = "qwen3-vl-embedding";
 export const EMBEDDING_DIM = 1024;
@@ -92,8 +96,13 @@ export async function embedTexts(
 }
 
 export async function embedQuery(query: string, apiKey: string): Promise<number[]> {
+  const cached = await getQueryEmbeddingCache(query);
+  if (cached) return cached;
+
   const embeddings = await embedTexts([query], apiKey);
-  return embeddings[0];
+  const result = embeddings[0];
+  await setQueryEmbeddingCache(query, result);
+  return result;
 }
 
 export async function embedChunksForFile(options: {
