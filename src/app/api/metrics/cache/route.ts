@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import {
   getCacheMetrics,
   getExportCacheMetrics,
+  getRagCacheMetrics,
   getTokenUsageMetrics,
 } from "@/lib/cache/api-cache-metrics";
 
@@ -18,11 +19,12 @@ export async function GET(request: Request) {
   const days = Number.isFinite(requestedDays)
     ? Math.min(90, Math.max(1, Math.floor(requestedDays)))
     : 7;
-  const [metrics, tokenUsage, exports] = await Promise.all([
+  const [metrics, tokenUsage, exports, rag] = await Promise.all([
     getCacheMetrics(session.user.id, days),
     getTokenUsageMetrics(session.user.id, days),
     getExportCacheMetrics(),
+    getRagCacheMetrics(),
   ]);
 
-  return NextResponse.json({ days, ...metrics, tokenUsage, exports });
+  return NextResponse.json({ days, ...metrics, tokenUsage, exports, rag });
 }
