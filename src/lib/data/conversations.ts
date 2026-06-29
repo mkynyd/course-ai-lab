@@ -1,10 +1,15 @@
 import "server-only";
 import { cache } from "react";
 import { prisma } from "@/lib/db";
+import type { AgentSource } from "@/lib/agent/sources";
+
+function normalizeSources(value: unknown): AgentSource[] | null {
+  return Array.isArray(value) ? (value as AgentSource[]) : null;
+}
 
 export const getConversation = cache(
-  async (id: string, userId: string) =>
-    prisma.conversation.findFirst({
+  async (id: string, userId: string) => {
+    const conversation = await prisma.conversation.findFirst({
       where: { id, userId },
       include: {
         messages: {
@@ -17,10 +22,20 @@ export const getConversation = cache(
             tokenCount: true,
             cacheHitTokens: true,
             cacheMissTokens: true,
+            sources: true,
           },
         },
       },
-    })
+    });
+    if (!conversation) return null;
+    return {
+      ...conversation,
+      messages: conversation.messages.map((message) => ({
+        ...message,
+        sources: normalizeSources(message.sources),
+      })),
+    };
+  }
 );
 
 export const getConversations = cache(async (userId: string) =>

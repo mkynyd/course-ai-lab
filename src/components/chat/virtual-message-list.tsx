@@ -40,6 +40,7 @@ function Bubble({
       content={message.content}
       reasoningContent={message.reasoningContent}
       tokenCount={message.tokenCount ?? undefined}
+      sources={message.sources}
       isStreaming={message.isStreaming}
       onSaveArtifact={
         message.role === "assistant" ? onSaveArtifact : undefined
@@ -108,6 +109,7 @@ export function VirtualMessageList({
             role: message.role,
             reasoningContent: message.reasoningContent,
             tokenCount: message.tokenCount,
+            sourceCount: message.sources?.length ?? 0,
             isStreaming: message.isStreaming,
             isReasoningOpen: false,
           },

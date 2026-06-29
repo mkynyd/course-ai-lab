@@ -1,3 +1,5 @@
+import type { AgentSource } from "@/lib/agent/sources";
+
 export interface ConversationSummary {
   id: string;
   title: string;
@@ -16,6 +18,7 @@ export interface ConversationMessage {
   tokenCount?: number | null;
   cacheHitTokens?: number | null;
   cacheMissTokens?: number | null;
+  sources?: AgentSource[] | null;
   createdAt?: string;
 }
 
@@ -120,6 +123,7 @@ export interface ArtifactSummary {
 
 export interface ArtifactDetail extends ArtifactSummary {
   content: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface ConversionSummary {

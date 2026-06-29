@@ -113,6 +113,7 @@ export async function POST(
     }
   }
 
+  let messageSources: unknown = null;
   if (parsed.data.messageId) {
     const message = await prisma.message.findFirst({
       where: {
@@ -120,10 +121,12 @@ export async function POST(
         role: "assistant",
         conversation: { userId, projectId },
       },
+      select: { sources: true },
     });
     if (!message) {
       return NextResponse.json({ error: "关联消息无效" }, { status: 400 });
     }
+    messageSources = message.sources;
   }
 
   const artifact = await prisma.artifact.create({
@@ -135,6 +138,7 @@ export async function POST(
       title: parsed.data.title || defaultTitle(parsed.data.type),
       type: parsed.data.type,
       content: parsed.data.content,
+      metadata: messageSources ? { sources: messageSources } : undefined,
     },
   });
   return NextResponse.json({ artifact }, { status: 201 });

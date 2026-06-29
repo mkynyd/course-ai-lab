@@ -8,12 +8,17 @@ const mocks = vi.hoisted(() => ({
   conversationFindFirst: vi.fn(),
   conversationCreate: vi.fn(),
   conversationUpdate: vi.fn(),
+  conversationSkillCreate: vi.fn(),
+  conversationSkillUpdateMany: vi.fn(),
+  messageCreate: vi.fn(),
+  messageFindMany: vi.fn(),
   messageUpdate: vi.fn(),
   messageDelete: vi.fn(),
   getProviderApiKey: vi.fn(),
   retrieveProjectContext: vi.fn(),
   shouldUseProjectContext: vi.fn(),
   embedQuery: vi.fn(),
+  streamChat: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -29,7 +34,13 @@ vi.mock("@/lib/db", () => ({
       create: mocks.conversationCreate,
       update: mocks.conversationUpdate,
     },
+    conversationSkill: {
+      create: mocks.conversationSkillCreate,
+      updateMany: mocks.conversationSkillUpdateMany,
+    },
     message: {
+      create: mocks.messageCreate,
+      findMany: mocks.messageFindMany,
       update: mocks.messageUpdate,
       delete: mocks.messageDelete,
     },
@@ -58,7 +69,7 @@ vi.mock("@/lib/rate-limit", () => ({
 
 vi.mock("@/lib/deepseek", () => ({
   DeepSeekError: class DeepSeekError extends Error {},
-  streamChat: vi.fn(),
+  streamChat: mocks.streamChat,
 }));
 
 import { accumulateAndSave, POST } from "@/app/api/chat/route";
@@ -100,12 +111,20 @@ describe("POST /api/chat", () => {
     );
     mocks.embedQuery.mockResolvedValue(Array.from({ length: 1024 }, (_, i) => i / 1024));
     mocks.conversationUpdate.mockResolvedValue({});
+    mocks.conversationSkillCreate.mockResolvedValue({});
+    mocks.conversationSkillUpdateMany.mockResolvedValue({});
+    mocks.messageCreate.mockResolvedValue({ id: "message-1" });
+    mocks.messageFindMany.mockResolvedValue([]);
     mocks.messageUpdate.mockResolvedValue({});
     mocks.messageDelete.mockResolvedValue({});
     mocks.conversationCreate.mockResolvedValue({
       id: "conversation-1",
       userId: "user-1",
       projectId: "project-1",
+      model: "deepseek-v4-pro",
+      modelLock: null,
+      thinkingEnabled: false,
+      activeSkillId: null,
     });
   });
 
@@ -154,6 +173,70 @@ describe("POST /api/chat", () => {
     expect(mocks.retrieveProjectContext).not.toHaveBeenCalled();
     expect(mocks.embedQuery).not.toHaveBeenCalled();
     expect(mocks.conversationCreate).not.toHaveBeenCalled();
+  });
+
+  it("serves ordinary chat through the Agent Orchestrator without project retrieval", async () => {
+    const originalFlag = process.env.AGENT_ORCHESTRATOR_ENABLED;
+    process.env.AGENT_ORCHESTRATOR_ENABLED = "1";
+    mocks.getProviderApiKey.mockResolvedValue("sk-test");
+    mocks.conversationCreate.mockResolvedValue({
+      id: "conversation-1",
+      userId: "user-1",
+      projectId: "project-1",
+      model: "deepseek-v4-pro",
+      modelLock: null,
+      thinkingEnabled: false,
+      activeSkillId: null,
+    });
+    mocks.messageCreate
+      .mockResolvedValueOnce({ id: "user-message-1" })
+      .mockResolvedValueOnce({ id: "assistant-message-1" });
+    mocks.streamChat.mockResolvedValue({
+      stream: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            new TextEncoder().encode(
+              `data: ${JSON.stringify({ choices: [{ delta: { content: "你好" } }] })}\n\n`
+            )
+          );
+          controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      }),
+      getUsage: () => ({ prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }),
+      getToolCalls: () => [],
+    });
+
+    try {
+      const request = new NextRequest("http://localhost/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "你好，帮我解释一下动态规划是什么",
+          model: "deepseek-v4-pro",
+          thinkingEnabled: false,
+          reasoningEffort: "high",
+          projectId: "project-1",
+          selectedFileIds: [],
+          mode: "general",
+        }),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("X-Agent-Orchestrator")).toBe("enabled");
+      expect(mocks.retrieveProjectContext).not.toHaveBeenCalled();
+
+      const body = await response.text();
+      expect(body).toContain("model_adapter_selected");
+      expect(body).toContain("你好");
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env.AGENT_ORCHESTRATOR_ENABLED;
+      } else {
+        process.env.AGENT_ORCHESTRATOR_ENABLED = originalFlag;
+      }
+    }
   });
 });
 

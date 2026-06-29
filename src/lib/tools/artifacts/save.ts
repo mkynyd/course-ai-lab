@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@/generated/prisma/client";
 
 export async function saveArtifact(
   userId: string,
@@ -12,6 +13,12 @@ export async function saveArtifact(
     content: string;
   }
 ): Promise<Record<string, unknown>> {
+  const message = messageId
+    ? await prisma.message.findFirst({
+        where: { id: messageId, conversationId },
+        select: { sources: true },
+      })
+    : null;
   const artifact = await prisma.artifact.create({
     data: {
       userId,
@@ -22,6 +29,9 @@ export async function saveArtifact(
       type: args.type ?? "general",
       format: args.format ?? "markdown",
       content: args.content,
+      metadata: message?.sources
+        ? ({ sources: message.sources } as Prisma.InputJsonValue)
+        : undefined,
     },
     select: { id: true, title: true, type: true, createdAt: true },
   });

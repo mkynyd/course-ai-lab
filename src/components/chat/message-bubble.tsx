@@ -1,7 +1,17 @@
 "use client";
 
 import { memo, useState } from "react";
-import { ChevronDown, ChevronRight, User, Bot, Save } from "lucide-react";
+import {
+  Archive,
+  BookOpen,
+  Bot,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  Save,
+  User,
+} from "lucide-react";
 import { MarkdownContent } from "@/components/markdown/markdown-content";
 import { LoadingIndicator } from "@/components/workbench/loading-indicator";
 import { Button } from "@/components/ui/button";
@@ -14,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import type { AgentSource } from "@/lib/agent/sources";
 
 interface MessageBubbleProps {
   id?: string;
@@ -21,6 +32,7 @@ interface MessageBubbleProps {
   content: string;
   reasoningContent?: string | null;
   tokenCount?: number | null;
+  sources?: AgentSource[] | null;
   isStreaming?: boolean;
   onSaveArtifact?: (input: {
     messageId: string;
@@ -45,12 +57,65 @@ const ARTIFACT_TYPES = [
   ["code_explanation", "代码说明"],
 ] as const;
 
+function sourceIcon(type: AgentSource["type"]) {
+  if (type === "web") return <ExternalLink size={12} />;
+  if (type === "project_file") return <FileText size={12} />;
+  if (type === "arxiv") return <BookOpen size={12} />;
+  return <Archive size={12} />;
+}
+
+function MessageSources({ sources }: { sources?: AgentSource[] | null }) {
+  const visible = (sources ?? []).slice(0, 5);
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="mt-3 max-w-[74ch] text-xs text-[var(--color-text-tertiary)]">
+      <div className="mb-1 font-medium text-[var(--color-text-secondary)]">来源</div>
+      <div className="flex flex-wrap gap-1.5">
+        {visible.map((source, index) => {
+          const label = source.title || source.url || source.fileId || `来源 ${index + 1}`;
+          const content = (
+            <>
+              {sourceIcon(source.type)}
+              <span className="max-w-[18rem] truncate">{label}</span>
+            </>
+          );
+          const className =
+            "inline-flex h-7 max-w-full items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-panel-muted)] px-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-interaction-hover)]";
+
+          return source.url ? (
+            <a
+              key={`${source.type}-${source.url}-${index}`}
+              href={source.url}
+              target="_blank"
+              rel="noreferrer"
+              className={className}
+            >
+              {content}
+            </a>
+          ) : (
+            <span key={`${source.type}-${source.fileId ?? source.artifactId ?? index}`} className={className}>
+              {content}
+            </span>
+          );
+        })}
+        {(sources?.length ?? 0) > visible.length && (
+          <span className="inline-flex h-7 items-center rounded-[var(--radius-md)] bg-[var(--color-panel-muted)] px-2">
+            +{(sources?.length ?? 0) - visible.length}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MessageBubbleComponent({
   id,
   role,
   content,
   reasoningContent,
   tokenCount,
+  sources,
   isStreaming = false,
   onSaveArtifact,
 }: MessageBubbleProps) {
@@ -159,6 +224,8 @@ function MessageBubbleComponent({
           {isStreaming && content && <span className="typing-cursor" />}
         </div>
 
+        {isAssistant && !isStreaming && <MessageSources sources={sources} />}
+
         {isAssistant && onSaveArtifact && id && !isStreaming && content && (
           <div className="mt-2">
             <button
@@ -231,6 +298,7 @@ export const MessageBubble = memo(
       previous.content === next.content &&
       previous.reasoningContent === next.reasoningContent &&
       previous.tokenCount === next.tokenCount &&
+      previous.sources === next.sources &&
       previous.onSaveArtifact === next.onSaveArtifact
     );
   }

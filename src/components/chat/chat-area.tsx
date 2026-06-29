@@ -10,9 +10,11 @@ import { TokenUsageBar } from "@/components/chat/token-usage-bar";
 import { ContextRing } from "@/components/chat/context-ring";
 import { CostDisplay } from "@/components/chat/cost-display";
 import { AgentTimeline } from "@/components/chat/agent-timeline";
+import { SkillBadge } from "@/components/chat/skill-badge";
 import { AmbientField } from "@/components/workbench/ambient-field";
-import { AlertCircle, Hash } from "lucide-react";
+import { AlertCircle, Cpu, Globe2, Hash } from "lucide-react";
 import type { AgentEvent } from "@/lib/agent/types";
+import type { AgentSource } from "@/lib/agent/sources";
 import { cn } from "@/lib/utils";
 
 interface ChatAreaProps {
@@ -25,8 +27,21 @@ interface ChatAreaProps {
     tokenCount?: number | null;
     cacheHitTokens?: number | null;
     cacheMissTokens?: number | null;
+    sources?: AgentSource[] | null;
   }>;
 }
+
+const PROVIDER_LABELS = {
+  deepseek: "DeepSeek",
+  minimax: "MiniMax",
+} as const;
+
+const FALLBACK_LABELS = {
+  native_tools: "Native tools",
+  json_action: "JSON actions",
+  prefetch_tools: "Prefetch tools",
+  none: "Direct",
+} as const;
 
 export function ChatArea({
   initialConversationId,
@@ -45,6 +60,7 @@ export function ChatArea({
     abort,
     clearError,
     agentTimeline,
+    agentSession,
     approveExecution,
     rejectExecution,
   } = useChat({
@@ -62,7 +78,7 @@ export function ChatArea({
   const visibleAgentEntries = Object.values(agentTimeline)
     .filter((entry) => entry.latestEvent.type !== "approval_granted")
     .sort((a, b) => {
-      const order: Record<AgentEvent["type"], number> = {
+      const order: Partial<Record<AgentEvent["type"], number>> = {
         approval_required: 0,
         tool_started: 1,
         tool_proposed: 2,
@@ -76,7 +92,7 @@ export function ChatArea({
         skill_activated: 10,
         skill_deactivated: 11,
       };
-      return order[a.latestEvent.type] - order[b.latestEvent.type];
+      return (order[a.latestEvent.type] ?? 99) - (order[b.latestEvent.type] ?? 99);
     })
     .slice(-3);
 
@@ -100,8 +116,33 @@ export function ChatArea({
           "bg-[var(--color-panel)] shrink-0 backdrop-blur-[var(--glass-blur)]"
         )}
       >
-        <div className="text-xs font-medium text-[var(--color-text-tertiary)]">
-          聊天
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="text-xs font-medium text-[var(--color-text-tertiary)]">
+            聊天
+          </div>
+          {agentSession.activeSkill && (
+            <SkillBadge
+              skill={agentSession.activeSkill}
+              className={cn(
+                "rounded-[var(--radius-md)]",
+                agentSession.activeSkill.status === "awaiting_context" &&
+                  "bg-[var(--color-warning)]/12 text-[var(--color-warning)]"
+              )}
+            />
+          )}
+          {agentSession.webAccess && (
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-panel-muted)] px-2 text-xs text-[var(--color-text-secondary)]">
+              <Globe2 size={12} />
+              {agentSession.webAccess.mode === "auto" ? "自动联网" : "联网"}
+            </span>
+          )}
+          {agentSession.modelAdapter && (
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-panel-muted)] px-2 text-xs text-[var(--color-text-secondary)]">
+              <Cpu size={12} />
+              {PROVIDER_LABELS[agentSession.modelAdapter.provider]} ·{" "}
+              {FALLBACK_LABELS[agentSession.modelAdapter.fallback]}
+            </span>
+          )}
         </div>
 
         {usage && (

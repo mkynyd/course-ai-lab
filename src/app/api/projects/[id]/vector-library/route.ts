@@ -10,6 +10,10 @@ function extractParseError(metadata: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function toIsoString(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -64,7 +68,7 @@ export async function GET(
 
   const files: ProjectFile[] = rawFiles.map((file) => ({
     ...file,
-    createdAt: file.createdAt.toISOString(),
+    createdAt: toIsoString(file.createdAt),
     processingError: extractParseError(file.processingMetadata),
     processingMetadata: file.processingMetadata as Record<string, unknown> | null,
   }));

@@ -13,6 +13,7 @@ import type { FileAttachment } from "@/lib/chat/router";
 import type { ProjectType } from "@/components/chat/quick-task-bar";
 import { queryKeys } from "@/lib/query-keys";
 import type { AgentEvent, ApprovalScope } from "@/lib/agent/types";
+import type { AgentSource } from "@/lib/agent/sources";
 
 export interface AgentTimelineEntry {
   executionId: string;
@@ -25,6 +26,22 @@ export interface AgentTimelineEntry {
   approvalExpiresAt?: number;
 }
 
+export interface AgentSessionState {
+  activeSkill?: {
+    skillId: string;
+    version: string;
+    status?: "active" | "awaiting_context";
+    reason?: string;
+  };
+  suggestions: Array<{ skillId: string; label: string; reason: string }>;
+  webAccess?: { mode: "auto" | "manual"; reason: string };
+  modelAdapter?: {
+    provider: "deepseek" | "minimax";
+    model: string;
+    fallback: "native_tools" | "json_action" | "prefetch_tools" | "none";
+  };
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -33,6 +50,7 @@ export interface ChatMessage {
   tokenCount?: number | null;
   cacheHitTokens?: number | null;
   cacheMissTokens?: number | null;
+  sources?: AgentSource[] | null;
   isStreaming?: boolean;
   streamingSource?: "foreground" | "background";
   streamingStartedAt?: number;
@@ -81,6 +99,9 @@ export function useChat(options: UseChatOptions = {}) {
   const [agentTimeline, setAgentTimeline] = useState<
     Record<string, AgentTimelineEntry>
   >({});
+  const [agentSession, setAgentSession] = useState<AgentSessionState>({
+    suggestions: [],
+  });
   const abortRef = useRef<AbortController | null>(null);
   const conversationIdRef = useRef<string | undefined>(
     options.initialConversationId
@@ -113,6 +134,7 @@ export function useChat(options: UseChatOptions = {}) {
       // Abort any still-attached foreground stream before sending a new message.
       abortRef.current?.abort();
       setAgentTimeline({});
+      setAgentSession({ suggestions: [] });
       const streamSession = streamSessionRef.current + 1;
       streamSessionRef.current = streamSession;
 
@@ -237,11 +259,65 @@ export function useChat(options: UseChatOptions = {}) {
           },
           {
             onAgentEvent: (event) => {
-              if (event.type === "skill_activated" || event.type === "skill_deactivated") {
-                // Skill lifecycle is informational; timeline only tracks executions.
+              if (event.type === "skill_activated") {
+                setAgentSession((current) => ({
+                  ...current,
+                  activeSkill: {
+                    skillId: event.skillId,
+                    version: event.version,
+                    status: event.status,
+                    reason: event.reason,
+                  },
+                }));
                 return;
               }
-              const executionId = (event as { executionId: string }).executionId;
+              if (event.type === "skill_deactivated") {
+                setAgentSession((current) => ({
+                  ...current,
+                  activeSkill: undefined,
+                }));
+                return;
+              }
+              if (event.type === "skill_suggested") {
+                setAgentSession((current) => ({
+                  ...current,
+                  suggestions: event.suggestions,
+                }));
+                return;
+              }
+              if (event.type === "web_access_enabled") {
+                setAgentSession((current) => ({
+                  ...current,
+                  webAccess: { mode: event.mode, reason: event.reason },
+                }));
+                return;
+              }
+              if (event.type === "model_adapter_selected") {
+                setAgentSession((current) => ({
+                  ...current,
+                  modelAdapter: {
+                    provider: event.provider,
+                    model: event.model,
+                    fallback: event.fallback,
+                  },
+                }));
+                return;
+              }
+              if (event.type === "sources_updated") {
+                setMessages((prev) =>
+                  prev.map((message) =>
+                    message.id === streamingId
+                      ? { ...message, sources: event.sources }
+                      : message
+                  )
+                );
+                return;
+              }
+              if (!("executionId" in event)) {
+                // Skill/web/model lifecycle is informational; timeline only tracks executions.
+                return;
+              }
+              const executionId = event.executionId;
               setAgentTimeline((prev) => {
                 const existing = prev[executionId];
                 if (event.type === "approval_required") {
@@ -375,6 +451,7 @@ export function useChat(options: UseChatOptions = {}) {
     setError(null);
     setIsStreaming(false);
     setAgentTimeline({});
+    setAgentSession({ suggestions: [] });
   }, []);
 
   const loadConversation = useCallback(
@@ -393,6 +470,8 @@ export function useChat(options: UseChatOptions = {}) {
       setUsage(null);
       setError(null);
       setIsStreaming(hasStreamingMessage(nextMessages));
+      setAgentTimeline({});
+      setAgentSession({ suggestions: [] });
     },
     []
   );
@@ -485,6 +564,7 @@ export function useChat(options: UseChatOptions = {}) {
     newConversation,
     loadConversation,
     agentTimeline,
+    agentSession,
     approveExecution,
     rejectExecution,
   };

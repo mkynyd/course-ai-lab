@@ -31,6 +31,7 @@ export interface MessageHeightEstimateInput {
   role: "user" | "assistant" | "system";
   reasoningContent?: string | null;
   tokenCount?: number | null;
+  sourceCount?: number;
   isStreaming?: boolean;
   isReasoningOpen?: boolean;
 }
@@ -210,6 +211,10 @@ export function estimateMessageHeight(
 
   if (input.tokenCount != null) {
     height += 20; // token count row
+  }
+
+  if (input.sourceCount && input.sourceCount > 0) {
+    height += 48 + Math.ceil(Math.min(input.sourceCount, 5) / 2) * 30;
   }
 
   // Streaming placeholder is roughly the same as a short message; no extra.

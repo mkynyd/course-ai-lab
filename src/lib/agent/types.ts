@@ -169,9 +169,34 @@ export interface ToolExecutionRecord {
   auditMetadata: Record<string, unknown> | null;
 }
 
+import type { AgentSource } from "./sources";
+
 export type AgentEvent =
-  | { type: "skill_activated"; skillId: string; version: string }
+  | {
+      type: "skill_activated";
+      skillId: string;
+      version: string;
+      status?: "active" | "awaiting_context";
+      reason?: string;
+    }
+  | {
+      type: "skill_suggested";
+      suggestions: Array<{ skillId: string; label: string; reason: string }>;
+    }
   | { type: "skill_deactivated"; skillId: string }
+  | { type: "web_access_enabled"; mode: "auto" | "manual"; reason: string }
+  | {
+      type: "sources_updated";
+      sources: AgentSource[];
+    }
+  | {
+      type: "model_adapter_selected";
+      provider: "deepseek" | "minimax";
+      model: string;
+      fallback: "native_tools" | "json_action" | "prefetch_tools" | "none";
+    }
+  | { type: "profile_changed"; from: string; to: string; reason: string }
+  | { type: "tool_loop_stop_reason"; reason: string }
   | {
       type: "tool_proposed";
       executionId: string;

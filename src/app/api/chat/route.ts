@@ -25,6 +25,23 @@ import { getProviderApiKey } from "@/lib/data/provider-access";
 import { ProviderAccessError } from "@/lib/provider-access";
 import { logger } from "@/lib/logger";
 import { _internalForTesting as agentLoopInternal } from "@/lib/agent/conversation-loop";
+import { routeSkill } from "@/lib/agent/skill-router";
+import {
+  buildPlannedToolCalls,
+  executePlannedToolCalls,
+  type PlannedToolCall,
+} from "@/lib/agent/orchestrator";
+import { formatAgentEvent } from "@/lib/agent/event-stream";
+import { skillRegistry } from "@/lib/agent/skill-registry";
+import type { AgentSource } from "@/lib/agent/sources";
+import type { Prisma } from "@/generated/prisma/client";
+import "@/lib/tools/registry";
+
+function isAgentOrchestratorEnabled() {
+  if (process.env.AGENT_ORCHESTRATOR_ENABLED === "0") return false;
+  if (process.env.AGENT_ORCHESTRATOR_ENABLED === "1") return true;
+  return process.env.NODE_ENV !== "production";
+}
 
 async function parseRequest(request: NextRequest): Promise<{
   body: SendMessageInput;
@@ -193,7 +210,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const webSearchActive = body.webSearchActive === true;
+  const agentOrchestratorEnabled = isAgentOrchestratorEnabled();
+  const skillRoute = routeSkill({
+    message,
+    hiddenPrompt,
+    projectId: project?.id,
+    selectedFileIds: uniqueFileIds,
+    selectedFiles: selectedFiles.map((file) => ({
+      id: file.id,
+      name: file.originalName,
+      mimeType: file.mimeType,
+    })),
+    webSearchActive: body.webSearchActive,
+  });
+  const webSearchActive =
+    body.webSearchActive === true ||
+    (agentOrchestratorEnabled && skillRoute.webAccessRecommended);
   const projectMode = mode || project?.type || "general";
 
   let systemPrompt: string;
@@ -222,7 +254,7 @@ export async function POST(request: NextRequest) {
   let retrievedContext = "";
   let contextNotice: string | null = null;
 
-  if (project) {
+  if (project && !agentOrchestratorEnabled) {
 
     if (shouldUseProjectContext(effectivePrompt, uniqueFileIds)) {
       const retrieval = await retrieveProjectContext({
@@ -340,6 +372,86 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const agentEvents: string[] = [];
+  const agentDecoder = new TextDecoder();
+  const emitAgentEvent = (event: Parameters<typeof formatAgentEvent>[0]) => {
+    agentEvents.push(formatAgentEvent(event));
+  };
+
+  if (agentOrchestratorEnabled) {
+    emitAgentEvent({
+      type: "model_adapter_selected",
+      provider: modelRoute.provider,
+      model,
+      fallback: modelRoute.provider === "minimax" ? "prefetch_tools" : "native_tools",
+    });
+    if (skillRoute.suggestions.length > 0) {
+      emitAgentEvent({
+        type: "skill_suggested",
+        suggestions: skillRoute.suggestions,
+      });
+    }
+    if (webSearchActive && skillRoute.webAccessRecommended) {
+      emitAgentEvent({
+        type: "web_access_enabled",
+        mode: body.webSearchActive === true ? "manual" : "auto",
+        reason: skillRoute.reason,
+      });
+    }
+    if (skillRoute.activeSkillId) {
+      const skill = skillRegistry.get(skillRoute.activeSkillId);
+      const skillVersion = skill?.version ?? "1.0.0";
+      conversation = await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: {
+          activeSkillId: skillRoute.activeSkillId,
+          activeSkillVersion: skillVersion,
+          activeSkillSource: skillRoute.source,
+          activeSkillStatus: skillRoute.status,
+        },
+      });
+      await prisma.conversationSkill.create({
+        data: {
+          conversationId: conversation.id,
+          skillId: skillRoute.activeSkillId,
+          version: skillVersion,
+          source: skillRoute.source,
+          statusAtActivation: skillRoute.status,
+          confidence: skillRoute.confidence,
+          reason: skillRoute.reason,
+          missingInfo: skillRoute.missingInfo as Prisma.InputJsonValue,
+        },
+      });
+      emitAgentEvent({
+        type: "skill_activated",
+        skillId: skillRoute.activeSkillId,
+        version: skillVersion,
+        status: skillRoute.status === "none" ? undefined : skillRoute.status,
+        reason: skillRoute.reason,
+      });
+    } else if (conversation.activeSkillId) {
+      const deactivatedSkillId = conversation.activeSkillId;
+      conversation = await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: {
+          activeSkillId: null,
+          activeSkillVersion: null,
+          activeSkillSource: null,
+          activeSkillStatus: null,
+        },
+      });
+      await prisma.conversationSkill.updateMany({
+        where: {
+          conversationId: conversation.id,
+          skillId: deactivatedSkillId,
+          deactivatedAt: null,
+        },
+        data: { deactivatedAt: new Date() },
+      });
+      emitAgentEvent({ type: "skill_deactivated", skillId: deactivatedSkillId });
+    }
+  }
+
   let apiKey = preflightRoute?.provider === modelRoute.provider
     ? preflightApiKey
     : null;
@@ -375,12 +487,77 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  let orchestratorToolContext = "";
+  let orchestratorSources: AgentSource[] = [];
+  if (agentOrchestratorEnabled) {
+    const plannedCalls = buildPlannedToolCalls({
+      prompt: effectivePrompt,
+      profile: skillRoute.profile,
+      projectId: project?.id,
+      selectedFileIds: uniqueFileIds,
+      webAccessRecommended: webSearchActive,
+    });
+
+    if (plannedCalls.length > 0) {
+      const agentTap = new agentLoopInternal.EventTap((chunk) => {
+        agentEvents.push(agentDecoder.decode(chunk, { stream: false }));
+      });
+      const toolRun = await executePlannedToolCalls({
+        profile: skillRoute.profile,
+        plannedCalls,
+        runTool: async (call: PlannedToolCall) => {
+          const result = await agentLoopInternal.runAutoTool(
+            {
+              userId,
+              conversationId: conversation.id,
+              projectId: project?.id,
+              skillId: skillRoute.activeSkillId ?? undefined,
+              apiKey,
+              model,
+              thinkingEnabled,
+              reasoningEffort,
+              activeTools: [],
+              initialMessages: [],
+              signal: new AbortController().signal,
+            },
+            { id: call.id, name: call.name, input: call.input },
+            agentTap
+          );
+          if (result.status === "succeeded" && result.summary) {
+            return { status: "succeeded", summary: result.summary };
+          }
+          return {
+            status: "failed",
+            error: result.error ?? "工具执行失败",
+          };
+        },
+      });
+      orchestratorToolContext = toolRun.contextMessage;
+      orchestratorSources = toolRun.sources;
+      if (orchestratorSources.length > 0) {
+        emitAgentEvent({
+          type: "sources_updated",
+          sources: orchestratorSources,
+        });
+      }
+      if (toolRun.stopReason && process.env.AGENT_DEBUG_EVENTS === "1") {
+        emitAgentEvent({
+          type: "tool_loop_stop_reason",
+          reason: toolRun.stopReason,
+        });
+      }
+    }
+  }
+
   // 10. 构建 DeepSeek 消息数组（system prompt 在最前）
+  const userPromptWithTools = orchestratorToolContext
+    ? `${orchestratorToolContext}\n\n# 用户问题\n\n${effectivePrompt}`
+    : effectivePrompt;
   const contextualUserMessage = retrievedContext
     ? `# 项目资料\n\n${retrievedContext}\n\n# 用户问题\n\n${effectivePrompt}`
     : contextNotice
-      ? `${effectivePrompt}\n\n[系统提示：${contextNotice}]`
-      : effectivePrompt;
+      ? `${userPromptWithTools}\n\n[系统提示：${contextNotice}]`
+      : userPromptWithTools;
 
   const legacyMessages: DeepSeekMessage[] = [
     { role: "system", content: systemPrompt },
@@ -393,8 +570,8 @@ export async function POST(request: NextRequest) {
     {
       role: "user",
       content: contextNotice
-        ? `${effectivePrompt}\n\n[系统提示：${contextNotice}]`
-        : effectivePrompt,
+        ? `${userPromptWithTools}\n\n[系统提示：${contextNotice}]`
+        : userPromptWithTools,
     },
   ];
   const messages = cacheExperiments.adaptivePromptOrdering.enabled
@@ -476,9 +653,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 11.5 Tool call execution loop (max 2 rounds, DeepSeek only)
-  const agentEvents: string[] = [];
-  const agentDecoder = new TextDecoder();
-  if (modelRoute.provider === "deepseek" && "getToolCalls" in streamResult) {
+  if (!agentOrchestratorEnabled && modelRoute.provider === "deepseek" && "getToolCalls" in streamResult) {
     const MAX_TOOL_ROUNDS = 2;
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const toolCalls = (streamResult as unknown as { getToolCalls: () => Array<{ id: string; name: string; input: Record<string, unknown> }> }).getToolCalls();
@@ -570,6 +745,7 @@ export async function POST(request: NextRequest) {
       conversationId: conversation.id,
       role: "assistant",
       content: "",
+      sources: orchestratorSources as unknown as Prisma.InputJsonValue,
     },
     select: { id: true },
   });
@@ -583,7 +759,8 @@ export async function POST(request: NextRequest) {
     conversation.id,
     assistantMessage.id,
     modelRoute.provider,
-    streamResult.getUsage
+    streamResult.getUsage,
+    orchestratorSources
   ).catch((err) => {
     logger.error("保存助手消息失败", { error: String(err) });
   });
@@ -634,6 +811,7 @@ export async function POST(request: NextRequest) {
       "X-Conversation-Id": conversation.id,
       "X-Message-Id": assistantMessage.id,
       "X-Model-Provider": modelRoute.provider,
+      "X-Agent-Orchestrator": agentOrchestratorEnabled ? "enabled" : "disabled",
     },
   });
 }
@@ -649,7 +827,8 @@ export async function accumulateAndSave(
     total_tokens: number;
     prompt_cache_hit_tokens?: number;
     prompt_cache_miss_tokens?: number;
-  } | null
+  } | null,
+  sources: AgentSource[] = []
 ) {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
@@ -698,6 +877,7 @@ export async function accumulateAndSave(
         provider,
         cacheHitTokens: usage?.prompt_cache_hit_tokens ?? null,
         cacheMissTokens: usage?.prompt_cache_miss_tokens ?? null,
+        sources: sources as unknown as Prisma.InputJsonValue,
       },
     });
   } else {

@@ -27,6 +27,7 @@ export async function GET(
           tokenCount: true,
           cacheHitTokens: true,
           cacheMissTokens: true,
+          sources: true,
           createdAt: true,
         },
       },
