@@ -9,6 +9,7 @@ import { startFileParseBatch } from "@/lib/files/parse-job";
 import { deleteStoredObject, type StorageProvider } from "@/lib/storage/object-storage";
 import { logger } from "@/lib/logger";
 import { checkRateLimit, RateLimits } from "@/lib/rate-limit";
+import { invalidateSearchCache } from "@/lib/cache/rag-search-cache";
 
 const batchFileSchema = z.object({
   action: z.enum(["delete", "reparse", "download"]),
@@ -117,6 +118,7 @@ export async function POST(
     await prisma.fileAsset.deleteMany({
       where: { id: { in: fileIds }, userId: session.user.id, projectId },
     });
+    await invalidateSearchCache(projectId);
     await refreshProjectIndex({
       userId: session.user.id,
       projectId,

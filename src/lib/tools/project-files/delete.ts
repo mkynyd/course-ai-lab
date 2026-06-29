@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { invalidateSearchCache } from "@/lib/cache/rag-search-cache";
 
 export async function deleteProjectFile(
   userId: string,
@@ -15,6 +16,7 @@ export async function deleteProjectFile(
   }
   try {
     await prisma.fileAsset.delete({ where: { id: fileId } });
+    await invalidateSearchCache(projectId);
   } catch (error) {
     logger.error("delete file failed", { error: String(error), fileId });
     return { error: "DELETE_FAILED" };

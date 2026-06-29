@@ -13,6 +13,11 @@ import {
   matchProjectIndex,
   refreshProjectIndex,
 } from "@/lib/rag/project-index";
+import {
+  getSearchCache,
+  setSearchCache,
+  invalidateSearchCache,
+} from "@/lib/cache/rag-search-cache";
 
 // ============================================================
 // Configuration
@@ -375,6 +380,10 @@ export async function createDocumentChunks(params: CreateChunksParams): Promise<
 
   await prisma.documentChunk.createMany({ data });
 
+  if (projectId) {
+    await invalidateSearchCache(projectId);
+  }
+
   return texts.length;
 }
 
@@ -634,6 +643,13 @@ export async function hybridSearch(params: {
   fileAssetIds?: string[];
   limit?: number;
 }): Promise<KeywordChunkResult[]> {
+  const cached = await getSearchCache(
+    params.projectId,
+    params.query,
+    params.fileAssetIds
+  );
+  if (cached) return cached;
+
   const limit = params.limit ?? 10;
   const [vectorResults, keywordResults] = await Promise.all([
     params.queryEmbedding
@@ -667,7 +683,10 @@ export async function hybridSearch(params: {
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([id]) => id);
-  if (sortedIds.length === 0) return [];
+  if (sortedIds.length === 0) {
+    await setSearchCache(params.projectId, params.query, params.fileAssetIds, []);
+    return [];
+  }
 
   const chunks = await prisma.documentChunk.findMany({
     where: { id: { in: sortedIds }, userId: params.userId },
@@ -683,7 +702,7 @@ export async function hybridSearch(params: {
   });
   const byId = new Map(chunks.map((chunk) => [chunk.id, chunk]));
 
-  return sortedIds.flatMap((id) => {
+  const result = sortedIds.flatMap((id) => {
     const chunk = byId.get(id);
     if (!chunk) return [];
     return [{
@@ -696,6 +715,9 @@ export async function hybridSearch(params: {
       originalName: chunk.fileAsset?.originalName || chunk.title,
     }];
   });
+
+  await setSearchCache(params.projectId, params.query, params.fileAssetIds, result);
+  return result;
 }
 
 function parserNotice(file: {
