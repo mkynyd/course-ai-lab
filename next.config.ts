@@ -3,9 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
 
-  // Allow the 200MB PDF conversion limit plus multipart overhead through the proxy.
+  // Allow the 300MB project file batch upload plus multipart overhead through the proxy.
   experimental: {
-    proxyClientMaxBodySize: "210mb",
+    proxyClientMaxBodySize: "400mb",
   },
   serverExternalPackages: [
     "pdfjs-dist",

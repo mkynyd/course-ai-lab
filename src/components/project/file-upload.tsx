@@ -37,9 +37,14 @@ const ALLOWED_TYPES = [
   ".html", ".css",
   ".pdf",
   ".png", ".jpg", ".jpeg", ".webp",
+  // Microsoft Office / WPS / iWork
+  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+  ".wps", ".et", ".dps",
+  ".pages", ".numbers", ".key",
 ];
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_TOTAL_SIZE = 300 * 1024 * 1024; // 300MB
 
 const CATEGORY_DESCRIPTIONS: Record<FileCategory, string> = {
   试卷: "考试、测验、习题集等题目材料",
@@ -88,7 +93,15 @@ export function FileUpload({
       const oversized = files.filter((f) => f.size > MAX_FILE_SIZE);
       if (oversized.length > 0) {
         setError(
-          `超过 20MB 限制: ${oversized.map((f) => f.name).join(", ")}`
+          `超过 50MB 限制: ${oversized.map((f) => f.name).join(", ")}`
+        );
+        return;
+      }
+
+      const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+      if (totalSize > MAX_TOTAL_SIZE) {
+        setError(
+          `单次上传总大小超过 300MB 限制（当前 ${(totalSize / 1024 / 1024).toFixed(1)}MB）`
         );
         return;
       }
@@ -211,7 +224,7 @@ export function FileUpload({
                   点击选择文件，或拖入此区域
                 </span>
                 <span className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                  PDF、图片、文本/代码；单次最多 50 个文件，单个 ≤ 20MB
+                  PDF、Office/WPS、图片、文本/代码；单次最多 50 个文件，单个 ≤ 50MB，总计 ≤ 300MB
                 </span>
               </>
             )}
@@ -288,7 +301,7 @@ export function FileUpload({
             <span className="font-medium text-[var(--color-text-primary)]">
               {category || "未选择"}
             </span>
-            。支持 PDF、图片、文本/代码，单次最多 50 个。
+            。支持 PDF、Office/WPS、图片、文本/代码，单次最多 50 个，单个 ≤ 50MB，总计 ≤ 300MB。
           </DialogDescription>
         </DialogHeader>
         <Stepper

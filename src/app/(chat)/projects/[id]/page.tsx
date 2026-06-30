@@ -197,10 +197,15 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     if (!hasParsingFiles) return;
     const timer = window.setInterval(() => {
-      void refetchProject();
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.detail(projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.files(projectId),
+      });
     }, 3000);
     return () => window.clearInterval(timer);
-  }, [hasParsingFiles, refetchProject]);
+  }, [hasParsingFiles, projectId, queryClient]);
 
   useEffect(() => {
     if (

@@ -78,6 +78,7 @@ export async function POST(
       userId: session.user.id,
       projectId,
     },
+    include: { resources: true },
   });
 
   if (files.length !== fileIds.length) {
@@ -114,6 +115,20 @@ export async function POST(
             logger.warn("文件对象删除失败", { fileId: file.id, error: String(error) });
           });
         }
+        await Promise.all(
+          file.resources.map((resource) =>
+            deleteStoredObject({
+              provider: resource.storageProvider as StorageProvider,
+              key: resource.storagePath,
+            }).catch((error) => {
+              logger.warn("文件资源对象删除失败", {
+                fileId: file.id,
+                resourceId: resource.id,
+                error: String(error),
+              });
+            })
+          )
+        );
       })
     );
     await prisma.fileAsset.deleteMany({

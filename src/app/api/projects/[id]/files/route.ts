@@ -28,10 +28,23 @@ const CODE_EXTENSIONS: Record<string, string> = {
   "css": "text/css",
 };
 
-// 项目内文件解析走 MiniMax M3,仅支持 PDF / 图片 / 文本/代码。
-// Office / WPS / iWork 暂不支持,需要先到文档工具转 PDF 后再上传。
 const DOCUMENT_EXTENSIONS: Record<string, string> = {
   pdf: "application/pdf",
+  // Microsoft Office
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  // WPS Office
+  wps: "application/wps-office.wps",
+  et: "application/wps-office.et",
+  dps: "application/wps-office.dps",
+  // Apple iWork
+  pages: "application/vnd.apple.pages",
+  numbers: "application/vnd.apple.numbers",
+  key: "application/vnd.apple.keynote",
 };
 
 const IMAGE_EXTENSIONS: Record<string, string> = {
@@ -41,7 +54,8 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   webp: "image/webp",
 };
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_TOTAL_SIZE = 300 * 1024 * 1024; // 300MB
 const MAX_FILES_PER_REQUEST = 50;
 
 function isFileCategory(value: unknown): value is FileCategory {
@@ -155,6 +169,19 @@ export async function POST(
       );
     }
 
+    const totalSize = rawFiles.reduce(
+      (sum, file) => sum + (isUploadFile(file) ? file.size : 0),
+      0
+    );
+    if (totalSize > MAX_TOTAL_SIZE) {
+      return NextResponse.json(
+        {
+          error: `单次上传总大小超过 300MB 限制（当前 ${(totalSize / 1024 / 1024).toFixed(1)}MB）`,
+        },
+        { status: 413 }
+      );
+    }
+
     // 模态窗口 step1 选定的文件分类,会写入每条 FileAsset。
     const categoryField = formData.get("category");
     const pendingCategory: FileCategory | null = isFileCategory(categoryField)
@@ -186,7 +213,7 @@ export async function POST(
           results.push({
             success: false,
             originalName: file.name,
-            error: `超过 20MB 限制`,
+            error: `超过 50MB 限制`,
           });
           continue;
         }

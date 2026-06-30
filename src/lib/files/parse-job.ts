@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import path from "path";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getProviderApiKey } from "@/lib/data/provider-access";
@@ -13,7 +14,14 @@ import {
   parseDocumentWithMiniMax,
 } from "@/lib/vision/minimax";
 import { embedChunksForFile } from "@/lib/rag/embedding";
-import { readStoredObject, type StorageProvider } from "@/lib/storage/object-storage";
+import {
+  readStoredObject,
+  uploadObjectBuffer,
+  deleteStoredObject,
+  type StorageProvider,
+} from "@/lib/storage/object-storage";
+import { parseFileWithMinerU } from "@/lib/parse/mineru";
+import type { ParsedImageAsset } from "@/lib/parse/mineru-result";
 
 export const PARSING_STAGES = {
   uploading: "上传文件中",
@@ -45,7 +53,7 @@ const TEXT_EXTENSIONS = new Set([
 
 const PDF_EXTENSIONS = new Set(["pdf"]);
 
-const UNSUPPORTED_OFFICE_EXTENSIONS = new Set([
+const OFFICE_EXTENSIONS = new Set([
   "ppt",
   "pptx",
   "doc",
@@ -110,6 +118,159 @@ async function getBailianKey(userId: string) {
   }
 }
 
+async function getMinerUToken(userId: string) {
+  try {
+    return await getProviderApiKey(userId, "mineru");
+  } catch {
+    return undefined;
+  }
+}
+
+interface StoredFileAsset {
+  id: string;
+  relativePath: string;
+  mimeType: string;
+  size: number;
+  storageProvider: StorageProvider;
+  storagePath: string;
+  resourceUrl: string;
+}
+
+async function storeFileAssets(input: {
+  userId: string;
+  fileAssetId: string;
+  assets: ParsedImageAsset[];
+}): Promise<StoredFileAsset[]> {
+  const stored: StoredFileAsset[] = [];
+  for (const asset of input.assets) {
+    const id = crypto.randomUUID();
+    const filename = path.posix.basename(asset.relativePath);
+    const object = await uploadObjectBuffer({
+      key: [
+        "users",
+        input.userId,
+        "file-assets",
+        input.fileAssetId,
+        "resources",
+        id,
+        filename,
+      ].join("/"),
+      mimeType: asset.mimeType,
+      buffer: asset.buffer,
+    });
+    stored.push({
+      id,
+      relativePath: asset.relativePath,
+      mimeType: asset.mimeType,
+      size: asset.buffer.length,
+      storageProvider: object.provider,
+      storagePath: object.key,
+      resourceUrl: `/api/files/${input.fileAssetId}/resources/${id}`,
+    });
+  }
+  return stored;
+}
+
+const MD_IMAGE_REGEX = /(!\[[^\]]*]\(\s*)(<?)([^)\s>]+)(>?)([^)]*\))/g;
+const HTML_IMAGE_REGEX = /(<img\b[^>]*\bsrc\s*=\s*["'])([^"']+)(["'][^>]*>)/gi;
+
+function rewriteAssetReferences(
+  content: string,
+  assetMap: StoredFileAsset[]
+): string {
+  const lookup = new Map(assetMap.map((a) => [a.relativePath, a.resourceUrl]));
+  return content
+    .replace(MD_IMAGE_REGEX, (match, prefix, open, reference, close, suffix) => {
+      const url = lookup.get(reference);
+      return url ? `${prefix}${open}${url}${close}${suffix}` : match;
+    })
+    .replace(HTML_IMAGE_REGEX, (match, prefix, reference, suffix) => {
+      const url = lookup.get(reference);
+      return url ? `${prefix}${url}${suffix}` : match;
+    });
+}
+
+async function parseOfficeWithMinerU(options: {
+  userId: string;
+  file: {
+    id: string;
+    originalName: string;
+    processingMetadata: unknown;
+  };
+  data: Buffer;
+}) {
+  const token = await getMinerUToken(options.userId);
+  if (!token) {
+    throw new Error("尚未配置 MinerU Token，Office 文件无法解析");
+  }
+
+  const parsed = await parseFileWithMinerU({
+    token,
+    fileBuffer: options.data,
+    filename: options.file.originalName,
+    onProgress(stage, progress) {
+      const normalizedStage =
+        stage === "running" || stage === "converting" ? "model" : stage;
+      if (normalizedStage === "model" && progress) {
+        void updateStage(options.file, "model", {
+          parser: "mineru-office",
+          extractedPages: progress.current,
+          totalPages: progress.total,
+        });
+      }
+    },
+  });
+
+  // 清理旧资源（重新解析时）
+  const oldResources = await prisma.fileAssetResource.findMany({
+    where: { fileAssetId: options.file.id },
+    select: { id: true, storageProvider: true, storagePath: true },
+  });
+  if (oldResources.length > 0) {
+    await Promise.all(
+      oldResources.map((r) =>
+        deleteStoredObject({
+          provider: r.storageProvider as StorageProvider,
+          key: r.storagePath,
+        }).catch(() => {})
+      )
+    );
+    await prisma.fileAssetResource.deleteMany({
+      where: { fileAssetId: options.file.id },
+    });
+  }
+
+  const storedAssets = await storeFileAssets({
+    userId: options.userId,
+    fileAssetId: options.file.id,
+    assets: parsed.assets,
+  });
+
+  await prisma.fileAssetResource.createMany({
+    data: storedAssets.map((asset) => ({
+      id: asset.id,
+      fileAssetId: options.file.id,
+      relativePath: asset.relativePath,
+      mimeType: asset.mimeType,
+      size: asset.size,
+      storageProvider: asset.storageProvider,
+      storagePath: asset.storagePath,
+    })),
+  });
+
+  const content = rewriteAssetReferences(parsed.content, storedAssets);
+
+  return {
+    content,
+    status: "parsed" as const,
+    metadata: {
+      ...parsed.metadata,
+      parsedAt: new Date().toISOString(),
+      assetCount: storedAssets.length,
+    },
+  };
+}
+
 type MiniMaxImageMedia = "image/png" | "image/jpeg" | "image/webp";
 
 function imageMediaType(mimeType: string): MiniMaxImageMedia | null {
@@ -147,8 +308,16 @@ async function parseFileContent(options: {
     };
   }
 
-  if (UNSUPPORTED_OFFICE_EXTENSIONS.has(ext)) {
-    throw new Error("暂不支持 Office 格式直接解析，请先转换为 PDF 后再上传");
+  if (OFFICE_EXTENSIONS.has(ext)) {
+    return parseOfficeWithMinerU({
+      userId: options.userId,
+      file: {
+        id: options.file.id,
+        originalName: options.file.originalName,
+        processingMetadata: options.file.processingMetadata,
+      },
+      data,
+    });
   }
 
   if (!PDF_EXTENSIONS.has(ext) && options.file.mimeType !== "application/pdf") {
