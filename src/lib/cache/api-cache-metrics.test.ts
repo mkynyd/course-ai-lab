@@ -49,6 +49,10 @@ describe("aggregateTokenUsageRows", () => {
           createdAt: new Date("2026-06-20T01:00:00Z"),
           tokenCount: 200,
           provider: "deepseek",
+          model: "deepseek-v4-pro",
+          inputCacheHitTokens: 0,
+          inputCacheMissTokens: 100,
+          outputTokens: 100,
         },
         {
           createdAt: new Date("2026-06-20T02:00:00Z"),
@@ -69,9 +73,16 @@ describe("aggregateTokenUsageRows", () => {
       todayTokens: 300,
       requestCount: 3,
       unattributedTokens: 120,
+      estimatedCostCny: 0.0009,
+      inputTokens: 100,
+      outputTokens: 100,
       providers: {
-        deepseek: { totalTokens: 200, requestCount: 1 },
-        minimax: { totalTokens: 100, requestCount: 1 },
+        deepseek: {
+          totalTokens: 200,
+          requestCount: 1,
+          estimatedCostCny: 0.0009,
+        },
+        minimax: { totalTokens: 100, requestCount: 1, estimatedCostCny: 0 },
       },
     });
   });

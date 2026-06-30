@@ -8,7 +8,6 @@ import { ChatInput } from "@/components/chat/chat-input";
 import { VirtualMessageList } from "@/components/chat/virtual-message-list";
 import { TokenUsageBar } from "@/components/chat/token-usage-bar";
 import { ContextRing } from "@/components/chat/context-ring";
-import { CostDisplay } from "@/components/chat/cost-display";
 import { AgentTimeline } from "@/components/chat/agent-timeline";
 import { SkillBadge } from "@/components/chat/skill-badge";
 import { ContextBudgetWarning } from "@/components/chat/context-budget-warning";
@@ -135,16 +134,6 @@ export function ChatArea({
     })
     .slice(-3);
 
-  // 计算 Token 总数
-  const totalTokens = messages.reduce(
-    (sum, m) => sum + (m.tokenCount || 0),
-    0
-  );
-  const totalInputTokens =
-    usage?.promptTokens || Math.round(totalTokens * 0.4);
-  const totalOutputTokens =
-    usage?.completionTokens || Math.round(totalTokens * 0.6);
-
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg)]">
       {/* 顶部模型切换栏 */}
@@ -185,15 +174,8 @@ export function ChatArea({
         </div>
 
         {usage && (
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
             <ContextRing used={usage.totalTokens} />
-            <CostDisplay
-              inputTokens={totalInputTokens}
-              outputTokens={totalOutputTokens}
-              cacheHitTokens={usage.cacheHitTokens}
-              cacheMissTokens={usage.cacheMissTokens}
-              model={model as "deepseek-v4-pro" | "deepseek-v4-flash"}
-            />
           </div>
         )}
       </div>

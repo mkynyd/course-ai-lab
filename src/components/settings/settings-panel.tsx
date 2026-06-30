@@ -19,7 +19,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AvatarMark } from "@/components/user/avatar-mark";
 import { useCacheMetrics } from "@/lib/hooks/use-cache-metrics";
+import {
+  useUpdateUserProfile,
+  useUserProfile,
+} from "@/lib/hooks/use-user-profile";
+import {
+  AVATAR_PRESETS,
+  avatarPresetById,
+  type AvatarPresetId,
+} from "@/lib/user-profile";
 import { cn } from "@/lib/utils";
 
 type TabId = "alpha" | "tokens" | "profile" | "appearance" | "account";
@@ -28,6 +38,12 @@ function formatTokenCount(value: number) {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
   return String(value);
+}
+
+function formatCurrency(value: number) {
+  if (value >= 1) return `¥${value.toFixed(2)}`;
+  if (value >= 0.01) return `¥${value.toFixed(4)}`;
+  return `¥${value.toFixed(6)}`;
 }
 
 export function SettingsPanel() {
@@ -237,20 +253,43 @@ function TokensSection() {
                 今日 {formatTokenCount(cacheMetrics.data.tokenUsage.todayTokens)}
               </p>
             </div>
-            <div className="rounded-2xl bg-[var(--color-project-control)] p-4 space-y-1">
-              {(["deepseek", "minimax"] as const).map((provider) => (
-                <div key={provider} className="flex justify-between py-0.5 text-sm">
-                  <span className="text-[var(--color-text-secondary)]">
-                    {provider === "deepseek" ? "DeepSeek" : "MiniMax"}
-                  </span>
-                  <span className="font-mono text-[var(--color-text-primary)]">
-                    {cacheMetrics.data.tokenUsage.providers[provider].requestCount > 0
-                      ? formatTokenCount(cacheMetrics.data.tokenUsage.providers[provider].totalTokens)
-                      : "--"}
-                  </span>
-                </div>
-              ))}
+            <div className="rounded-2xl bg-[var(--color-project-control)] p-4">
+              <p className="text-xs text-[var(--color-text-tertiary)]">预估费用</p>
+              <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--color-text-primary)]">
+                {formatCurrency(cacheMetrics.data.tokenUsage.estimatedCostCny)}
+              </p>
+              <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                输入 {formatTokenCount(cacheMetrics.data.tokenUsage.inputTokens)} / 输出{" "}
+                {formatTokenCount(cacheMetrics.data.tokenUsage.outputTokens)}
+              </p>
             </div>
+          </div>
+
+          <div className="rounded-2xl bg-[var(--color-project-control)] p-4 space-y-1">
+            <p className="mb-2 text-xs text-[var(--color-text-tertiary)]">
+              服务拆分
+            </p>
+            {(["deepseek", "minimax"] as const).map((provider) => (
+              <div key={provider} className="flex justify-between py-0.5 text-sm">
+                <span className="text-[var(--color-text-secondary)]">
+                  {provider === "deepseek" ? "DeepSeek" : "MiniMax"}
+                </span>
+                <span className="text-right font-mono text-[var(--color-text-primary)]">
+                  {cacheMetrics.data.tokenUsage.providers[provider].requestCount > 0 ? (
+                    <>
+                      {formatTokenCount(cacheMetrics.data.tokenUsage.providers[provider].totalTokens)}
+                      <span className="ml-2 text-[var(--color-text-tertiary)]">
+                        {formatCurrency(
+                          cacheMetrics.data.tokenUsage.providers[provider].estimatedCostCny
+                        )}
+                      </span>
+                    </>
+                  ) : (
+                    "--"
+                  )}
+                </span>
+              </div>
+            ))}
           </div>
 
           <div>
@@ -395,15 +434,44 @@ function AppearanceSection() {
 }
 
 function AccountSection() {
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
+  const profileQuery = useUserProfile();
+
+  const profile = profileQuery.data;
+  const currentName = profile?.name || session?.user?.name || "";
+  const currentAvatarPreset = avatarPresetById(
+    profile?.avatarPreset || session?.user?.avatarPreset
+  ).id;
+  const email = profile?.email || session?.user?.email || "";
+
+  async function syncSessionProfile(nextProfile: {
+    name: string | null;
+    avatarPreset: AvatarPresetId;
+  }) {
+    await updateSession({
+      user: {
+        name: nextProfile.name,
+        avatarPreset: nextProfile.avatarPreset,
+      },
+    });
+  }
 
   return (
     <SectionShell id="settings-panel-account" title="账户">
+      <AccountProfileForm
+        key={profile ? "profile-loaded" : "session-profile"}
+        initialName={currentName}
+        initialAvatarPreset={currentAvatarPreset}
+        email={email}
+        loading={profileQuery.isPending}
+        onSaved={syncSessionProfile}
+      />
+
       <div className="rounded-2xl bg-[var(--color-project-control)] p-4">
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-[var(--color-text-tertiary)]">邮箱</span>
           <span className="text-sm text-[var(--color-text-primary)] truncate">
-            {session?.user?.email}
+            {email}
           </span>
         </div>
       </div>
@@ -416,5 +484,116 @@ function AccountSection() {
         退出登录
       </Button>
     </SectionShell>
+  );
+}
+
+function AccountProfileForm({
+  initialName,
+  initialAvatarPreset,
+  email,
+  loading,
+  onSaved,
+}: {
+  initialName: string;
+  initialAvatarPreset: AvatarPresetId;
+  email: string;
+  loading: boolean;
+  onSaved: (profile: {
+    name: string | null;
+    avatarPreset: AvatarPresetId;
+  }) => Promise<void>;
+}) {
+  const updateProfile = useUpdateUserProfile();
+  const [name, setName] = useState(initialName);
+  const [avatarPreset, setAvatarPreset] =
+    useState<AvatarPresetId>(initialAvatarPreset);
+  const [saved, setSaved] = useState(false);
+
+  async function handleSaveProfile() {
+    setSaved(false);
+    const nextProfile = await updateProfile.mutateAsync({
+      name,
+      avatarPreset,
+    });
+    await onSaved(nextProfile);
+    setSaved(true);
+  }
+
+  return (
+    <div className="space-y-4 rounded-2xl bg-[var(--color-project-control)] p-4">
+      <div className="flex items-center gap-3">
+        <AvatarMark presetId={avatarPreset} className="size-10 text-sm" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+            {name.trim() || email || "账户"}
+          </p>
+          <p className="truncate text-xs text-[var(--color-text-tertiary)]">
+            侧栏和账户菜单会显示这个昵称
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-[var(--color-text-primary)]">
+          昵称
+        </label>
+        <Input
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value);
+            setSaved(false);
+          }}
+          placeholder="你的称呼"
+          maxLength={60}
+          className="mt-2 h-9 rounded-xl bg-[var(--color-surface)]"
+        />
+      </div>
+
+      <div>
+        <p className="text-sm font-medium text-[var(--color-text-primary)]">
+          头像样式
+        </p>
+        <div className="mt-2 grid grid-cols-4 gap-2" role="list" aria-label="头像样式">
+          {AVATAR_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              aria-pressed={avatarPreset === preset.id}
+              onClick={() => {
+                setAvatarPreset(preset.id);
+                setSaved(false);
+              }}
+              className={cn(
+                "flex h-16 flex-col items-center justify-center gap-1 rounded-xl text-xs transition-colors",
+                avatarPreset === preset.id
+                  ? "bg-[var(--color-interaction-active)] text-[var(--color-text-primary)]"
+                  : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+              )}
+            >
+              <AvatarMark presetId={preset.id} className="size-7" />
+              <span>{preset.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Button
+          variant="primary"
+          size="md"
+          onClick={handleSaveProfile}
+          disabled={loading || updateProfile.isPending}
+          className="rounded-xl px-4"
+        >
+          {updateProfile.isPending ? "保存中..." : "保存资料"}
+        </Button>
+        {saved && (
+          <span className="text-xs text-[var(--color-success)]">已保存</span>
+        )}
+        {updateProfile.isError && (
+          <span className="text-xs text-[var(--color-error)]">保存失败，请重试</span>
+        )}
+      </div>
+    </div>
   );
 }

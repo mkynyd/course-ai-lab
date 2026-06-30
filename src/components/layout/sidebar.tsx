@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { SettingsPanel } from "@/components/settings/settings-panel";
+import { AvatarMark } from "@/components/user/avatar-mark";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +68,7 @@ import {
   useConversions,
   useDeleteConversion,
 } from "@/lib/hooks/use-conversions";
+import { DEFAULT_AVATAR_PRESET } from "@/lib/user-profile";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -173,7 +175,9 @@ export function Sidebar({
     : null;
   const accountName =
     session?.user?.name || session?.user?.email || "账户";
-  const accountInitial = accountName.trim().slice(0, 1).toUpperCase() || "A";
+  const accountEmail = session?.user?.email || "";
+  const accountAvatarPreset =
+    session?.user?.avatarPreset || DEFAULT_AVATAR_PRESET;
 
   return (
     <SidebarProvider
@@ -519,9 +523,7 @@ export function Sidebar({
                 )}
                 aria-label="打开账户菜单"
               >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-panel-muted)] text-xs font-semibold text-[var(--color-text-primary)]">
-                  {accountInitial}
-                </span>
+                <AvatarMark presetId={accountAvatarPreset} className="size-7" />
                 <span
                   className={cn(
                     "min-w-0 flex-1",
@@ -532,7 +534,7 @@ export function Sidebar({
                     {accountName}
                   </span>
                   <span className="block truncate text-xs text-[var(--color-text-tertiary)]">
-                    DeepSeek V4
+                    {accountEmail || "账户设置"}
                   </span>
                 </span>
                 <ChevronDown

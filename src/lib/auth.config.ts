@@ -49,15 +49,24 @@ export const authConfig: NextAuthConfig = {
 
       return true;
     },
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id as string;
+        token.name = user.name;
+        token.email = user.email;
+        token.avatarPreset = user.avatarPreset ?? null;
+      }
+      if (trigger === "update" && session?.user) {
+        token.name = session.user.name;
+        token.avatarPreset = session.user.avatarPreset ?? null;
       }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.name = token.name ?? null;
+        session.user.avatarPreset = token.avatarPreset ?? null;
       }
       return session;
     },
