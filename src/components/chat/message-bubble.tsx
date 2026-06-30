@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState } from "react";
+import { TaskList } from "iconoir-react";
 import {
   Archive,
   BookOpen,
@@ -12,7 +13,6 @@ import {
   GraduationCap,
   Lightbulb,
   Save,
-  Target,
   User,
 } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown/markdown-content";
@@ -115,7 +115,7 @@ function MessageSources({ sources }: { sources?: AgentSource[] | null }) {
 
 const FOLLOW_UP_ACTIONS = [
   { skillId: "socratic-tutor", label: "引导我深入理解", icon: Lightbulb },
-  { skillId: "exam-extract", label: "抓考试重点", icon: Target },
+  { skillId: "exam-extract", label: "考点分析", icon: TaskList },
   { skillId: "exam-coach", label: "生成速记卡", icon: GraduationCap },
 ] as const;
 

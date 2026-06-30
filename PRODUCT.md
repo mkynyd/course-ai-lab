@@ -38,7 +38,7 @@ Skill 菜单与 Skill 触发按钮统一使用 Iconoir 图标，不在生产 UI 
 | 自动 Skill | `MagicWand` | 表示自动识别与推荐 |
 | 论文阅读 | `OpenBook` | 表示阅读论文与资料 |
 | 论文写作 | `EditPencil` | 表示写作与编辑 |
-| 抓考试重点 | `Gps` | 表示定位重点与范围 |
+| 考点分析 | `TaskList` | 表示考点抽取、题型整理与范围分析 |
 | 复习教练 | `GraduationCap` | 表示考试复习与学习辅导 |
 | 代码阅读 | `CodeBrackets` | 表示代码理解 |
 | 苏格拉底导师 | `ChatBubbleQuestion` | 表示追问与引导式对话 |

@@ -119,7 +119,7 @@ function defaultSuggestions(input: SkillRouteInput, activeSkillId: string | null
   };
   if (hasSelectedContext(input)) {
     add("socratic-tutor", "引导我深入理解", "用追问帮助继续拆解资料");
-    add("exam-extract", "抓考试重点", "从资料里抽取考点和题型");
+    add("exam-extract", "考点分析", "从资料里抽取考点和题型");
     add("exam-coach", "生成速记卡", "把内容转成复习卡和自测题");
   } else {
     add("socratic-tutor", "引导我深入理解", "用追问帮助继续拆解概念");
