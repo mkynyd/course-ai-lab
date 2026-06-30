@@ -11,6 +11,46 @@ export function shouldContinueAmbientFrame(
   return !reducedMotion && pulseStartedAt > 0 && now - pulseStartedAt < 640;
 }
 
+interface DotPosition {
+  x: number;
+  y: number;
+}
+
+interface ObstacleRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+const OBSTACLE_CONTENT_PADDING = 8;
+const OBSTACLE_FADE_DISTANCE = 88;
+const OBSTACLE_MIN_FADE = 0.14;
+
+function distanceFromRect(dot: DotPosition, rect: ObstacleRect) {
+  const nearestX = Math.max(rect.left, Math.min(dot.x, rect.right));
+  const nearestY = Math.max(rect.top, Math.min(dot.y, rect.bottom));
+  return Math.hypot(dot.x - nearestX, dot.y - nearestY);
+}
+
+export function getDotObstacleFade(
+  dot: DotPosition,
+  obstacles: ObstacleRect[],
+  fadeDistance = OBSTACLE_FADE_DISTANCE
+) {
+  if (obstacles.length === 0) return 1;
+
+  let nearestDistance = Infinity;
+  for (const rect of obstacles) {
+    nearestDistance = Math.min(nearestDistance, distanceFromRect(dot, rect));
+  }
+
+  if (nearestDistance >= fadeDistance) return 1;
+  const t = Math.max(0, nearestDistance / fadeDistance);
+  const eased = t * t * (3 - 2 * t);
+  return OBSTACLE_MIN_FADE + eased * (1 - OBSTACLE_MIN_FADE);
+}
+
 interface AmbientFieldProps {
   intensity?: "low" | "medium";
   density?: "auto" | "compact" | "wide";
@@ -39,7 +79,7 @@ export function AmbientField({
       pulseStartedAt: 0,
     };
     let rafId = 0;
-    let dots: Array<{ x: number; y: number; ox: number; oy: number }> = [];
+    let dots: DotPosition[] = [];
     let width = 0;
     let height = 0;
     let dotSize = 2.2;
@@ -63,65 +103,20 @@ export function AmbientField({
     }
 
     let proximity = 125;
-    const OBSTACLE_REPULSION_PROXIMITY = 120;
-    const OBSTACLE_REPULSION_STRENGTH = 32;
-    const OBSTACLE_LERP = 0.12;
-    let obstacles: Array<{ left: number; top: number; right: number; bottom: number }> = [];
+    let obstacles: ObstacleRect[] = [];
 
     function refreshObstacles() {
       const wrapperRect = wrapperEl.getBoundingClientRect();
-      const padding = gap;
       const scopeEl = wrapperEl.parentElement ?? wrapperEl;
       obstacles = Array.from(scopeEl.querySelectorAll("[data-dot-avoid]")).map((el) => {
         const rect = el.getBoundingClientRect();
         return {
-          left: rect.left - wrapperRect.left - padding,
-          top: rect.top - wrapperRect.top - padding,
-          right: rect.right - wrapperRect.left + padding,
-          bottom: rect.bottom - wrapperRect.top + padding,
+          left: rect.left - wrapperRect.left - OBSTACLE_CONTENT_PADDING,
+          top: rect.top - wrapperRect.top - OBSTACLE_CONTENT_PADDING,
+          right: rect.right - wrapperRect.left + OBSTACLE_CONTENT_PADDING,
+          bottom: rect.bottom - wrapperRect.top + OBSTACLE_CONTENT_PADDING,
         };
       });
-    }
-
-    function isDotHidden(dot: { x: number; y: number }) {
-      for (const rect of obstacles) {
-        if (
-          dot.x >= rect.left &&
-          dot.x <= rect.right &&
-          dot.y >= rect.top &&
-          dot.y <= rect.bottom
-        ) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    function computeObstacleRepulsion(dot: { x: number; y: number }) {
-      let nearestDistance = Infinity;
-      let nearestDx = 0;
-      let nearestDy = 0;
-      for (const rect of obstacles) {
-        const nearestX = Math.max(rect.left, Math.min(dot.x, rect.right));
-        const nearestY = Math.max(rect.top, Math.min(dot.y, rect.bottom));
-        const dx = dot.x - nearestX;
-        const dy = dot.y - nearestY;
-        const distance = Math.hypot(dx, dy);
-        if (distance < nearestDistance) {
-          nearestDistance = distance;
-          nearestDx = dx;
-          nearestDy = dy;
-        }
-      }
-      if (nearestDistance > 0 && nearestDistance < OBSTACLE_REPULSION_PROXIMITY) {
-        const t = 1 - nearestDistance / OBSTACLE_REPULSION_PROXIMITY;
-        const force = OBSTACLE_REPULSION_STRENGTH * t * t;
-        return {
-          tx: (nearestDx / nearestDistance) * force,
-          ty: (nearestDy / nearestDistance) * force,
-        };
-      }
-      return { tx: 0, ty: 0 };
     }
 
     function buildGrid() {
@@ -151,8 +146,6 @@ export function AmbientField({
           dots.push({
             x: offsetX + col * step,
             y: offsetY + row * step,
-            ox: 0,
-            oy: 0,
           });
         }
       }
@@ -164,26 +157,10 @@ export function AmbientField({
       const activeColor = readThemeColor("--dot-grid-active") || "rgba(37,99,235,0.7)";
       const now = performance.now();
       ctx.clearRect(0, 0, width, height);
-      let needsAnimation = false;
-      const respectMotion = !reducedMotion.matches;
 
       for (const dot of dots) {
-        if (isDotHidden(dot)) continue;
-
-        if (respectMotion) {
-          const repulsion = computeObstacleRepulsion(dot);
-          dot.ox += (repulsion.tx - dot.ox) * OBSTACLE_LERP;
-          dot.oy += (repulsion.ty - dot.oy) * OBSTACLE_LERP;
-          if (Math.abs(dot.ox) > 0.05 || Math.abs(dot.oy) > 0.05) {
-            needsAnimation = true;
-          }
-        } else {
-          dot.ox = 0;
-          dot.oy = 0;
-        }
-
-        const drawX = dot.x + dot.ox;
-        const drawY = dot.y + dot.oy;
+        const drawX = dot.x;
+        const drawY = dot.y;
         const dx = drawX - pointer.x;
         const dy = drawY - pointer.y;
         const distance = Math.hypot(dx, dy);
@@ -194,16 +171,23 @@ export function AmbientField({
           ? Math.max(0, 1 - pulseAge / 640) * Math.max(0, 1 - pulseDistance / 220)
           : 0;
         const strength = Math.min(1, t + pulse * 0.8);
+        const obstacleFade = getDotObstacleFade(dot, obstacles);
+        const effectiveStrength = strength * obstacleFade;
 
-        ctx.globalAlpha = 0.6 + strength * (intensity === "medium" ? 0.4 : 0.28);
-        ctx.fillStyle = strength > 0.04 ? activeColor : baseColor;
+        ctx.globalAlpha =
+          (0.6 + effectiveStrength * (intensity === "medium" ? 0.4 : 0.28)) *
+          obstacleFade;
+        ctx.fillStyle = effectiveStrength > 0.04 ? activeColor : baseColor;
         ctx.beginPath();
-        ctx.arc(drawX, drawY, dotSize + strength * 1.8, 0, Math.PI * 2);
+        ctx.arc(drawX, drawY, dotSize + effectiveStrength * 1.8, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
-      const continueFrame =
-        shouldContinueAmbientFrame(pointer.pulseStartedAt, now, reducedMotion.matches) || needsAnimation;
+      const continueFrame = shouldContinueAmbientFrame(
+        pointer.pulseStartedAt,
+        now,
+        reducedMotion.matches
+      );
       if (continueFrame) {
         rafId = window.requestAnimationFrame(draw);
       }
