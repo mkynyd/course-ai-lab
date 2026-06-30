@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getRedis } from "@/lib/redis";
+import { getCreditWeights } from "@/lib/tokens/credits";
 
 export interface CacheMetricRow {
   createdAt: Date;
@@ -24,6 +25,10 @@ export interface TokenUsageRow {
   createdAt: Date;
   tokenCount: number | null;
   provider: string | null;
+  model?: string | null;
+  inputCacheHitTokens?: number | null;
+  inputCacheMissTokens?: number | null;
+  outputTokens?: number | null;
 }
 
 export interface TokenUsageSummary {
@@ -31,9 +36,12 @@ export interface TokenUsageSummary {
   todayTokens: number;
   requestCount: number;
   unattributedTokens: number;
+  estimatedCostCny: number;
+  inputTokens: number;
+  outputTokens: number;
   providers: Record<
     "deepseek" | "minimax",
-    { totalTokens: number; requestCount: number }
+    { totalTokens: number; requestCount: number; estimatedCostCny: number }
   >;
 }
 
@@ -107,15 +115,32 @@ export function aggregateTokenUsageRows(
     todayTokens: 0,
     requestCount: 0,
     unattributedTokens: 0,
+    estimatedCostCny: 0,
+    inputTokens: 0,
+    outputTokens: 0,
     providers: {
-      deepseek: { totalTokens: 0, requestCount: 0 },
-      minimax: { totalTokens: 0, requestCount: 0 },
+      deepseek: { totalTokens: 0, requestCount: 0, estimatedCostCny: 0 },
+      minimax: { totalTokens: 0, requestCount: 0, estimatedCostCny: 0 },
     },
   };
 
   for (const row of rows) {
     if (row.tokenCount === null) continue;
+    const inputTokens =
+      (row.inputCacheHitTokens || 0) + (row.inputCacheMissTokens || 0);
+    const outputTokens = row.outputTokens || 0;
+    const weights = row.model ? getCreditWeights(row.model) : undefined;
+    const estimatedCostCny = weights
+      ? ((row.inputCacheHitTokens || 0) * weights.hit +
+          (row.inputCacheMissTokens || 0) * weights.miss +
+          outputTokens * weights.out) /
+        1_000_000
+      : 0;
+
     summary.totalTokens += row.tokenCount;
+    summary.inputTokens += inputTokens;
+    summary.outputTokens += outputTokens;
+    summary.estimatedCostCny += estimatedCostCny;
     summary.requestCount += 1;
     if (row.createdAt.toISOString().slice(0, 10) === todayDate) {
       summary.todayTokens += row.tokenCount;
@@ -123,6 +148,7 @@ export function aggregateTokenUsageRows(
     if (row.provider === "deepseek" || row.provider === "minimax") {
       summary.providers[row.provider].totalTokens += row.tokenCount;
       summary.providers[row.provider].requestCount += 1;
+      summary.providers[row.provider].estimatedCostCny += estimatedCostCny;
     } else {
       summary.unattributedTokens += row.tokenCount;
     }
@@ -170,20 +196,32 @@ export async function getTokenUsageMetrics(userId: string, days = 7) {
   const createdAt = {
     gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
   };
-  const rows = await prisma.message.findMany({
+  const rows = await prisma.tokenUsage.findMany({
     where: {
-      role: "assistant",
-      tokenCount: { not: null },
-      conversation: { userId },
+      userId,
       createdAt,
     },
     select: {
       createdAt: true,
-      tokenCount: true,
+      totalTokens: true,
       provider: true,
+      model: true,
+      inputCacheHitTokens: true,
+      inputCacheMissTokens: true,
+      outputTokens: true,
     },
   });
-  return aggregateTokenUsageRows(rows);
+  return aggregateTokenUsageRows(
+    rows.map((row) => ({
+      createdAt: row.createdAt,
+      tokenCount: row.totalTokens,
+      provider: row.provider,
+      model: row.model,
+      inputCacheHitTokens: row.inputCacheHitTokens,
+      inputCacheMissTokens: row.inputCacheMissTokens,
+      outputTokens: row.outputTokens,
+    }))
+  );
 }
 
 export async function getCacheMetricsByProvider(userId: string) {

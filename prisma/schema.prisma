@@ -19,6 +19,7 @@ model User {
   email               String   @unique
   passwordHash        String
   name                String?
+  avatarPreset        String   @default("lumen")
   accessStatus        String   @default("active")
   credentialProfileId String?
   planTier            String   @default("premium") // free | pro | premium
